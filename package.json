@@ -18,7 +18,7 @@
     "lint:bulloak": "find test/unit -name '*.tree' | xargs bulloak check",
     "lint:check": "forge fmt --check && pnpm lint:sol",
     "lint:fix": "forge fmt && pnpm lint:sol --fix && sort-package-json",
-    "lint:natspec": "lintspec",
+    "lint:natspec": "bash scripts/lintspec.sh",
     "lint:sol": "solhint 'src/**/*.sol' 'script/**/*.sol' 'test/**/*.sol'",
     "prepare": "husky",
     "test": "forge test -vvv",
@@ -30,10 +30,10 @@
   },
   "lint-staged": {
     "*.{js,css,md,ts,sol}": "forge fmt",
-    "(src|script|test)/**/*.sol": "pnpm lint:sol --fix",
-    "src/**/*.sol": "lintspec",
+    "(src|script|test)/**/*.sol": "pnpm exec solhint --fix",
+    "src/**/*.sol": "bash scripts/lintspec.sh",
     "test/unit/**/*.tree": "pnpm lint:bulloak",
-    "package.json": "sort-package-json"
+    "package.json": "pnpm exec sort-package-json"
   },
   "dependencies": {
     "hats-core": "github:Hats-Protocol/hats-protocol",
