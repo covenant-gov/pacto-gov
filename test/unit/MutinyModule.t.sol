@@ -7,10 +7,8 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IMutinyModule} from 'interfaces/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
 
-contract EmptySuccessor {}
-
 contract UnitMutinyModule is MutinyModuleUnitTest {
-  function test_Constructor_StoresConfig() external view {
+  function test_ConstructorWhenDeployedWithValidParams() external view {
     assertEq(_mutiny.QUARTERMASTER(), _QM_ADDRESS);
     assertEq(_mutiny.HATS(), _HATS_ADDRESS);
     assertEq(_mutiny.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
@@ -18,32 +16,24 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     assertEq(_mutiny.latestMutinyId(), 0);
   }
 
-  function test_Constructor_RevertsOnZeroQuartermaster() external {
+  function test_ConstructorWhenParamsAreInvalid() external {
     vm.expectRevert(IMutinyModule.MutinyModule_InvalidSuccessor.selector);
     new MutinyModule(IQuartermaster(address(0)), IHats(_HATS_ADDRESS), _CAPTAIN_HAT, _CREW_HAT, _captain0);
-  }
 
-  function test_Constructor_RevertsOnZeroHats() external {
     vm.expectRevert(IMutinyModule.MutinyModule_InvalidSuccessor.selector);
     new MutinyModule(IQuartermaster(_QM_ADDRESS), IHats(address(0)), _CAPTAIN_HAT, _CREW_HAT, _captain0);
-  }
 
-  function test_Constructor_RevertsOnZeroInitialCaptain() external {
     vm.expectRevert(IMutinyModule.MutinyModule_InvalidSuccessor.selector);
     new MutinyModule(IQuartermaster(_QM_ADDRESS), IHats(_HATS_ADDRESS), _CAPTAIN_HAT, _CREW_HAT, address(0));
-  }
 
-  function test_Constructor_RevertsOnZeroCaptainHatId() external {
     vm.expectRevert(IMutinyModule.MutinyModule_InvalidSuccessor.selector);
     new MutinyModule(IQuartermaster(_QM_ADDRESS), IHats(_HATS_ADDRESS), 0, _CREW_HAT, _captain0);
-  }
 
-  function test_Constructor_RevertsOnZeroCrewHatId() external {
     vm.expectRevert(IMutinyModule.MutinyModule_InvalidSuccessor.selector);
     new MutinyModule(IQuartermaster(_QM_ADDRESS), IHats(_HATS_ADDRESS), _CAPTAIN_HAT, 0, _captain0);
   }
 
-  function test_StartMutiny_SchedulesAndCallsQuartermaster() external {
+  function test_StartMutinyWhenCrewOpensMutinyWithValidSuccessorAndPositiveCrewSupply() external {
     _mockStartMutinyHappyPath(_crew1, _successor, 4);
     vm.expectCall(_QM_ADDRESS, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, true));
     vm.prank(_crew1);
@@ -52,10 +42,11 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     assertEq(_mutiny.latestMutinyId(), 1);
     assertEq(_mutiny.proposedNewCaptain(1), _successor);
     assertEq(_mutiny.eligibleCrewCount(1), 4);
+    assertEq(_mutiny.mutinySnapshotBlock(1), block.number);
     assertTrue(_mutiny.isMutinyOpen(1));
   }
 
-  function test_StartMutiny_RevertsWhenAlreadyActive() external {
+  function test_StartMutinyWhenAMutinyIsAlreadyOpen() external {
     _mockStartMutinyHappyPath(_crew1, _successor, 4);
     vm.startPrank(_crew1);
     _mutiny.startMutiny(_successor);
@@ -64,7 +55,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     vm.stopPrank();
   }
 
-  function test_StartMutiny_RevertsInvalidSuccessorZero() external {
+  function test_StartMutinyWhenProposedSuccessorIsZero() external {
     _mockBalanceOf(_crew1, _CREW_HAT, 1);
     _mockHatSupply(_CREW_HAT, 4);
     vm.prank(_crew1);
@@ -72,7 +63,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.startMutiny(address(0));
   }
 
-  function test_StartMutiny_RevertsProposedIsCurrentCaptain() external {
+  function test_StartMutinyWhenProposedIsCurrentCaptain() external {
     _mockBalanceOf(_captain0, _CAPTAIN_HAT, 0);
     _mockBalanceOf(_crew1, _CREW_HAT, 1);
     _mockHatSupply(_CREW_HAT, 4);
@@ -81,7 +72,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.startMutiny(_captain0);
   }
 
-  function test_StartMutiny_RevertsProposedAlreadyWearsCaptainHat() external {
+  function test_StartMutinyWhenProposedAlreadyWearsCaptainHat() external {
     _mockBalanceOf(_successor, _CAPTAIN_HAT, 1);
     _mockBalanceOf(_crew1, _CREW_HAT, 1);
     _mockHatSupply(_CREW_HAT, 4);
@@ -90,7 +81,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.startMutiny(_successor);
   }
 
-  function test_StartMutiny_RevertsNotCrew() external {
+  function test_StartMutinyWhenCallerIsNotCrew() external {
     _mockBalanceOf(_successor, _CAPTAIN_HAT, 0);
     _mockBalanceOf(_crew1, _CREW_HAT, 0);
     _mockHatSupply(_CREW_HAT, 4);
@@ -99,7 +90,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.startMutiny(_successor);
   }
 
-  function test_StartMutiny_RevertsZeroCrewSupply() external {
+  function test_StartMutinyWhenCrewHatSupplyIsZero() external {
     _mockBalanceOf(_successor, _CAPTAIN_HAT, 0);
     _mockBalanceOf(_crew1, _CREW_HAT, 1);
     _mockHatSupply(_CREW_HAT, 0);
@@ -108,23 +99,34 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.startMutiny(_successor);
   }
 
-  function test_CastVote_YeaIncrementsNayDoesNot() external {
+  modifier whenRoundIsOpen() {
     _mockStartMutinyHappyPath(_crew1, _successor, 4);
     vm.prank(_crew1);
     _mutiny.startMutiny(_successor);
+    _;
+  }
 
+  function test_CastVoteWhenVoterCastsNay() external whenRoundIsOpen {
     _mockBalanceOf(_crew1, _CREW_HAT, 1);
     vm.prank(_crew1);
     _mutiny.castVote(1, false);
     assertEq(_mutiny.yeaVotes(1), 0);
+    assertTrue(_mutiny.hasVoted(1, _crew1));
+  }
+
+  function test_CastVoteWhenAnotherVoterCastsYea() external whenRoundIsOpen {
+    _mockBalanceOf(_crew1, _CREW_HAT, 1);
+    vm.prank(_crew1);
+    _mutiny.castVote(1, false);
 
     _mockBalanceOf(_crew2, _CREW_HAT, 1);
     vm.prank(_crew2);
     _mutiny.castVote(1, true);
     assertEq(_mutiny.yeaVotes(1), 1);
+    assertTrue(_mutiny.hasVoted(1, _crew2));
   }
 
-  function test_CastVote_RevertsAlreadyVoted() external {
+  function test_CastVoteWhenVoterVotesTwice() external {
     _mockStartMutinyHappyPath(_crew1, _successor, 4);
     vm.prank(_crew1);
     _mutiny.startMutiny(_successor);
@@ -137,7 +139,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     vm.stopPrank();
   }
 
-  function test_CastVote_RevertsNotCrew() external {
+  function test_CastVoteWhenVoterIsNotCrew() external {
     _mockStartMutinyHappyPath(_crew1, _successor, 4);
     vm.prank(_crew1);
     _mutiny.startMutiny(_successor);
@@ -149,14 +151,14 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.castVote(1, true);
   }
 
-  function test_CastVote_RevertsInvalidRound() external {
+  function test_CastVoteWhenMutinyIdIsNotOpen() external {
     _mockBalanceOf(_crew1, _CREW_HAT, 1);
     vm.prank(_crew1);
     vm.expectRevert(IMutinyModule.MutinyModule_InvalidMutiny.selector);
     _mutiny.castVote(1, true);
   }
 
-  function test_ExecuteMutiny_EoaSuccessorWithoutCrew_MintsCrewToFormer() external {
+  function test_ExecuteMutinyWhenStrictMajorityYeaAndEOASuccessorWithoutCrew() external {
     _startOpenMutinyWithThreeYeas(_successor);
 
     _mockBalanceOf(_captain0, _CAPTAIN_HAT, 1);
@@ -175,7 +177,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     assertFalse(_mutiny.isMutinyOpen(1));
   }
 
-  function test_ExecuteMutiny_EoaSuccessorWithCrew_Handoff() external {
+  function test_ExecuteMutinyWhenEOASuccessorAlreadyHasCrew() external {
     address _succCrew = makeAddr('succCrew');
     _startOpenMutinyWithThreeYeas(_succCrew);
 
@@ -191,7 +193,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.executeMutiny(1);
   }
 
-  function test_ExecuteMutiny_ContractSuccessor_MintsCrewToFormerOnly() external {
+  function test_ExecuteMutinyWhenSuccessorIsAContract() external {
     address _contractSucc = address(new EmptySuccessor());
     _startOpenMutinyWithThreeYeas(_contractSucc);
 
@@ -204,7 +206,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.executeMutiny(1);
   }
 
-  function test_ExecuteMutiny_RevertsBelowStrictMajority() external {
+  function test_ExecuteMutinyWhenYeaVotesDoNotExceedHalfOfEligibleCrewCount() external {
     _mockStartMutinyHappyPath(_crew1, _successor, 4);
     vm.prank(_crew1);
     _mutiny.startMutiny(_successor);
@@ -221,7 +223,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.executeMutiny(1);
   }
 
-  function test_ExecuteMutiny_RevertsCaptainOutOfSync() external {
+  function test_ExecuteMutinyWhenTrackedCaptainDoesNotHoldCaptainHat() external {
     _startOpenMutinyWithThreeYeas(_successor);
 
     _mockBalanceOf(_captain0, _CAPTAIN_HAT, 0);
@@ -229,7 +231,7 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.executeMutiny(1);
   }
 
-  function test_StartMutiny_AgainAfterExecute() external {
+  function test_LifecycleWhenExecuteCompletesAndCrewStartsANewMutiny() external {
     _startOpenMutinyWithThreeYeas(_successor);
     _mockBalanceOf(_captain0, _CAPTAIN_HAT, 1);
     _mockTransferHat(_CAPTAIN_HAT, _captain0, _successor);
@@ -249,4 +251,39 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     assertEq(_mutiny.latestMutinyId(), 2);
     assertTrue(_mutiny.isMutinyOpen(2));
   }
+
+  function test_CastVote_RevertsWhenRoundAlreadyExecuted() external {
+    _startOpenMutinyWithThreeYeas(_successor);
+    _mockBalanceOf(_captain0, _CAPTAIN_HAT, 1);
+    _mockTransferHat(_CAPTAIN_HAT, _captain0, _successor);
+    _mockBalanceOf(_successor, _CREW_HAT, 0);
+    _mockQmMintCrewFromMutiny(_captain0);
+    _mockQmSetMutinyActive(false);
+    _mutiny.executeMutiny(1);
+
+    _mockBalanceOf(_crew1, _CREW_HAT, 1);
+    vm.prank(_crew1);
+    vm.expectRevert(IMutinyModule.MutinyModule_InvalidMutiny.selector);
+    _mutiny.castVote(1, true);
+  }
+
+  function test_ExecuteMutiny_RevertsWhenMutinyIdNeverOpened() external {
+    vm.expectRevert(IMutinyModule.MutinyModule_InvalidMutiny.selector);
+    _mutiny.executeMutiny(1);
+  }
+
+  function test_ExecuteMutiny_RevertsWhenAlreadyExecuted() external {
+    _startOpenMutinyWithThreeYeas(_successor);
+    _mockBalanceOf(_captain0, _CAPTAIN_HAT, 1);
+    _mockTransferHat(_CAPTAIN_HAT, _captain0, _successor);
+    _mockBalanceOf(_successor, _CREW_HAT, 0);
+    _mockQmMintCrewFromMutiny(_captain0);
+    _mockQmSetMutinyActive(false);
+    _mutiny.executeMutiny(1);
+
+    vm.expectRevert(IMutinyModule.MutinyModule_InvalidMutiny.selector);
+    _mutiny.executeMutiny(1);
+  }
 }
+
+contract EmptySuccessor {}

@@ -1,0 +1,67 @@
+UnitMutinyModule::constructor
+├── when deployed with valid params
+│   └── it stores Quartermaster Hats captain hat id crew hat id and latest mutiny id zero
+└── when params are invalid
+    ├── it reverts when quartermaster is zero
+    ├── it reverts when Hats is zero
+    ├── it reverts when initial captain is zero
+    ├── it reverts when captain hat id is zero
+    └── it reverts when crew hat id is zero
+
+
+UnitMutinyModule::startMutiny
+├── when crew opens mutiny with valid successor and positive crew supply
+│   ├── it calls Quartermaster setMutinyActive true
+│   ├── it increments latest mutiny id
+│   ├── it records proposed successor eligible count and opens round
+│   └── it emits MutinyStarted
+├── when a mutiny is already open
+│   └── it reverts with MutinyModule_MutinyAlreadyActive
+├── when proposed successor is zero
+│   └── it reverts with MutinyModule_InvalidSuccessor
+├── when proposed is current captain
+│   └── it reverts with MutinyModule_InvalidSuccessor
+├── when proposed already wears captain hat
+│   └── it reverts with MutinyModule_InvalidSuccessor
+├── when caller is not crew
+│   └── it reverts with MutinyModule_NotEligibleCrew
+└── when crew hat supply is zero
+    └── it reverts with MutinyModule_InvalidMutiny
+
+
+UnitMutinyModule::castVote
+├── when round is open
+│   ├── when voter casts nay
+│   │   └── it does not increment yea votes
+│   └── when another voter casts yea
+│       └── it increments yea votes
+├── when voter votes twice
+│   └── it reverts with MutinyModule_AlreadyVoted
+├── when voter is not crew
+│   └── it reverts with MutinyModule_NotEligibleCrew
+└── when mutiny id is not open
+    └── it reverts with MutinyModule_InvalidMutiny
+
+
+UnitMutinyModule::executeMutiny
+├── when strict majority yea and EOA successor without crew
+│   ├── it calls Hats transferHat captain from former to successor
+│   ├── it calls Quartermaster mintCrewFromMutiny for former captain
+│   ├── it calls Quartermaster setMutinyActive false
+│   └── it marks round executed and closed
+├── when EOA successor already has crew
+│   ├── it calls Hats transferHat for captain
+│   └── it calls Quartermaster crewHandoffForMutiny
+├── when successor is a contract
+│   ├── it calls Hats transferHat for captain
+│   └── it calls Quartermaster mintCrewFromMutiny for former only
+├── when yea votes do not exceed half of eligible crew count
+│   └── it reverts with MutinyModule_NotExecutable
+└── when tracked captain does not hold captain hat
+    └── it reverts with MutinyModule_NotExecutable
+
+
+UnitMutinyModule::lifecycle
+└── when execute completes and crew starts a new mutiny
+    ├── it opens a second mutiny round
+    └── it increments latest mutiny id

@@ -27,7 +27,7 @@ contract UnitGreeter is Test {
     vm.skip(true);
   }
 
-  function test_Constructor_WhenPassingValidGreetingString() external {
+  function test_ConstructorWhenPassingValidGreetingString() external {
     vm.prank(_owner);
     // it deploys
     _greeter = new Greeter(_initialGreeting, _token);
@@ -40,7 +40,7 @@ contract UnitGreeter is Test {
     assertEq(address(_greeter.token()), address(_token));
   }
 
-  function test_Constructor_WhenPassingAnEmptyGreetingString() external {
+  function test_ConstructorWhenPassingAnEmptyGreetingString() external {
     vm.prank(_owner);
 
     // it reverts
@@ -48,7 +48,7 @@ contract UnitGreeter is Test {
     _greeter = new Greeter('', _token);
   }
 
-  function test_Greet_WhenCalled() external {
+  function test_GreetWhenCalled() external {
     vm.mockCall(address(_token), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(_initialBalance));
     vm.expectCall(address(_token), abi.encodeWithSelector(IERC20.balanceOf.selector));
     (string memory _greet, uint256 _balance) = _greeter.greet();
@@ -66,7 +66,7 @@ contract UnitGreeter is Test {
     vm.stopPrank();
   }
 
-  function test_SetGreeting_WhenPassingAValidGreetingString() external whenCalledByTheOwner {
+  function test_SetGreetingWhenPassingAValidGreetingString() external whenCalledByTheOwner {
     string memory _newGreeting = 'hello';
 
     // it emit GreetingSet
@@ -79,13 +79,13 @@ contract UnitGreeter is Test {
     assertEq(_greeter.greeting(), _newGreeting);
   }
 
-  function test_SetGreeting_WhenPassingAnEmptyGreetingString() external whenCalledByTheOwner {
+  function test_SetGreetingWhenPassingAnEmptyGreetingString() external whenCalledByTheOwner {
     // it reverts
     vm.expectRevert(IGreeter.Greeter_InvalidGreeting.selector);
     _greeter.setGreeting('');
   }
 
-  function test_SetGreeting_WhenCalledByANon_owner(address _caller) external {
+  function test_SetGreetingWhenCalledByANon_owner(address _caller) external {
     // it reverts
     vm.assume(_caller != _owner);
     vm.prank(_caller);
