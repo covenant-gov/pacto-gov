@@ -10,9 +10,27 @@ pragma solidity 0.8.30;
  */
 interface IMutinyModule {
   /*///////////////////////////////////////////////////////////////
+                            STRUCTS
+  //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Persistent fields for one mutiny round (storage layout is implementation-defined beyond this shape)
+   * @param proposedNewCaptain Successor if the mutiny passes
+   * @param snapshotBlock Block number recorded when the round opened
+   * @param eligibleCrewCount Crew supply / electorate size fixed for majority math
+   * @param open True while voting may proceed
+   * @param executed True after `executeMutiny` succeeds
+   */
+  struct Round {
+    address proposedNewCaptain;
+    uint256 snapshotBlock;
+    uint256 eligibleCrewCount;
+    bool open;
+    bool executed;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A mutiny round was opened
    * @param _mutinyId Round identifier
@@ -39,7 +57,6 @@ interface IMutinyModule {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Caller is not eligible crew (at snapshot or current rules)
    */
@@ -73,7 +90,6 @@ interface IMutinyModule {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Open a mutiny round fixing electorate and proposed new captain
    * @dev Must set Quartermaster mutiny active per product rules
@@ -97,7 +113,6 @@ interface IMutinyModule {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Linked Quartermaster
    * @return _quartermaster The Quartermaster contract
