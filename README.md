@@ -31,6 +31,14 @@
   <dd>Export your Solidity interfaces and contracts as packages, and publish them to NPM.</dd>
 </dl>
 
+## Documentation — Nave Pirata
+
+Design and build notes live in **`ai-docs/`**:
+
+- [Governance template](ai-docs/nave-pirata-governance-template.md)
+- [Implementation plan](ai-docs/nave-pirata-implementation-plan.md)
+- [Execution steps (interfaces first, NatSpec)](ai-docs/nave-pirata-execution-steps.md)
+
 ## Setup
 
 1. Install Foundry by following the instructions from [their repository](https://github.com/foundry-rs/foundry#installation).

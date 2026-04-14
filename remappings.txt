@@ -2,3 +2,6 @@ forge-std/=node_modules/forge-std/src
 
 contracts/=src/contracts
 interfaces/=src/interfaces
+
+hats-core/=node_modules/hats-core/src
+hats-zodiac/=node_modules/hats-zodiac/src

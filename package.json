@@ -8,7 +8,7 @@
     "url": "git+https://github.com/defi-wonderland/solidity-foundry-boilerplate.git"
   },
   "license": "MIT",
-  "author": "Wonderland",
+  "author": "Pacto",
   "scripts": {
     "build": "forge build",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
@@ -34,6 +34,10 @@
     "src/**/*.sol": "lintspec",
     "test/unit/**/*.tree": "pnpm lint:bulloak",
     "package.json": "sort-package-json"
+  },
+  "dependencies": {
+    "hats-core": "github:Hats-Protocol/hats-protocol",
+    "hats-zodiac": "github:Hats-Protocol/hats-zodiac"
   },
   "devDependencies": {
     "@commitlint/cli": "19.3.0",

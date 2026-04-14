@@ -5,7 +5,7 @@ import {IERC20} from 'forge-std/interfaces/IERC20.sol';
 
 /**
  * @title Greeter Contract
- * @author Wonderland
+ * @author Pacto
  * @notice This is a basic contract created in order to portray some
  * best practices and foundry functionality.
  */
@@ -34,6 +34,16 @@ interface IGreeter {
   error Greeter_InvalidGreeting();
 
   /*///////////////////////////////////////////////////////////////
+                            LOGIC
+  //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Sets a new greeting
+   * @dev Only callable by the owner
+   * @param _newGreeting The new greeting to be set
+   */
+  function setGreeting(string memory _newGreeting) external;
+
+  /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
   /**
@@ -54,16 +64,6 @@ interface IGreeter {
    * @return _token The address of the token
    */
   function token() external view returns (IERC20 _token);
-
-  /*///////////////////////////////////////////////////////////////
-                            LOGIC
-  //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Sets a new greeting
-   * @dev Only callable by the owner
-   * @param _newGreeting The new greeting to be set
-   */
-  function setGreeting(string memory _newGreeting) external;
 
   /**
    * @notice Greets the caller
