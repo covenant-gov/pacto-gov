@@ -16,6 +16,7 @@ interface INavePirataFactory {
    * @notice A full Nave Pirata deployment was completed
    * @param _quartermaster Deployed Quartermaster
    * @param _mutinyModule Deployed mutiny module
+   * @param _pactoAdmin Pacto Admin contract address (Hats wearer for Pacto-admin hat)
    * @param _topHatId Tophat id in Hats
    * @param _captainHatId Captain hat id
    * @param _crewHatId Crew hat id
@@ -23,6 +24,7 @@ interface INavePirataFactory {
   event NavePirataDeployed(
     address indexed _quartermaster,
     address indexed _mutinyModule,
+    address indexed _pactoAdmin,
     uint256 _topHatId,
     uint256 _captainHatId,
     uint256 _crewHatId
@@ -51,6 +53,7 @@ interface INavePirataFactory {
    * @param _hats Hats Protocol contract
    * @param _safeTophatWearer Safe that will wear the tophat
    * @param _deployerCaptain Address receiving the captain hat at bootstrap (initial captain)
+   * @param _pactoAdmin Pacto Admin contract (must be deployed first; receives Pacto-admin hat mint in tree wiring)
    * @param _crewChangeDelay Delay for Quartermaster schedule/execute crew changes
    * @param _crewHatMaxSupply Max supply for crew hat (e.g. 10_000)
    * @param _topHatDetails Metadata/details string for tophat
@@ -66,6 +69,7 @@ interface INavePirataFactory {
     address _hats,
     address _safeTophatWearer,
     address _deployerCaptain,
+    address _pactoAdmin,
     uint256 _crewChangeDelay,
     uint256 _crewHatMaxSupply,
     string calldata _topHatDetails,
@@ -102,4 +106,10 @@ interface INavePirataFactory {
    * @return _mutinyModule Address or zero if none
    */
   function lastMutinyModule() external view returns (address _mutinyModule);
+
+  /**
+   * @notice Pacto Admin address passed into the most recent `deployNavePirata` call
+   * @return _pactoAdmin Address or zero if none
+   */
+  function lastPactoAdmin() external view returns (address _pactoAdmin);
 }

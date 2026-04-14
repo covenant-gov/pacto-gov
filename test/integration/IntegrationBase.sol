@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Greeter, IGreeter} from 'contracts/Greeter.sol';
+import {PactoAdmin} from 'contracts/PactoAdmin.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IERC20} from 'forge-std/interfaces/IERC20.sol';
 
@@ -14,10 +15,13 @@ contract IntegrationBase is Test {
   address internal _daiWhale = 0x42f8CA49E88A8fd8F0bfA2C739e648468b8f9dec;
   IERC20 internal _dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
   IGreeter internal _greeter;
+  /// @dev Deployed before Nave Pirata factory runs; pass `address(_pactoAdmin)` as `_pactoAdmin` in `deployNavePirata`.
+  PactoAdmin internal _pactoAdmin;
 
   function setUp() public {
     vm.createSelectFork(vm.rpcUrl('mainnet'), _FORK_BLOCK);
     vm.prank(_owner);
     _greeter = new Greeter(_initialGreeting, _dai);
+    _pactoAdmin = new PactoAdmin(_owner);
   }
 }
