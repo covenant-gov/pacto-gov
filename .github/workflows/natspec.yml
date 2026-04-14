@@ -1,0 +1,18 @@
+name: Natspec Check
+
+on: workflow_dispatch
+
+jobs:
+  natspec:
+    name: Run Lintspec
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: install-tools
+        uses: ./.github/workflows/install-tools
+
+      - name: Install and run Lintspec
+        uses: beeb/lintspec@v0.6.0

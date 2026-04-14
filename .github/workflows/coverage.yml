@@ -1,0 +1,108 @@
+name: Coverage Check
+
+on:
+  pull_request:
+
+env:
+  COVERAGE_SENSITIVITY_PERCENT: 1
+
+jobs:
+  base-coverage:
+    name: Generate base coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      base-coverage: ${{ steps.export-base.outputs.base-coverage }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: install-tools
+        uses: ./.github/workflows/install-tools
+
+      - name: Restore base coverage cache
+        id: cache-base
+        uses: actions/cache@v4
+        with:
+          path: total-coverage.txt
+          key: coverage-base-${{ github.event.pull_request.base.sha }}
+
+      - name: Run base branch coverage
+        if: steps.cache-base.outputs.cache-hit != 'true'
+        run: pnpm coverage
+
+      - name: Setup LCOV (for base coverage summary)
+        if: steps.cache-base.outputs.cache-hit != 'true'
+        uses: hrishikesh-kadam/setup-lcov@v1
+
+      - name: Prepare cached base total coverage
+        if: steps.cache-base.outputs.cache-hit != 'true'
+        run: |
+          total_coverage=$(lcov --summary lcov.info 2>/dev/null | awk '/lines\.+:/ {print $2}' | tr -d '%')
+          echo "$total_coverage" > total-coverage.txt
+
+      - name: Export base coverage output
+        id: export-base
+        run: |
+          base=0
+          if [ -f total-coverage.txt ]; then
+            base=$(cat total-coverage.txt | tr -d '%')
+          fi
+          echo "base-coverage=$base" >> "$GITHUB_OUTPUT"
+
+  check-coverage:
+    name: Check PR coverage
+    runs-on: ubuntu-latest
+    needs: base-coverage
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run current branch coverage
+        run: pnpm coverage
+
+      - name: Setup LCOV (for current PR coverage summary)
+        uses: hrishikesh-kadam/setup-lcov@v1
+
+      - name: Compute minimum coverage threshold
+        id: compute-min
+        run: |
+          base="${{ needs.base-coverage.outputs.base-coverage }}"
+          sens="${{ env.COVERAGE_SENSITIVITY_PERCENT }}"
+          [ -z "$base" ] && base=0
+          [ -z "$sens" ] && sens=0
+          min=$(awk -v b="$base" -v s="$sens" 'BEGIN{v=b-s; if (v<0) v=0; printf "%.2f", v}')
+          echo "minimum=$min" >> "$GITHUB_OUTPUT"
+
+      # Updates the comment on every PR push (skipped for fork PRs - token cannot comment)
+      - name: Create a comment on the PR with the current branch coverage
+        id: new-coverage
+        if: hashFiles('lcov.info') != '' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: zgosalvez/github-actions-report-lcov@v4
+        with:
+          coverage-files: lcov.info
+          github-token: ${{ github.token }}
+          update-comment: true
+          minimum-coverage: ${{ steps.compute-min.outputs.minimum }}
