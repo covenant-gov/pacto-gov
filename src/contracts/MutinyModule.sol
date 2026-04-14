@@ -14,20 +14,34 @@ import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
  *      this contract so its address matches that prediction. Not a Zodiac `Module` in v1; wire avatar/exec context in scripts.
  */
 contract MutinyModule is IMutinyModule {
-  IQuartermaster internal immutable _quartermaster;
-  IHats internal immutable _hats;
-  uint256 internal immutable _captainHatId;
-  uint256 internal immutable _crewHatId;
+  /// @inheritdoc IMutinyModule
+  address public immutable QUARTERMASTER;
+
+  /// @inheritdoc IMutinyModule
+  address public immutable HATS;
+
+  /// @inheritdoc IMutinyModule
+  uint256 public immutable CAPTAIN_HAT_ID;
+
+  /// @inheritdoc IMutinyModule
+  uint256 public immutable CREW_HAT_ID;
 
   /// @dev Tracked captain for `transferHat` `_from`; must match chain state at execute (captain `maxSupply == 1`).
   address internal _captainWearer;
 
-  uint256 internal _latestMutinyId;
+  /// @inheritdoc IMutinyModule
+  uint256 public latestMutinyId;
+
   uint256 internal _openMutinyId;
 
-  mapping(uint256 _mutinyId => IMutinyModule.Round _round) internal _rounds;
-  mapping(uint256 _mutinyId => uint256 _yeas) internal _yeaVotes;
-  mapping(uint256 _mutinyId => mapping(address _voter => bool)) internal _hasVoted;
+  /// @inheritdoc IMutinyModule
+  mapping(uint256 _mutinyId => IMutinyModule.Round _round) public rounds;
+
+  /// @inheritdoc IMutinyModule
+  mapping(uint256 _mutinyId => uint256 _yeas) public yeaVotes;
+
+  /// @inheritdoc IMutinyModule
+  mapping(uint256 _mutinyId => mapping(address _voter => bool)) public hasVoted;
 
   /**
    * @notice Deploys the mutiny module
@@ -50,10 +64,10 @@ contract MutinyModule is IMutinyModule {
     ) {
       revert MutinyModule_InvalidSuccessor();
     }
-    _quartermaster = quartermaster_;
-    _hats = hats_;
-    _captainHatId = captainHatId_;
-    _crewHatId = crewHatId_;
+    QUARTERMASTER = address(quartermaster_);
+    HATS = address(hats_);
+    CAPTAIN_HAT_ID = captainHatId_;
+    CREW_HAT_ID = crewHatId_;
     _captainWearer = initialCaptain_;
   }
 
@@ -62,17 +76,17 @@ contract MutinyModule is IMutinyModule {
     if (_openMutinyId != 0) revert MutinyModule_MutinyAlreadyActive();
     if (_proposedNewCaptain == address(0)) revert MutinyModule_InvalidSuccessor();
     if (_proposedNewCaptain == _captainWearer) revert MutinyModule_InvalidSuccessor();
-    if (_hats.balanceOf(_proposedNewCaptain, _captainHatId) != 0) revert MutinyModule_InvalidSuccessor();
+    if (IHats(HATS).balanceOf(_proposedNewCaptain, CAPTAIN_HAT_ID) != 0) revert MutinyModule_InvalidSuccessor();
 
-    if (_hats.balanceOf(msg.sender, _crewHatId) == 0) revert MutinyModule_NotEligibleCrew();
+    if (IHats(HATS).balanceOf(msg.sender, CREW_HAT_ID) == 0) revert MutinyModule_NotEligibleCrew();
 
-    uint256 _eligible = _hats.hatSupply(_crewHatId);
+    uint256 _eligible = IHats(HATS).hatSupply(CREW_HAT_ID);
     if (_eligible == 0) revert MutinyModule_InvalidMutiny();
 
-    _latestMutinyId++;
-    uint256 _id = _latestMutinyId;
+    latestMutinyId++;
+    uint256 _id = latestMutinyId;
 
-    _rounds[_id] = IMutinyModule.Round({
+    rounds[_id] = IMutinyModule.Round({
       proposedNewCaptain: _proposedNewCaptain,
       snapshotBlock: block.number,
       eligibleCrewCount: _eligible,
@@ -81,21 +95,21 @@ contract MutinyModule is IMutinyModule {
     });
     _openMutinyId = _id;
 
-    _quartermaster.setMutinyActive(true);
+    IQuartermaster(QUARTERMASTER).setMutinyActive(true);
 
     emit MutinyStarted(_id, _proposedNewCaptain, block.number);
   }
 
   /// @inheritdoc IMutinyModule
   function castVote(uint256 _mutinyId, bool _yea) external {
-    IMutinyModule.Round memory _r = _rounds[_mutinyId];
+    IMutinyModule.Round memory _r = rounds[_mutinyId];
     if (!_r.open || _r.executed) revert MutinyModule_InvalidMutiny();
-    if (_hasVoted[_mutinyId][msg.sender]) revert MutinyModule_AlreadyVoted();
-    if (_hats.balanceOf(msg.sender, _crewHatId) == 0) revert MutinyModule_NotEligibleCrew();
+    if (hasVoted[_mutinyId][msg.sender]) revert MutinyModule_AlreadyVoted();
+    if (IHats(HATS).balanceOf(msg.sender, CREW_HAT_ID) == 0) revert MutinyModule_NotEligibleCrew();
 
-    _hasVoted[_mutinyId][msg.sender] = true;
+    hasVoted[_mutinyId][msg.sender] = true;
     if (_yea) {
-      _yeaVotes[_mutinyId]++;
+      yeaVotes[_mutinyId]++;
     }
 
     emit VoteCast(_mutinyId, msg.sender, _yea);
@@ -103,94 +117,40 @@ contract MutinyModule is IMutinyModule {
 
   /// @inheritdoc IMutinyModule
   function executeMutiny(uint256 _mutinyId) external {
-    IMutinyModule.Round memory _r = _rounds[_mutinyId];
+    IMutinyModule.Round memory _r = rounds[_mutinyId];
     if (!_r.open || _r.executed) revert MutinyModule_InvalidMutiny();
 
-    uint256 _yeas = _yeaVotes[_mutinyId];
+    uint256 _yeas = yeaVotes[_mutinyId];
     if (_yeas <= _r.eligibleCrewCount / 2) revert MutinyModule_NotExecutable();
 
     address _former = _captainWearer;
     address _newCaptain = _r.proposedNewCaptain;
 
-    if (_hats.balanceOf(_former, _captainHatId) != 1) revert MutinyModule_NotExecutable();
+    if (IHats(HATS).balanceOf(_former, CAPTAIN_HAT_ID) != 1) revert MutinyModule_NotExecutable();
 
-    _hats.transferHat(_captainHatId, _former, _newCaptain);
+    IHats(HATS).transferHat(CAPTAIN_HAT_ID, _former, _newCaptain);
 
     if (_newCaptain.code.length > 0) {
-      _quartermaster.mintCrewFromMutiny(_former);
-    } else if (_hats.balanceOf(_newCaptain, _crewHatId) != 0) {
-      _quartermaster.crewHandoffForMutiny(_former, _newCaptain);
+      IQuartermaster(QUARTERMASTER).mintCrewFromMutiny(_former);
+    } else if (IHats(HATS).balanceOf(_newCaptain, CREW_HAT_ID) != 0) {
+      IQuartermaster(QUARTERMASTER).crewHandoffForMutiny(_former, _newCaptain);
     } else {
-      _quartermaster.mintCrewFromMutiny(_former);
+      IQuartermaster(QUARTERMASTER).mintCrewFromMutiny(_former);
     }
 
-    _rounds[_mutinyId].open = false;
-    _rounds[_mutinyId].executed = true;
+    rounds[_mutinyId].open = false;
+    rounds[_mutinyId].executed = true;
     _openMutinyId = 0;
     _captainWearer = _newCaptain;
 
-    _quartermaster.setMutinyActive(false);
+    IQuartermaster(QUARTERMASTER).setMutinyActive(false);
 
     emit MutinyExecuted(_mutinyId, _newCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function QUARTERMASTER() external view returns (address _quartermasterOut) {
-    return address(_quartermaster);
-  }
-
-  /// @inheritdoc IMutinyModule
-  function HATS() external view returns (address _hatsOut) {
-    return address(_hats);
-  }
-
-  /// @inheritdoc IMutinyModule
-  function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatIdOut) {
-    return _captainHatId;
-  }
-
-  /// @inheritdoc IMutinyModule
-  function CREW_HAT_ID() external view returns (uint256 _crewHatIdOut) {
-    return _crewHatId;
-  }
-
-  /// @inheritdoc IMutinyModule
-  function latestMutinyId() external view returns (uint256 _id) {
-    return _latestMutinyId;
-  }
-
-  /// @inheritdoc IMutinyModule
   function isMutinyOpen(uint256 _mutinyId) external view returns (bool _open) {
-    return _rounds[_mutinyId].open && !_rounds[_mutinyId].executed;
-  }
-
-  /// @inheritdoc IMutinyModule
-  function proposedNewCaptain(uint256 _mutinyId) external view returns (address _proposed) {
-    return _rounds[_mutinyId].proposedNewCaptain;
-  }
-
-  /// @inheritdoc IMutinyModule
-  function mutinySnapshotBlock(uint256 _mutinyId) external view returns (uint256 _block) {
-    return _rounds[_mutinyId].snapshotBlock;
-  }
-
-  /// @inheritdoc IMutinyModule
-  function eligibleCrewCount(uint256 _mutinyId) external view returns (uint256 _count) {
-    return _rounds[_mutinyId].eligibleCrewCount;
-  }
-
-  /// @inheritdoc IMutinyModule
-  function yeaVotes(uint256 _mutinyId) external view returns (uint256 _yeas) {
-    return _yeaVotes[_mutinyId];
-  }
-
-  /// @inheritdoc IMutinyModule
-  function hasVoted(uint256 _mutinyId, address _voter) external view returns (bool _voted) {
-    return _hasVoted[_mutinyId][_voter];
-  }
-
-  /// @inheritdoc IMutinyModule
-  function isMutinyExecuted(uint256 _mutinyId) external view returns (bool _executed) {
-    return _rounds[_mutinyId].executed;
+    IMutinyModule.Round memory _r = rounds[_mutinyId];
+    return _r.open && !_r.executed;
   }
 }

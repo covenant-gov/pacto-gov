@@ -10,7 +10,8 @@ import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
  * @notice Timelocked crew adds/removes via Hats; mutiny-only hooks for succession paths.
  */
 contract Quartermaster is IQuartermaster {
-  IHats internal immutable _hats;
+  /// @inheritdoc IQuartermaster
+  address public immutable HATS;
 
   /// @inheritdoc IQuartermaster
   uint256 public immutable CREW_HAT_ID;
@@ -19,16 +20,19 @@ contract Quartermaster is IQuartermaster {
   uint256 public immutable CAPTAIN_HAT_ID;
 
   /// @inheritdoc IQuartermaster
-  uint256 public immutable crewChangeDelay;
+  uint256 public immutable CREW_CHANGE_DELAY;
 
   /// @inheritdoc IQuartermaster
-  address public immutable mutinyModule;
+  address public immutable MUTINY_MODULE;
 
   /// @inheritdoc IQuartermaster
   bool public mutinyActive;
 
-  mapping(address _candidate => uint256 _executableAt) internal _pendingCrewAddAt;
-  mapping(address _crew => uint256 _executableAt) internal _pendingCrewRemoveAt;
+  /// @inheritdoc IQuartermaster
+  mapping(address _candidate => uint256 _executableAt) public pendingCrewAddAt;
+
+  /// @inheritdoc IQuartermaster
+  mapping(address _crew => uint256 _executableAt) public pendingCrewRemoveAt;
 
   /**
    * @notice Deploys the Quartermaster
@@ -48,11 +52,11 @@ contract Quartermaster is IQuartermaster {
     if (hatsAddr == address(0) || _mutinyModule == address(0)) {
       revert Quartermaster_InvalidCandidate();
     }
-    _hats = IHats(hatsAddr);
+    HATS = hatsAddr;
     CREW_HAT_ID = _crewHatId;
     CAPTAIN_HAT_ID = _captainHatId;
-    crewChangeDelay = _crewChangeDelay;
-    mutinyModule = _mutinyModule;
+    CREW_CHANGE_DELAY = _crewChangeDelay;
+    MUTINY_MODULE = _mutinyModule;
   }
 
   /// @inheritdoc IQuartermaster
@@ -60,8 +64,8 @@ contract Quartermaster is IQuartermaster {
     _onlyCaptain();
     if (mutinyActive) revert Quartermaster_MutinyActive();
     _validateCrewCandidate(_candidate);
-    uint256 _at = block.timestamp + crewChangeDelay;
-    _pendingCrewAddAt[_candidate] = _at;
+    uint256 _at = block.timestamp + CREW_CHANGE_DELAY;
+    pendingCrewAddAt[_candidate] = _at;
     emit CrewAddScheduled(_candidate, _at);
   }
 
@@ -69,18 +73,18 @@ contract Quartermaster is IQuartermaster {
   function requestRemoveCrew(address _crew) external {
     _onlyCaptain();
     if (mutinyActive) revert Quartermaster_MutinyActive();
-    if (_hats.balanceOf(_crew, CREW_HAT_ID) == 0) revert Quartermaster_InvalidCandidate();
-    uint256 _at = block.timestamp + crewChangeDelay;
-    _pendingCrewRemoveAt[_crew] = _at;
+    if (IHats(HATS).balanceOf(_crew, CREW_HAT_ID) == 0) revert Quartermaster_InvalidCandidate();
+    uint256 _at = block.timestamp + CREW_CHANGE_DELAY;
+    pendingCrewRemoveAt[_crew] = _at;
     emit CrewRemoveScheduled(_crew, _at);
   }
 
   /// @inheritdoc IQuartermaster
   function executeAddCrew(address _candidate) external {
-    uint256 _pending = _pendingCrewAddAt[_candidate];
+    uint256 _pending = pendingCrewAddAt[_candidate];
     if (_pending == 0) revert Quartermaster_NoPendingOperation();
     if (block.timestamp < _pending) revert Quartermaster_NotExecutable();
-    _pendingCrewAddAt[_candidate] = 0;
+    pendingCrewAddAt[_candidate] = 0;
     _validateCrewCandidate(_candidate);
     _mintCrew(_candidate);
     emit CrewAddExecuted(_candidate);
@@ -88,12 +92,12 @@ contract Quartermaster is IQuartermaster {
 
   /// @inheritdoc IQuartermaster
   function executeRemoveCrew(address _crew) external {
-    uint256 _pending = _pendingCrewRemoveAt[_crew];
+    uint256 _pending = pendingCrewRemoveAt[_crew];
     if (_pending == 0) revert Quartermaster_NoPendingOperation();
     if (block.timestamp < _pending) revert Quartermaster_NotExecutable();
-    _pendingCrewRemoveAt[_crew] = 0;
-    if (_hats.balanceOf(_crew, CREW_HAT_ID) == 0) revert Quartermaster_NoPendingOperation();
-    _hats.setHatWearerStatus(CREW_HAT_ID, _crew, false, false);
+    pendingCrewRemoveAt[_crew] = 0;
+    if (IHats(HATS).balanceOf(_crew, CREW_HAT_ID) == 0) revert Quartermaster_NoPendingOperation();
+    IHats(HATS).setHatWearerStatus(CREW_HAT_ID, _crew, false, false);
     emit CrewRemoveExecuted(_crew);
   }
 
@@ -108,8 +112,8 @@ contract Quartermaster is IQuartermaster {
   function crewHandoffForMutiny(address _formerCaptain, address _newCaptain) external {
     _onlyMutinyModule();
     if (_formerCaptain == address(0) || _newCaptain == address(0)) revert Quartermaster_InvalidCandidate();
-    if (_hats.balanceOf(_newCaptain, CREW_HAT_ID) != 0) {
-      _hats.transferHat(CREW_HAT_ID, _newCaptain, _formerCaptain);
+    if (IHats(HATS).balanceOf(_newCaptain, CREW_HAT_ID) != 0) {
+      IHats(HATS).transferHat(CREW_HAT_ID, _newCaptain, _formerCaptain);
     } else {
       _mintCrew(_formerCaptain);
     }
@@ -122,47 +126,32 @@ contract Quartermaster is IQuartermaster {
     emit MutinyActiveSet(_active);
   }
 
-  /// @inheritdoc IQuartermaster
-  function pendingCrewAddAt(address _candidate) external view returns (uint256 _executableAt) {
-    return _pendingCrewAddAt[_candidate];
-  }
-
-  /// @inheritdoc IQuartermaster
-  function pendingCrewRemoveAt(address _crew) external view returns (uint256 _executableAt) {
-    return _pendingCrewRemoveAt[_crew];
-  }
-
-  /// @inheritdoc IQuartermaster
-  function HATS() external view returns (address _hatsOut) {
-    return address(_hats);
-  }
-
   function _mintCrew(address _wearer) internal {
-    uint32 _supply = _hats.hatSupply(CREW_HAT_ID);
-    uint32 _max = _hats.getHatMaxSupply(CREW_HAT_ID);
+    uint32 _supply = IHats(HATS).hatSupply(CREW_HAT_ID);
+    uint32 _max = IHats(HATS).getHatMaxSupply(CREW_HAT_ID);
     if (_supply >= _max) revert Quartermaster_CrewHatMaxSupply();
-    _hats.mintHat(CREW_HAT_ID, _wearer);
+    IHats(HATS).mintHat(CREW_HAT_ID, _wearer);
   }
 
   function _onlyCaptain() internal view {
-    if (_hats.balanceOf(msg.sender, CAPTAIN_HAT_ID) != 1) {
+    if (IHats(HATS).balanceOf(msg.sender, CAPTAIN_HAT_ID) != 1) {
       revert Quartermaster_OnlyCaptain();
     }
   }
 
   function _onlyMutinyModule() internal view {
-    if (msg.sender != mutinyModule) {
+    if (msg.sender != MUTINY_MODULE) {
       revert Quartermaster_OnlyMutinyModule();
     }
   }
 
   function _isCaptain(address _account) internal view returns (bool) {
-    return _hats.balanceOf(_account, CAPTAIN_HAT_ID) == 1;
+    return IHats(HATS).balanceOf(_account, CAPTAIN_HAT_ID) == 1;
   }
 
   function _validateCrewCandidate(address _candidate) internal view {
     if (_candidate == address(0)) revert Quartermaster_InvalidCandidate();
     if (_isCaptain(_candidate)) revert Quartermaster_InvalidCandidate();
-    if (_hats.balanceOf(_candidate, CREW_HAT_ID) != 0) revert Quartermaster_InvalidCandidate();
+    if (IHats(HATS).balanceOf(_candidate, CREW_HAT_ID) != 0) revert Quartermaster_InvalidCandidate();
   }
 }

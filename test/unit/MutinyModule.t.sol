@@ -40,9 +40,10 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     _mutiny.startMutiny(_successor);
 
     assertEq(_mutiny.latestMutinyId(), 1);
-    assertEq(_mutiny.proposedNewCaptain(1), _successor);
-    assertEq(_mutiny.eligibleCrewCount(1), 4);
-    assertEq(_mutiny.mutinySnapshotBlock(1), block.number);
+    (address _proposed, uint256 _snap, uint256 _eligible,,) = _mutiny.rounds(1);
+    assertEq(_proposed, _successor);
+    assertEq(_eligible, 4);
+    assertEq(_snap, block.number);
     assertTrue(_mutiny.isMutinyOpen(1));
   }
 
@@ -173,7 +174,8 @@ contract UnitMutinyModule is MutinyModuleUnitTest {
     vm.expectCall(_QM_ADDRESS, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _captain0));
     _mutiny.executeMutiny(1);
 
-    assertTrue(_mutiny.isMutinyExecuted(1));
+    (,,,, bool _executed) = _mutiny.rounds(1);
+    assertTrue(_executed);
     assertFalse(_mutiny.isMutinyOpen(1));
   }
 

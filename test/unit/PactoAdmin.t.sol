@@ -15,7 +15,7 @@ contract UnitPactoAdmin is Test {
   }
 
   function test_Constructor_StoresAdmin() external view {
-    assertEq(_pacto.admin(), _admin);
+    assertEq(_pacto.ADMIN(), _admin);
   }
 
   function test_Constructor_RevertsOnZeroAdmin() external {

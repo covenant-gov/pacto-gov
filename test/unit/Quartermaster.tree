@@ -1,6 +1,6 @@
 UnitQuartermaster::constructor
 └── when deployed
-    ├── it exposes HATS crew hat id captain hat id delay and mutiny module
+    ├── it exposes HATS CREW_HAT_ID CAPTAIN_HAT_ID CREW_CHANGE_DELAY MUTINY_MODULE
     └── it sets mutiny active false
 
 

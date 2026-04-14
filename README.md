@@ -9,8 +9,8 @@
 ## Features
 
 <dl>
-  <dt>Sample contracts</dt>
-  <dd>Basic Greeter contract with an external interface.</dd>
+  <dt>Nave Pirata contracts</dt>
+  <dd>Quartermaster, MutinyModule, PactoAdmin, and related interfaces—see NatSpec in <code>src/contracts/</code> and <code>src/interfaces/</code>.</dd>
 
   <dt>Foundry setup</dt>
   <dd>Foundry configuration with multiple custom profiles and remappings.</dd>
@@ -30,14 +30,6 @@
   <dd>Run all tests and see the coverage as you push your changes.</dd>
   <dd>Export your Solidity interfaces and contracts as packages, and publish them to NPM.</dd>
 </dl>
-
-## Documentation — Nave Pirata
-
-Design and build notes live in **`ai-docs/`**:
-
-- [Governance template](ai-docs/nave-pirata-governance-template.md)
-- [Implementation plan](ai-docs/nave-pirata-implementation-plan.md)
-- [Execution steps (interfaces first, NatSpec)](ai-docs/nave-pirata-execution-steps.md)
 
 ## Setup
 

@@ -45,7 +45,7 @@ interface IPactoAdmin {
    * @notice Address that may call admin-gated functions
    * @return _admin The admin account
    */
-  function admin() external view returns (address _admin);
+  function ADMIN() external view returns (address _admin);
 
   /**
    * @notice Placeholder counter read by integration / unit tests

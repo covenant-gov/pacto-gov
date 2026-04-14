@@ -11,8 +11,8 @@ contract UnitQuartermaster is QuartermasterUnitTest {
     assertEq(_qm.HATS(), _HATS_ADDRESS);
     assertEq(_qm.CREW_HAT_ID(), _CREW_HAT);
     assertEq(_qm.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
-    assertEq(_qm.crewChangeDelay(), _DELAY);
-    assertEq(_qm.mutinyModule(), _mutiny);
+    assertEq(_qm.CREW_CHANGE_DELAY(), _DELAY);
+    assertEq(_qm.MUTINY_MODULE(), _mutiny);
     assertEq(_qm.mutinyActive(), false);
   }
 

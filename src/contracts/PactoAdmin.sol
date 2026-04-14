@@ -15,20 +15,21 @@ contract PactoAdmin is IPactoAdmin {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IPactoAdmin
-  address public immutable admin;
+  address public immutable ADMIN;
 
   /*///////////////////////////////////////////////////////////////
                             STATE
   //////////////////////////////////////////////////////////////*/
 
-  uint256 internal _fillerCounter;
+  /// @inheritdoc IPactoAdmin
+  uint256 public fillerCounter;
 
   /*///////////////////////////////////////////////////////////////
                             MODIFIERS
   //////////////////////////////////////////////////////////////*/
 
   modifier onlyAdmin() {
-    if (msg.sender != admin) revert PactoAdmin_OnlyAdmin();
+    if (msg.sender != ADMIN) revert PactoAdmin_OnlyAdmin();
     _;
   }
 
@@ -41,7 +42,7 @@ contract PactoAdmin is IPactoAdmin {
    */
   constructor(address _admin) {
     if (_admin == address(0)) revert PactoAdmin_InvalidAdmin();
-    admin = _admin;
+    ADMIN = _admin;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -50,18 +51,13 @@ contract PactoAdmin is IPactoAdmin {
 
   /// @inheritdoc IPactoAdmin
   function mockSetFiller(uint256 _value) external onlyAdmin {
-    _fillerCounter = _value;
+    fillerCounter = _value;
   }
 
   /// @inheritdoc IPactoAdmin
   function mockBumpFiller() external onlyAdmin {
     unchecked {
-      ++_fillerCounter;
+      ++fillerCounter;
     }
-  }
-
-  /// @inheritdoc IPactoAdmin
-  function fillerCounter() external view returns (uint256 _counter) {
-    return _fillerCounter;
   }
 }

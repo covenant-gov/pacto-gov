@@ -5,7 +5,7 @@ pragma solidity 0.8.30;
  * @title IQuartermaster
  * @author Pacto
  * @notice Timelocked crew onboarding and offboarding for the Nave Pirata template; admin of the crew hat in Hats Protocol.
- * @dev The captain requests adds/removes; execution happens after `crewChangeDelay`. While a mutiny is active, onboarding is blocked.
+ * @dev The captain requests adds/removes; execution happens after `CREW_CHANGE_DELAY`. While a mutiny is active, onboarding is blocked.
  *      Mutiny-only hooks mint or hand off crew without delay. Does not import Hats types so this interface stays toolchain-stable.
  */
 interface IQuartermaster {
@@ -89,14 +89,14 @@ interface IQuartermaster {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Schedule minting the crew hat to `_candidate` after `crewChangeDelay`
+   * @notice Schedule minting the crew hat to `_candidate` after `CREW_CHANGE_DELAY`
    * @dev Reverts if mutiny active or candidate cannot be crew
    * @param _candidate Address to receive the crew hat
    */
   function requestAddCrew(address _candidate) external;
 
   /**
-   * @notice Schedule burning the crew hat from `_crew` after `crewChangeDelay`
+   * @notice Schedule burning the crew hat from `_crew` after `CREW_CHANGE_DELAY`
    * @dev Reverts if mutiny active
    * @param _crew Address to remove from crew
    */
@@ -116,14 +116,14 @@ interface IQuartermaster {
 
   /**
    * @notice Mint one crew hat to `_to` with no delay (mutiny / succession path)
-   * @dev Only callable by `mutinyModule`; used e.g. to seat a deposed human captain as crew
+   * @dev Only callable by the mutiny module (`MUTINY_MODULE()`); used e.g. to seat a deposed human captain as crew
    * @param _to Recipient who must not be the current captain wearer
    */
   function mintCrewFromMutiny(address _to) external;
 
   /**
    * @notice Hand crew from elected successor to former captain in one mutiny step (EOA → EOA)
-   * @dev Only callable by `mutinyModule`; burns crew from `_newCaptain` if present and mints to `_formerCaptain`
+   * @dev Only callable by the mutiny module (`MUTINY_MODULE()`); burns crew from `_newCaptain` if present and mints to `_formerCaptain`
    * @param _formerCaptain Previous captain (receives crew)
    * @param _newCaptain New captain (must not retain crew hat after execution)
    */
@@ -131,7 +131,7 @@ interface IQuartermaster {
 
   /**
    * @notice Toggle mutiny mode for onboarding guards
-   * @dev Only callable by `mutinyModule`
+   * @dev Only callable by the mutiny module (`MUTINY_MODULE()`)
    * @param _active True to block captain onboarding
    */
   function setMutinyActive(bool _active) external;
@@ -162,13 +162,13 @@ interface IQuartermaster {
    * @notice Delay in seconds between scheduling and executing crew add/remove
    * @return _delay The delay
    */
-  function crewChangeDelay() external view returns (uint256 _delay);
+  function CREW_CHANGE_DELAY() external view returns (uint256 _delay);
 
   /**
    * @notice Module allowed to call mutiny-only hooks and `setMutinyActive`
    * @return _module The mutiny module address
    */
-  function mutinyModule() external view returns (address _module);
+  function MUTINY_MODULE() external view returns (address _module);
 
   /**
    * @notice Whether a mutiny is active (captain cannot onboard new crew)

@@ -151,25 +151,13 @@ interface IMutinyModule {
   function isMutinyOpen(uint256 _mutinyId) external view returns (bool _open);
 
   /**
-   * @notice Proposed new captain for a round
+   * @notice Round state for `_mutinyId` (unset id returns zeroed fields)
    * @param _mutinyId Round to query
-   * @return _proposed The proposed captain address
    */
-  function proposedNewCaptain(uint256 _mutinyId) external view returns (address _proposed);
-
-  /**
-   * @notice Snapshot block for crew electorate for a round
-   * @param _mutinyId Round to query
-   * @return _block The snapshot block
-   */
-  function mutinySnapshotBlock(uint256 _mutinyId) external view returns (uint256 _block);
-
-  /**
-   * @notice Number of crew counted as eligible for the round (denominator basis for majority)
-   * @param _mutinyId Round to query
-   * @return _count Eligible crew count
-   */
-  function eligibleCrewCount(uint256 _mutinyId) external view returns (uint256 _count);
+  function rounds(uint256 _mutinyId)
+    external
+    view
+    returns (address proposedNewCaptain, uint256 snapshotBlock, uint256 eligibleCrewCount, bool open, bool executed);
 
   /**
    * @notice Yea votes tallied for the round
@@ -185,11 +173,4 @@ interface IMutinyModule {
    * @return _voted True if voted
    */
   function hasVoted(uint256 _mutinyId, address _voter) external view returns (bool _voted);
-
-  /**
-   * @notice Whether `executeMutiny` completed for `_mutinyId`
-   * @param _mutinyId Round to query
-   * @return _executed True if executed
-   */
-  function isMutinyExecuted(uint256 _mutinyId) external view returns (bool _executed);
 }
