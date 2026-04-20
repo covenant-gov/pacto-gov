@@ -10,7 +10,7 @@
 
 <dl>
   <dt>Nave Pirata contracts</dt>
-  <dd>Quartermaster, MutinyModule, PactoAdmin, and related interfaces—see NatSpec in <code>src/contracts/</code> and <code>src/interfaces/</code>.</dd>
+  <dd>Quartermaster, MutinyModule, SquadAdmin, and related interfaces—see NatSpec in <code>src/contracts/</code> and <code>src/interfaces/</code>.</dd>
 
   <dt>Foundry setup</dt>
   <dd>Foundry configuration with multiple custom profiles and remappings.</dd>

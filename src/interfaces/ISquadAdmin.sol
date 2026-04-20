@@ -2,12 +2,12 @@
 pragma solidity 0.8.30;
 
 /**
- * @title IPactoAdmin
+ * @title ISquadAdmin
  * @author Pacto
- * @notice Minimal admin-gated surface for the Pacto Admin contract (stub; API will evolve).
- * @dev Intended wearer of the **Pacto-admin** hat in Hats. Replace filler functions when squad / channel logic lands.
+ * @notice Minimal admin-gated surface for the Squad Admin contract (stub; API will evolve).
+ * @dev Intended wearer of the **Squad-admin** hat in Hats. Replace filler functions when squad / channel logic lands.
  */
-interface IPactoAdmin {
+interface ISquadAdmin {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
@@ -15,12 +15,12 @@ interface IPactoAdmin {
   /**
    * @notice Caller is not the configured admin
    */
-  error PactoAdmin_OnlyAdmin();
+  error SquadAdmin_OnlyAdmin();
 
   /**
    * @notice Admin address was invalid at construction
    */
-  error PactoAdmin_InvalidAdmin();
+  error SquadAdmin_InvalidAdmin();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

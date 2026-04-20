@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IPactoAdmin} from 'interfaces/IPactoAdmin.sol';
+import {ISquadAdmin} from 'interfaces/ISquadAdmin.sol';
 
 /**
- * @title PactoAdmin
+ * @title SquadAdmin
  * @author Pacto
  * @notice Stub admin contract: single on-chain admin and filler mutators for deploy / factory / test wiring.
- * @dev Replace filler logic when `IPactoAdmin` expands. Hats mint target for **Pacto-admin** hat in Nave Pirata.
+ * @dev Replace filler logic when `ISquadAdmin` expands. Hats mint target for **Squad-admin** hat in Nave Pirata.
  */
-contract PactoAdmin is IPactoAdmin {
+contract SquadAdmin is ISquadAdmin {
   /*///////////////////////////////////////////////////////////////
                             IMMUTABLES
   //////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc IPactoAdmin
+  /// @inheritdoc ISquadAdmin
   address public immutable ADMIN;
 
   /*///////////////////////////////////////////////////////////////
                             STATE
   //////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc IPactoAdmin
+  /// @inheritdoc ISquadAdmin
   uint256 public fillerCounter;
 
   /*///////////////////////////////////////////////////////////////
@@ -29,7 +29,7 @@ contract PactoAdmin is IPactoAdmin {
   //////////////////////////////////////////////////////////////*/
 
   modifier onlyAdmin() {
-    if (msg.sender != ADMIN) revert PactoAdmin_OnlyAdmin();
+    if (msg.sender != ADMIN) revert SquadAdmin_OnlyAdmin();
     _;
   }
 
@@ -41,7 +41,7 @@ contract PactoAdmin is IPactoAdmin {
    * @param _admin Account that may call `onlyAdmin` functions
    */
   constructor(address _admin) {
-    if (_admin == address(0)) revert PactoAdmin_InvalidAdmin();
+    if (_admin == address(0)) revert SquadAdmin_InvalidAdmin();
     ADMIN = _admin;
   }
 
@@ -49,12 +49,12 @@ contract PactoAdmin is IPactoAdmin {
                             EXTERNAL
   //////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc IPactoAdmin
+  /// @inheritdoc ISquadAdmin
   function mockSetFiller(uint256 _value) external onlyAdmin {
     fillerCounter = _value;
   }
 
-  /// @inheritdoc IPactoAdmin
+  /// @inheritdoc ISquadAdmin
   function mockBumpFiller() external onlyAdmin {
     unchecked {
       ++fillerCounter;
