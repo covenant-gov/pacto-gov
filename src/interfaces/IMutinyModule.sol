@@ -1,176 +1,187 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IQuiescent} from 'interfaces/IQuiescent.sol';
+
 /**
  * @title IMutinyModule
  * @author Pacto
- * @notice Crew-driven mutiny: snapshot electorate, one vote per crew member, strict majority to replace the captain hat wearer.
- * @dev Orchestrates `Hats.transferHat` on the captain hat and calls `IQuartermaster` for crew mint/burn/handoff. Eligibility and exact
- *      vote counting are implementation-defined; parameters (threshold, snapshot, etc.) are fixed per deployment.
+ * @notice Crew-driven mutiny module: snapshot electorate, one vote per crew member, strict 51%
+ *         majority of the snapshot to replace the captain hat wearer.
+ * @dev Orchestrates `Hats.transferHat` on the captain hat and calls `IQuartermaster` for crew
+ *      mint / burn / hand-off during succession. The 51% threshold is hard-coded — there are no
+ *      governance-mutable parameters on this module. A captain may also resign voluntarily via
+ *      `captainResign` (bypassing the vote entirely), but not while a mutiny is already active.
  */
-interface IMutinyModule {
-  /*///////////////////////////////////////////////////////////////
-                            STRUCTS
-  //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Persistent fields for one mutiny round (storage layout is implementation-defined beyond this shape)
-   * @param proposedNewCaptain Successor if the mutiny passes
-   * @param snapshotBlock Block number recorded when the round opened
-   * @param eligibleCrewCount Crew supply / electorate size fixed for majority math
-   * @param open True while voting may proceed
-   * @param executed True after `executeMutiny` succeeds
-   */
-  struct Round {
-    address proposedNewCaptain;
-    uint256 snapshotBlock;
-    uint256 eligibleCrewCount;
-    bool open;
-    bool executed;
-  }
-
+interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice A mutiny round was opened
-   * @param _mutinyId Round identifier
-   * @param _proposedNewCaptain Address that will receive the captain hat if the mutiny passes
-   * @param _snapshotBlock Block number fixed for crew electorate
-   */
-  event MutinyStarted(uint256 indexed _mutinyId, address indexed _proposedNewCaptain, uint256 _snapshotBlock);
 
   /**
-   * @notice A crew member cast a vote
-   * @param _mutinyId Round identifier
-   * @param _voter Crew voter
-   * @param _yea True for mutiny / new captain, false against
+   * @notice A mutiny round was opened.
+   * @param _mutinyId Round identifier.
+   * @param _proposer Crew member that opened the round.
+   * @param _proposedNewCaptain Successor if the mutiny passes.
+   * @param _snapshot Snapshot size of eligible crew at `startMutiny` time.
    */
-  event VoteCast(uint256 indexed _mutinyId, address indexed _voter, bool _yea);
+  event MutinyStarted(
+    uint256 indexed _mutinyId, address indexed _proposer, address indexed _proposedNewCaptain, uint256 _snapshot
+  );
 
   /**
-   * @notice Mutiny succeeded and on-chain actions were performed
-   * @param _mutinyId Round identifier
-   * @param _newCaptain Final wearer of the captain hat
+   * @notice A crew member cast a yea vote.
+   * @dev A "nay" is simply the absence of a vote; mutiny uses a strict 51%-of-snapshot yea threshold.
+   * @param _mutinyId Round identifier.
+   * @param _voter Crew voter.
    */
-  event MutinyExecuted(uint256 indexed _mutinyId, address indexed _newCaptain);
+  event MutinyVoteCast(uint256 indexed _mutinyId, address indexed _voter);
+
+  /**
+   * @notice Mutiny succeeded and the captain hat was transferred.
+   * @param _mutinyId Round identifier.
+   * @param _formerCaptain Previous captain wearer.
+   * @param _newCaptain Final wearer of the captain hat.
+   */
+  event MutinyExecuted(uint256 indexed _mutinyId, address indexed _formerCaptain, address indexed _newCaptain);
+
+  /**
+   * @notice The captain voluntarily handed the captain hat to a new wearer.
+   * @param _formerCaptain Address that held the captain hat.
+   * @param _newCaptain Address that received the captain hat.
+   */
+  event CaptainResigned(address indexed _formerCaptain, address indexed _newCaptain);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Caller is not eligible crew (at snapshot or current rules)
-   */
-  error MutinyModule_NotEligibleCrew();
 
   /**
-   * @notice Mutiny is not open for this id or wrong phase
+   * @notice A mutiny round is already active.
    */
-  error MutinyModule_InvalidMutiny();
+  error MutinyModule_AlreadyActive();
 
   /**
-   * @notice Vote already recorded for this voter and round
+   * @notice No active mutiny exists for the requested id.
    */
-  error MutinyModule_AlreadyVoted();
+  error MutinyModule_NoActiveMutiny();
 
   /**
-   * @notice Threshold not met or mutiny already executed
+   * @notice Voter has already voted in this round.
+   * @param _voter Address that attempted a duplicate vote.
    */
-  error MutinyModule_NotExecutable();
+  error MutinyModule_AlreadyVoted(address _voter);
 
   /**
-   * @notice Proposed captain is zero or otherwise invalid
+   * @notice Voter was not in the snapshot electorate for this round.
+   * @param _voter Address that failed the snapshot check.
    */
-  error MutinyModule_InvalidSuccessor();
+  error MutinyModule_NotInSnapshot(address _voter);
 
   /**
-   * @notice A mutiny is already active
+   * @notice The 51% threshold has not yet been reached.
+   * @param _yeas Current yea count.
+   * @param _snapshot Snapshot size fixed when the round opened.
    */
-  error MutinyModule_MutinyAlreadyActive();
+  error MutinyModule_ThresholdNotReached(uint256 _yeas, uint256 _snapshot);
+
+  /**
+   * @notice A required address argument was zero.
+   */
+  error MutinyModule_ZeroAddress();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
+
   /**
-   * @notice Open a mutiny round fixing electorate and proposed new captain
-   * @dev Must set Quartermaster mutiny active per product rules
-   * @param _proposedNewCaptain Non-zero successor (EOA or contract) for the captain hat
+   * @notice Open a mutiny round. Crew-hat-gated.
+   * @dev Fixes the snapshot electorate to the current crew supply and toggles Quartermaster mutiny mode.
+   * @param _proposedNewCaptain Non-zero successor for the captain hat.
    */
   function startMutiny(address _proposedNewCaptain) external;
 
   /**
-   * @notice Cast one vote per crew member for an open round
-   * @param _mutinyId The active mutiny id
-   * @param _yea True to support mutiny and install `proposedNewCaptain`
+   * @notice Cast a yea vote in the active mutiny. Crew-hat-gated and snapshot-constrained.
+   * @dev No "nay" path; abstention = opposition under the 51% snapshot rule.
+   * @param _mutinyId Active mutiny id.
    */
-  function castVote(uint256 _mutinyId, bool _yea) external;
+  function castVote(uint256 _mutinyId) external;
 
   /**
-   * @notice If strict majority is met, transfer captain hat, run crew handoff/mint per successor type, clear mutiny active
-   * @param _mutinyId Round to finalize
+   * @notice Finalize the mutiny if the 51% threshold is met. Permissionless.
+   * @param _mutinyId Round to execute.
    */
   function executeMutiny(uint256 _mutinyId) external;
+
+  /**
+   * @notice Captain's voluntary succession — transfers the captain hat to `_newCaptain`. Captain-hat-gated.
+   * @dev Reverts if a mutiny is active; `_newCaptain` must be non-zero.
+   * @param _newCaptain Address that receives the captain hat.
+   */
+  function captainResign(address _newCaptain) external;
 
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Linked Quartermaster
-   * @return _quartermaster The Quartermaster contract
-   */
-  function QUARTERMASTER() external view returns (address _quartermaster);
 
   /**
-   * @notice Hats Protocol singleton
-   * @return _hats The Hats contract address
+   * @notice Id of the currently active mutiny, or zero if none.
+   * @return _id The active mutiny id.
    */
-  function HATS() external view returns (address _hats);
+  function activeMutinyId() external view returns (uint256 _id);
 
   /**
-   * @notice Captain hat id used for transfers and wearer reads
-   * @return _captainHatId The captain hat id
+   * @notice Read the state of a mutiny round.
+   * @param _id Round identifier.
+   * @return _proposedNewCaptain Successor if the round succeeds.
+   * @return _startedAt Timestamp the round opened.
+   * @return _snapshot Snapshot size of eligible crew.
+   * @return _yeas Yea vote count.
+   * @return _executed Whether the round has already been executed.
+   */
+  function mutiny(uint256 _id)
+    external
+    view
+    returns (address _proposedNewCaptain, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed);
+
+  /**
+   * @notice Whether `_voter` has cast a vote in `_mutinyId`.
+   * @param _mutinyId Round identifier.
+   * @param _voter Voter address.
+   * @return _voted True if the voter has voted in this round.
+   */
+  function hasVoted(uint256 _mutinyId, address _voter) external view returns (bool _voted);
+
+  /**
+   * @notice Whether `_voter` was part of the snapshot electorate for `_mutinyId`.
+   * @param _mutinyId Round identifier.
+   * @param _voter Voter address.
+   * @return _inSnapshot True if in the snapshot.
+   */
+  function isInSnapshot(uint256 _mutinyId, address _voter) external view returns (bool _inSnapshot);
+
+  /**
+   * @notice Captain hat id.
+   * @return _captainHatId The captain hat id.
    */
   function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatId);
 
   /**
-   * @notice Crew hat id used for electorate checks
-   * @return _crewHatId The crew hat id
+   * @notice Crew hat id.
+   * @return _crewHatId The crew hat id.
    */
   function CREW_HAT_ID() external view returns (uint256 _crewHatId);
 
   /**
-   * @notice Monotonic mutiny counter (next id = currentOpen + 1 pattern is implementation detail)
-   * @return _id The latest started mutiny id
+   * @notice Role hat worn by the active MutinyModule clone.
+   * @return _mutinyRoleHatId The MutinyRole hat id.
    */
-  function latestMutinyId() external view returns (uint256 _id);
+  function MUTINY_ROLE_HAT_ID() external view returns (uint256 _mutinyRoleHatId);
 
   /**
-   * @notice Whether a mutiny round is open for voting
-   * @param _mutinyId Round to query
-   * @return _open True if voting is open
+   * @notice Role hat worn by the active Quartermaster clone.
+   * @return _quartermasterRoleHatId The QuartermasterRole hat id.
    */
-  function isMutinyOpen(uint256 _mutinyId) external view returns (bool _open);
-
-  /**
-   * @notice Round state for `_mutinyId` (unset id returns zeroed fields)
-   * @param _mutinyId Round to query
-   */
-  function rounds(uint256 _mutinyId)
-    external
-    view
-    returns (address proposedNewCaptain, uint256 snapshotBlock, uint256 eligibleCrewCount, bool open, bool executed);
-
-  /**
-   * @notice Yea votes tallied for the round
-   * @param _mutinyId Round to query
-   * @return _yeas Vote count
-   */
-  function yeaVotes(uint256 _mutinyId) external view returns (uint256 _yeas);
-
-  /**
-   * @notice Whether `_voter` already voted in `_mutinyId`
-   * @param _mutinyId Round to query
-   * @param _voter Voter address
-   * @return _voted True if voted
-   */
-  function hasVoted(uint256 _mutinyId, address _voter) external view returns (bool _voted);
+  function QUARTERMASTER_ROLE_HAT_ID() external view returns (uint256 _quartermasterRoleHatId);
 }

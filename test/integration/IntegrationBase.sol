@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {SquadAdmin} from 'contracts/SquadAdmin.sol';
 import {Test} from 'forge-std/Test.sol';
 
+/**
+ * @title IntegrationBase
+ * @author Pacto
+ * @notice Placeholder base for integration tests.
+ * @dev Phase 8 of the tech spec adds the full integration harness (forked Safe + Hats + full
+ *      Nave Pirata bootstrap). This stub exists so `forge build` stays green while Phases 1–7
+ *      land.
+ */
 abstract contract IntegrationBase is Test {
-  /// @dev Deployed before Nave Pirata factory runs; pass `address(_squadAdmin)` as `_squadAdmin` in `deployNavePirata`.
-  SquadAdmin internal _squadAdmin;
-
-  function setUp() public virtual {
-    address _owner = address(this);
-    _squadAdmin = new SquadAdmin(_owner);
-  }
+  function setUp() public virtual {}
 }
