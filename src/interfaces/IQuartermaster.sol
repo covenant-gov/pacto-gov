@@ -110,6 +110,12 @@ interface IQuartermaster is IQuiescent {
   error Quartermaster_AlreadyCrew(address _target);
 
   /**
+   * @notice The candidate currently wears the captain hat (captain ∩ crew = ∅ invariant).
+   * @param _target Address that wears the captain hat.
+   */
+  error Quartermaster_CandidateIsCaptain(address _target);
+
+  /**
    * @notice The target does not wear the crew hat.
    * @param _target Address expected to wear the crew hat.
    */
