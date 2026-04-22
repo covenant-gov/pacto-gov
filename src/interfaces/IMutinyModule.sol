@@ -90,6 +90,28 @@ interface IMutinyModule is IQuiescent {
    */
   error MutinyModule_ZeroAddress();
 
+  /**
+   * @notice The specified new captain already wears the captain hat or matches the current captain.
+   * @param _target The rejected address.
+   */
+  error MutinyModule_SameCaptain(address _target);
+
+  /**
+   * @notice The cached Quartermaster peer no longer wears `QUARTERMASTER_ROLE_HAT_ID`; a role-hat
+   *         upgrade has invalidated this clone's view of its peer and this clone must itself be
+   *         upgraded via the ceremony before further mutiny operations can proceed.
+   * @param _quartermaster The stale peer address.
+   */
+  error MutinyModule_StaleQuartermaster(address _quartermaster);
+
+  /**
+   * @notice The cached captain address is no longer the captain-hat wearer (e.g. the captain
+   *         renounced the hat directly via Hats). Safe recovery requires re-bootstrapping the
+   *         module; this guard prevents mid-flight state divergence.
+   * @param _captain The stale captain address.
+   */
+  error MutinyModule_StaleCaptain(address _captain);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
@@ -184,4 +206,23 @@ interface IMutinyModule is IQuiescent {
    * @return _quartermasterRoleHatId The QuartermasterRole hat id.
    */
   function QUARTERMASTER_ROLE_HAT_ID() external view returns (uint256 _quartermasterRoleHatId);
+
+  /**
+   * @notice Current captain-hat wearer as tracked by this module.
+   * @dev Updated by `captainResign` and `executeMutiny`. MutinyModule is the only admin of the
+   *      captain hat under the Nave Pirata hat tree, so all legitimate captain transitions flow
+   *      through this module and keep the cache authoritative.
+   * @return _captain Current captain address.
+   */
+  function captain() external view returns (address _captain);
+
+  /**
+   * @notice Quartermaster clone address used for mutiny-driven crew mint / hand-off calls.
+   * @dev Captured at `initialize`; verified to still wear `QUARTERMASTER_ROLE_HAT_ID` at every
+   *      outbound peer call so a stale pointer (e.g. after a QuartermasterRole upgrade ceremony)
+   *      reverts rather than silently calls the wrong contract. Re-deploying MutinyModule
+   *      alongside a Quartermaster upgrade is the canonical recovery path.
+   * @return _quartermaster Quartermaster peer address.
+   */
+  function quartermaster() external view returns (address _quartermaster);
 }
