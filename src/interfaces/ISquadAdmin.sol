@@ -78,11 +78,13 @@ interface ISquadAdmin is IQuiescent {
 
   /**
    * @notice UUPS upgrade. Captain-hat-gated.
-   * @dev Standard UUPS `upgradeToAndCall` semantics.
+   * @dev Standard UUPS `upgradeToAndCall` semantics; data location matches OpenZeppelin's
+   *      `UUPSUpgradeable.upgradeToAndCall(address,bytes memory)` so this interface can be
+   *      satisfied by a single overriding function.
    * @param _newImplementation New logic contract address.
    * @param _data Optional initializer calldata; pass empty bytes for no call.
    */
-  function upgradeToAndCall(address _newImplementation, bytes calldata _data) external payable;
+  function upgradeToAndCall(address _newImplementation, bytes memory _data) external payable;
 
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
