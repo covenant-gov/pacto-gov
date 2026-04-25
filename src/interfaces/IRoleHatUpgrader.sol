@@ -9,9 +9,9 @@ pragma solidity 0.8.30;
  *      old clone is quiet (`IQuiescent.isQuiet()`), then transferring the role hat from the old
  *      clone to the new one. For infra role hats (MutinyRole, QuartermasterRole,
  *      TreasuryAuthorityRole) the admin hat is the tophat worn by the Safe — so the effective
- *      caller is the Safe (via a passing TreasuryAuthority proposal). For the squad-admin hat,
- *      the admin is the captain hat, so the captain calls directly. A governance-gated allow-list
- *      of approved master copies is optionally enforced.
+ *      caller is the Safe (via a passing TreasuryAuthority proposal). The squad-admin hat is
+ *      intentionally out of scope: SquadAdmin upgrades in-place via UUPS. An admin-gated
+ *      allow-list of approved master copies is optionally enforced.
  */
 interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
@@ -125,13 +125,13 @@ interface IRoleHatUpgrader {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Toggle allow-list enforcement. TreasuryAuthorityRole-gated.
+   * @notice Toggle allow-list enforcement. Admin-gated (Ownable).
    * @param _enabled New enforcement state.
    */
   function setAllowListEnabled(bool _enabled) external;
 
   /**
-   * @notice Allow or disallow `_masterCopy` for `_kind`. TreasuryAuthorityRole-gated.
+   * @notice Allow or disallow `_masterCopy` for `_kind`. Admin-gated (Ownable).
    * @param _kind Role kind the entry applies to.
    * @param _masterCopy Implementation address.
    * @param _allowed New allow state.

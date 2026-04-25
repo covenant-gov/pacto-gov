@@ -111,6 +111,12 @@ interface INavePirataRegistry {
    */
   error NavePirataRegistry_NotRegistered(uint256 _topHatId);
 
+  /// @notice The factory / upgrader wiring has already been set; setters are one-shot.
+  error NavePirataRegistry_AlreadyWired();
+
+  /// @notice A zero address was provided where a non-zero contract address was required.
+  error NavePirataRegistry_ZeroAddress();
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/

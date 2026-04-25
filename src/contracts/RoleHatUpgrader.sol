@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
+
+import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
+import {IQuiescent} from 'interfaces/IQuiescent.sol';
+import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+import {IRoleHatUpgrader} from 'interfaces/IRoleHatUpgrader.sol';
+
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {IHats} from 'hats-core/Interfaces/IHats.sol';
+
+/**
+ * @title RoleHatUpgrader
+ * @author Pacto
+ * @notice Coordinates the Nave Pirata role-hat upgrade ceremony: admin gate ⇒ Quiet-Window check
+ *         ⇒ clone deploy ⇒ hat transfer ⇒ registry record. Shared across all squads.
+ * @dev Admin gate is delegated to Hats Protocol: the caller must be an admin of the target role
+ *      hat in the sense of `IHats.isAdminOfHat`. For infra role hats (Quartermaster, Mutiny,
+ *      TreasuryAuthority), admin derives from the tophat, which the squad Safe wears — so an
+ *      effective call comes from a passing two-body proposal. The master-copy allow-list is
+ *      optional and off by default; when enabled, only allow-listed master copies may be cloned.
+ *
+ *      SquadAdmin is intentionally not supported here: it upgrades in-place via UUPS, governed
+ *      exclusively by the captain.
+ *
+ *      Salt mixing: the caller's `_salt` is mixed with `_roleHatId` to namespace CREATE2
+ *      addresses per role hat. This prevents accidental cross-hat address collisions when squads
+ *      reuse low-entropy salts (e.g., `bytes32(0)`) and keeps each hat's upgrade address space
+ *      independent in `RoleHatClonesFactory`.
+ */
+contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
+  /*///////////////////////////////////////////////////////////////
+                            IMMUTABLES
+  //////////////////////////////////////////////////////////////*/
+
+  /// @notice Hats Protocol singleton used for admin checks and hat transfers.
+  IHats internal immutable _HATS;
+  /// @notice Generic EIP-1167 CREATE2 factory used to deploy new role-clone replacements.
+  IRoleHatClonesFactory internal immutable _CLONES;
+  /// @notice On-chain registry receiving upgrade audit records.
+  INavePirataRegistry internal immutable _REGISTRY;
+
+  /*///////////////////////////////////////////////////////////////
+                            STORAGE
+  //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IRoleHatUpgrader
+  bool public override allowListEnabled;
+
+  /// @notice Per-kind master-copy allow-list map.
+  mapping(RoleKind _kind => mapping(address _masterCopy => bool _allowed)) internal _allowedMasterCopies;
+
+  /*///////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Deploys the upgrader owned by `_admin` and wires immutable dependencies.
+   * @param _hats Hats Protocol address for this chain.
+   * @param _clones EIP-1167 clones factory.
+   * @param _registry Nave Pirata registry.
+   * @param _admin Address permitted to toggle enforcement and manage the allow-list.
+   */
+  constructor(
+    IHats _hats,
+    IRoleHatClonesFactory _clones,
+    INavePirataRegistry _registry,
+    address _admin
+  ) Ownable(_admin) {
+    if (address(_hats) == address(0) || address(_clones) == address(0) || address(_registry) == address(0)) {
+      revert RoleHatUpgrader_ZeroAddress();
+    }
+    _HATS = _hats;
+    _CLONES = _clones;
+    _REGISTRY = _registry;
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            UPGRADE CEREMONY
+  //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IRoleHatUpgrader
+  function upgradeRole(
+    RoleKind _kind,
+    uint256 _roleHatId,
+    address _oldClone,
+    address _masterCopy,
+    bytes calldata _initData,
+    bytes32 _salt
+  ) external override returns (address _newClone) {
+    if (_oldClone == address(0) || _masterCopy == address(0)) revert RoleHatUpgrader_ZeroAddress();
+    if (!_HATS.isAdminOfHat(msg.sender, _roleHatId)) revert RoleHatUpgrader_NotAdmin(_roleHatId, msg.sender);
+    if (allowListEnabled && !_allowedMasterCopies[_kind][_masterCopy]) {
+      revert RoleHatUpgrader_MasterCopyNotAllowed(_kind, _masterCopy);
+    }
+    if (!IQuiescent(_oldClone).isQuiet()) revert RoleHatUpgrader_NotQuiet(_oldClone);
+
+    bytes32 _namespaced = keccak256(abi.encode(_roleHatId, _salt));
+    _newClone = _CLONES.createClone(_masterCopy, _initData, _namespaced);
+
+    try _HATS.transferHat(_roleHatId, _oldClone, _newClone) {}
+    catch {
+      revert RoleHatUpgrader_TransferFailed();
+    }
+
+    uint256 _topHatId = _HATS.getAdminAtLevel(_roleHatId, 0);
+    _REGISTRY.recordUpgrade(
+      _topHatId,
+      INavePirataRegistry.UpgradeRecord({
+        roleHatId: _roleHatId,
+        oldClone: _oldClone,
+        newClone: _newClone,
+        masterCopy: _masterCopy,
+        upgradedAt: uint64(block.timestamp)
+      })
+    );
+
+    emit RoleHatUpgraded(_roleHatId, _oldClone, _newClone, _masterCopy, _kind);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            ADMIN: ALLOW-LIST
+  //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IRoleHatUpgrader
+  function setAllowListEnabled(bool _enabled) external override onlyOwner {
+    allowListEnabled = _enabled;
+    emit AllowListEnabledSet(_enabled);
+  }
+
+  /// @inheritdoc IRoleHatUpgrader
+  function setMasterCopyAllowed(RoleKind _kind, address _masterCopy, bool _allowed) external override onlyOwner {
+    if (_masterCopy == address(0)) revert RoleHatUpgrader_ZeroAddress();
+    _allowedMasterCopies[_kind][_masterCopy] = _allowed;
+    emit MasterCopyAllowListUpdated(_kind, _masterCopy, _allowed);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            VIEWS
+  //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IRoleHatUpgrader
+  function isMasterCopyAllowed(RoleKind _kind, address _masterCopy) external view override returns (bool _allowed) {
+    _allowed = _allowedMasterCopies[_kind][_masterCopy];
+  }
+
+  /**
+   * @notice Hats Protocol singleton used for admin checks and hat transfers.
+   * @return _hats Hats address.
+   */
+  function hats() external view returns (IHats _hats) {
+    _hats = _HATS;
+  }
+
+  /**
+   * @notice Generic EIP-1167 CREATE2 factory used to deploy new role-clone replacements.
+   * @return _clones Clones factory address.
+   */
+  function clonesFactory() external view returns (IRoleHatClonesFactory _clones) {
+    _clones = _CLONES;
+  }
+
+  /**
+   * @notice On-chain registry receiving upgrade audit records.
+   * @return _registry Registry address.
+   */
+  function registry() external view returns (INavePirataRegistry _registry) {
+    _registry = _REGISTRY;
+  }
+}
