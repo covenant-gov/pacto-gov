@@ -150,7 +150,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
       crewChangeDelay: 30
     });
-    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_DelayOutOfRange.selector, 30, 60, 60 days));
+    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_OutOfRange.selector, 30, 60, 60 days));
     _fresh.initialize(_p);
   }
 
@@ -164,9 +164,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
       crewChangeDelay: 61 days
     });
-    vm.expectRevert(
-      abi.encodeWithSelector(GovernanceParams.GovernanceParams_DelayOutOfRange.selector, 61 days, 60, 60 days)
-    );
+    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_OutOfRange.selector, 61 days, 60, 60 days));
     _fresh.initialize(_p);
   }
 }
@@ -637,7 +635,7 @@ contract UnitQuartermasterParameterSetters is UnitQuartermasterBase {
   function test_SetCrewChangeDelay_RevertsOutOfRange() external {
     _mockWearer(_treasuryClone, _TREASURY_AUTHORITY_ROLE_HAT, true);
     vm.prank(_treasuryClone);
-    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_DelayOutOfRange.selector, 0, 60, 60 days));
+    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_OutOfRange.selector, 0, 60, 60 days));
     _qm.setCrewChangeDelay(0);
   }
 }

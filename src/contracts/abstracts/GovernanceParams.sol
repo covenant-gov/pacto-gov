@@ -28,38 +28,32 @@ abstract contract GovernanceParams {
   uint256 internal constant _MAX_QUORUM_BPS = 10_000;
 
   /**
-   * @notice Provided delay value is outside `[_MIN_GOV_DELAY, _MAX_GOV_DELAY]`.
-   * @param value The rejected delay value.
+   * @notice Value is outside the inclusive `min`–`max` range for a governance parameter.
+   *         Used for both delay validation (`[_MIN_GOV_DELAY, _MAX_GOV_DELAY]`, seconds) and
+   *         quorum bps (`[_MIN_QUORUM_BPS, _MAX_QUORUM_BPS]`).
+   * @param value The rejected value.
    * @param min The inclusive lower bound.
    * @param max The inclusive upper bound.
    */
-  error GovernanceParams_DelayOutOfRange(uint256 value, uint256 min, uint256 max);
+  error GovernanceParams_OutOfRange(uint256 value, uint256 min, uint256 max);
 
   /**
-   * @notice Provided quorum value is outside `[_MIN_QUORUM_BPS, _MAX_QUORUM_BPS]`.
-   * @param value The rejected quorum value in basis points.
-   * @param min The inclusive lower bound in basis points.
-   * @param max The inclusive upper bound in basis points.
-   */
-  error GovernanceParams_QuorumOutOfRange(uint256 value, uint256 min, uint256 max);
-
-  /**
-   * @notice Reverts with `GovernanceParams_DelayOutOfRange` if `v` is outside the accepted delay range.
+   * @notice Reverts with `GovernanceParams_OutOfRange` if `v` is outside the accepted delay range.
    * @param v Delay value in seconds.
    */
   function _validateDelay(uint256 v) internal pure {
     if (v < _MIN_GOV_DELAY || v > _MAX_GOV_DELAY) {
-      revert GovernanceParams_DelayOutOfRange(v, _MIN_GOV_DELAY, _MAX_GOV_DELAY);
+      revert GovernanceParams_OutOfRange(v, _MIN_GOV_DELAY, _MAX_GOV_DELAY);
     }
   }
 
   /**
-   * @notice Reverts with `GovernanceParams_QuorumOutOfRange` if `v` is outside the accepted quorum range.
+   * @notice Reverts with `GovernanceParams_OutOfRange` if `v` is outside the accepted quorum range.
    * @param v Quorum value in basis points (1 bp = 0.01%).
    */
   function _validateQuorumBps(uint256 v) internal pure {
     if (v < _MIN_QUORUM_BPS || v > _MAX_QUORUM_BPS) {
-      revert GovernanceParams_QuorumOutOfRange(v, _MIN_QUORUM_BPS, _MAX_QUORUM_BPS);
+      revert GovernanceParams_OutOfRange(v, _MIN_QUORUM_BPS, _MAX_QUORUM_BPS);
     }
   }
 }

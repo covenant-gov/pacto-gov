@@ -20,13 +20,14 @@ interface INavePirataFactory {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Governance defaults for a new squad.
+   * @notice Per-squad governance values for factory bootstrap. Distinct from the `GovernanceParams`
+   *         abstract contract (min/max validation helpers on role contracts).
    * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
    * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires.
    * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast).
    * @param quorumBps Quorum in basis points, only applied when `crewVoteMode == QUORUM_OF_CAST`.
    */
-  struct GovernanceParams {
+  struct SquadParams {
     uint256 crewChangeDelay;
     uint256 proposalExpiry;
     ITreasuryAuthority.CrewVoteMode crewVoteMode;
@@ -37,7 +38,7 @@ interface INavePirataFactory {
    * @notice Deployment parameters supplied by the caller.
    * @param captain Initial captain (EOA or contract; non-zero).
    * @param metadataURI Squad metadata URI (surfaced by pacto-app).
-   * @param gov Governance parameter defaults.
+   * @param squadParams Initial governance values (validated by each role’s initializer).
    * @param quartermasterMasterCopy Approved Quartermaster master copy to clone.
    * @param mutinyMasterCopy Approved MutinyModule master copy to clone.
    * @param treasuryAuthorityMasterCopy Approved TreasuryAuthority master copy to clone.
@@ -47,7 +48,7 @@ interface INavePirataFactory {
   struct DeployParams {
     address captain;
     string metadataURI;
-    GovernanceParams gov;
+    SquadParams squadParams;
     address quartermasterMasterCopy;
     address mutinyMasterCopy;
     address treasuryAuthorityMasterCopy;

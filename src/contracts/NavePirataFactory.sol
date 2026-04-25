@@ -35,6 +35,9 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  *        Hats Protocol falls back to the default "eligible + active" path (see
  *        `Hats._isEligible` / `Hats._isActive`). The slots stay non-zero so `createHat` is
  *        satisfied, and upgrading those semantics later is a non-breaking change.
+ *      - `INavePirataFactory.DeployParams.squadParams` is `SquadParams` (bootstrap input struct), not
+ *        the `GovernanceParams` abstract contract (shared min/max validation helpers on role
+ *        contracts).
  */
 contract NavePirataFactory is INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
@@ -172,7 +175,7 @@ contract NavePirataFactory is INavePirataFactory {
             mutinyRoleHatId: _hats.mutinyRoleHatId,
             quartermasterRoleHatId: _hats.quartermasterRoleHatId,
             treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            crewChangeDelay: _params.gov.crewChangeDelay
+            crewChangeDelay: _params.squadParams.crewChangeDelay
           }))
       ),
       _qmSalt
@@ -203,9 +206,9 @@ contract NavePirataFactory is INavePirataFactory {
             captainHatId: _hats.captainHatId,
             crewHatId: _hats.crewHatId,
             treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            proposalExpiry: _params.gov.proposalExpiry,
-            crewVoteMode: _params.gov.crewVoteMode,
-            quorumBps: _params.gov.quorumBps
+            proposalExpiry: _params.squadParams.proposalExpiry,
+            crewVoteMode: _params.squadParams.crewVoteMode,
+            quorumBps: _params.squadParams.quorumBps
           }))
       ),
       _taSalt

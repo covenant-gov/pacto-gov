@@ -79,7 +79,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
     return INavePirataFactory.DeployParams({
       captain: _captain,
       metadataURI: 'ipfs://squad',
-      gov: INavePirataFactory.GovernanceParams({
+      squadParams: INavePirataFactory.SquadParams({
         crewChangeDelay: 7 days,
         proposalExpiry: 7 days,
         crewVoteMode: ITreasuryAuthority.CrewVoteMode.QUORUM_OF_CAST,

@@ -96,7 +96,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
 
   /**
    * @notice Per-clone initializer; sets hat ids and the crew-change delay.
-   * @dev Delay is validated against the `GovernanceParams` bounds. Emits
+   * @dev Delay is validated against the bounds on the inherited `GovernanceParams` contract. Emits
    *      `CrewChangeDelayUpdated(0, crewChangeDelay)` so indexers see the initial value.
    * @param _p Bootstrap parameters.
    */

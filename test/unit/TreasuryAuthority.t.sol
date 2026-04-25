@@ -175,10 +175,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
     });
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_DelayOutOfRange.selector,
-        uint256(30 seconds),
-        uint256(1 minutes),
-        uint256(60 days)
+        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(30 seconds), uint256(1 minutes), uint256(60 days)
       )
     );
     _fresh.initialize(_p);
@@ -197,7 +194,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
     });
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_QuorumOutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
+        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
       )
     );
     _fresh.initialize(_p);
@@ -682,10 +679,7 @@ contract UnitTreasuryAuthoritySetters is UnitTreasuryAuthorityBase {
     _mockTaRole(address(this), true);
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_DelayOutOfRange.selector,
-        uint256(30 seconds),
-        uint256(1 minutes),
-        uint256(60 days)
+        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(30 seconds), uint256(1 minutes), uint256(60 days)
       )
     );
     _ta.setProposalExpiry(30 seconds);
@@ -729,7 +723,7 @@ contract UnitTreasuryAuthoritySetters is UnitTreasuryAuthorityBase {
     _mockTaRole(address(this), true);
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_QuorumOutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
+        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
       )
     );
     _ta.setQuorumBps(100);
