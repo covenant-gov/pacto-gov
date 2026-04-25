@@ -10,8 +10,10 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 
 import {TreasuryAuthority} from 'contracts/TreasuryAuthority.sol';
-import {GovernanceParams} from 'contracts/abstracts/GovernanceParams.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
+
+import {PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
@@ -32,9 +34,6 @@ abstract contract UnitTreasuryAuthorityBase is Test {
   uint256 internal constant _CAPTAIN_HAT = 1;
   uint256 internal constant _CREW_HAT = 2;
   uint256 internal constant _TREASURY_AUTHORITY_ROLE_HAT = 3;
-
-  uint256 internal constant _DEFAULT_EXPIRY = 7 days;
-  uint256 internal constant _DEFAULT_QUORUM_BPS = 3000;
 
   TreasuryAuthority internal _master;
   TreasuryAuthority internal _ta;
@@ -61,9 +60,9 @@ abstract contract UnitTreasuryAuthorityBase is Test {
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      proposalExpiry: _DEFAULT_EXPIRY,
+      proposalExpiry: PROPOSAL_EXPIRY,
       crewVoteMode: _mode,
-      quorumBps: _DEFAULT_QUORUM_BPS
+      quorumBps: SQUAD_QUORUM_BPS
     });
     _ta.initialize(_p);
   }
@@ -112,9 +111,9 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      proposalExpiry: _DEFAULT_EXPIRY,
+      proposalExpiry: PROPOSAL_EXPIRY,
       crewVoteMode: ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT,
-      quorumBps: _DEFAULT_QUORUM_BPS
+      quorumBps: SQUAD_QUORUM_BPS
     });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _master.initialize(_p);
@@ -124,9 +123,9 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
     assertEq(_ta.captainHatId(), _CAPTAIN_HAT);
     assertEq(_ta.crewHatId(), _CREW_HAT);
     assertEq(_ta.treasuryAuthorityRoleHatId(), _TREASURY_AUTHORITY_ROLE_HAT);
-    assertEq(_ta.proposalExpiry(), _DEFAULT_EXPIRY);
+    assertEq(_ta.proposalExpiry(), PROPOSAL_EXPIRY);
     assertEq(uint256(_ta.crewVoteMode()), uint256(ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT));
-    assertEq(_ta.quorumBps(), _DEFAULT_QUORUM_BPS);
+    assertEq(_ta.quorumBps(), SQUAD_QUORUM_BPS);
     assertEq(_ta.SAFE(), _SAFE_ADDRESS);
     assertEq(_ta.avatar(), _SAFE_ADDRESS);
     assertEq(_ta.target(), _SAFE_ADDRESS);
@@ -139,9 +138,9 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      proposalExpiry: _DEFAULT_EXPIRY,
+      proposalExpiry: PROPOSAL_EXPIRY,
       crewVoteMode: ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT,
-      quorumBps: _DEFAULT_QUORUM_BPS
+      quorumBps: SQUAD_QUORUM_BPS
     });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _ta.initialize(_p);
@@ -154,9 +153,9 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      proposalExpiry: _DEFAULT_EXPIRY,
+      proposalExpiry: PROPOSAL_EXPIRY,
       crewVoteMode: ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT,
-      quorumBps: _DEFAULT_QUORUM_BPS
+      quorumBps: SQUAD_QUORUM_BPS
     });
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotCaptainOrCrew.selector, address(0)));
     _fresh.initialize(_p);
@@ -171,11 +170,11 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
       proposalExpiry: 30 seconds,
       crewVoteMode: ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT,
-      quorumBps: _DEFAULT_QUORUM_BPS
+      quorumBps: SQUAD_QUORUM_BPS
     });
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(30 seconds), uint256(1 minutes), uint256(60 days)
+        RangeValidator.RangeValidator_OutOfRange.selector, uint256(30 seconds), uint256(1 minutes), uint256(60 days)
       )
     );
     _fresh.initialize(_p);
@@ -188,13 +187,13 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      proposalExpiry: _DEFAULT_EXPIRY,
+      proposalExpiry: PROPOSAL_EXPIRY,
       crewVoteMode: ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT,
       quorumBps: 100
     });
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
+        RangeValidator.RangeValidator_OutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
       )
     );
     _fresh.initialize(_p);
@@ -207,9 +206,9 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      proposalExpiry: _DEFAULT_EXPIRY,
+      proposalExpiry: PROPOSAL_EXPIRY,
       crewVoteMode: ITreasuryAuthority.CrewVoteMode.QUORUM_OF_CAST,
-      quorumBps: _DEFAULT_QUORUM_BPS
+      quorumBps: SQUAD_QUORUM_BPS
     });
     _fresh.setUp(abi.encode(_p));
     assertEq(_fresh.SAFE(), _SAFE_ADDRESS);
@@ -227,7 +226,7 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
     _mockCaptainOrCrew(_captain, true, false);
     _mockCrewSupply(10);
 
-    uint256 _deadline256 = block.timestamp + _DEFAULT_EXPIRY;
+    uint256 _deadline256 = block.timestamp + PROPOSAL_EXPIRY;
     assertLe(_deadline256, type(uint64).max);
     // casting to 'uint64' is safe because `assertLe` bounds `_deadline256` above.
     // forge-lint: disable-next-line(unsafe-typecast)
@@ -299,7 +298,7 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
 
   function test_Propose_ReusesSlot_AfterPriorExpired() external {
     uint256 _first = _propose(_captain, true);
-    vm.warp(block.timestamp + _DEFAULT_EXPIRY + 1);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY + 1);
 
     _mockCaptainOrCrew(_captain, true, false);
     _mockCrewSupply(10);
@@ -363,7 +362,7 @@ contract UnitTreasuryAuthorityCrewVote is UnitTreasuryAuthorityBase {
   function test_CrewVote_RevertsIfExpired() external {
     uint256 _id = _propose(_captain, true);
     _mockWearer(_crewA, _CREW_HAT, true);
-    vm.warp(block.timestamp + _DEFAULT_EXPIRY + 1);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY + 1);
     vm.prank(_crewA);
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_ProposalExpired.selector, _id));
     _ta.crewVote(_id, true);
@@ -419,7 +418,7 @@ contract UnitTreasuryAuthorityCaptainApprove is UnitTreasuryAuthorityBase {
   function test_CaptainApprove_RevertsIfExpired() external {
     uint256 _id = _propose(_captain, true);
     _mockWearer(_captain, _CAPTAIN_HAT, true);
-    vm.warp(block.timestamp + _DEFAULT_EXPIRY + 1);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY + 1);
     vm.prank(_captain);
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_ProposalExpired.selector, _id));
     _ta.captainApprove(_id);
@@ -563,7 +562,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     _mockCrewSupply(1);
     vm.prank(_captain);
     uint256 _id = _ta.propose(_dest, 0, hex'', ITreasuryAuthority.Operation.CALL);
-    vm.warp(block.timestamp + _DEFAULT_EXPIRY + 1);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY + 1);
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_ProposalExpired.selector, _id));
     _ta.execute(_id);
   }
@@ -666,7 +665,7 @@ contract UnitTreasuryAuthoritySetters is UnitTreasuryAuthorityBase {
   function test_SetProposalExpiry_HappyPath() external {
     _mockTaRole(address(this), true);
     vm.expectEmit();
-    emit ITreasuryAuthority.ProposalExpiryUpdated(_DEFAULT_EXPIRY, 30 days);
+    emit ITreasuryAuthority.ProposalExpiryUpdated(PROPOSAL_EXPIRY, 30 days);
     _ta.setProposalExpiry(30 days);
     assertEq(_ta.proposalExpiry(), 30 days);
   }
@@ -683,7 +682,7 @@ contract UnitTreasuryAuthoritySetters is UnitTreasuryAuthorityBase {
     _mockTaRole(address(this), true);
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(30 seconds), uint256(1 minutes), uint256(60 days)
+        RangeValidator.RangeValidator_OutOfRange.selector, uint256(30 seconds), uint256(1 minutes), uint256(60 days)
       )
     );
     _ta.setProposalExpiry(30 seconds);
@@ -710,7 +709,7 @@ contract UnitTreasuryAuthoritySetters is UnitTreasuryAuthorityBase {
   function test_SetQuorumBps_HappyPath() external {
     _mockTaRole(address(this), true);
     vm.expectEmit();
-    emit ITreasuryAuthority.QuorumBpsUpdated(_DEFAULT_QUORUM_BPS, 5000);
+    emit ITreasuryAuthority.QuorumBpsUpdated(SQUAD_QUORUM_BPS, 5000);
     _ta.setQuorumBps(5000);
     assertEq(_ta.quorumBps(), 5000);
   }
@@ -727,7 +726,7 @@ contract UnitTreasuryAuthoritySetters is UnitTreasuryAuthorityBase {
     _mockTaRole(address(this), true);
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceParams.GovernanceParams_OutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
+        RangeValidator.RangeValidator_OutOfRange.selector, uint256(100), uint256(500), uint256(10_000)
       )
     );
     _ta.setQuorumBps(100);
@@ -750,13 +749,13 @@ contract UnitTreasuryAuthorityQuiet is UnitTreasuryAuthorityBase {
 
   function test_IsQuiet_TrueAfterAllProposalsExpired() external {
     _propose(_captain, true);
-    vm.warp(block.timestamp + _DEFAULT_EXPIRY);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
     assertTrue(_ta.isQuiet());
   }
 
   function test_IsQuiet_FalseAgainAfterNewProposal() external {
     _propose(_captain, true);
-    vm.warp(block.timestamp + _DEFAULT_EXPIRY);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
     assertTrue(_ta.isQuiet());
 
     // Crew member creates another proposal

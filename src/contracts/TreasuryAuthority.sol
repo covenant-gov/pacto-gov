@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 import {AssetRescuer} from 'contracts/abstracts/AssetRescuer.sol';
-import {GovernanceParams} from 'contracts/abstracts/GovernanceParams.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
 import {IQuiescent} from 'interfaces/IQuiescent.sol';
 import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
 
@@ -18,7 +18,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  * @notice Zodiac + Safe owner: crew threshold + `captainApproved`, then `execute` → `avatar`. `exec` from a wallet hits `AssetRescuer` (no ERC-1271)
  * @dev EIP-1167 master; `initialize` / `setUp` then `renounceOwnership` on `Module` so `avatar`/`target` are fixed. Param setters: TA role hat (via a passing proposal with `to` here). Rescue → Safe
  */
-contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernanceParams, AssetRescuer {
+contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidator, AssetRescuer {
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/

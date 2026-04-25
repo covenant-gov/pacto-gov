@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {GovernanceParams} from 'contracts/abstracts/GovernanceParams.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
 import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
 import {IQuiescent} from 'interfaces/IQuiescent.sol';
 
@@ -16,7 +16,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  * @notice Timelocked crew add/remove; crew-hat `IHatsEligibility`; `QuartermasterRole` admin. Revokes via local flags + Hats re-checks
  * @dev EIP-1167 master; `initialize` for clones. Access = hats only
  */
-contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, GovernanceParams, Initializable {
+contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValidator, Initializable {
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/

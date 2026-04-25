@@ -4,6 +4,8 @@ pragma solidity 0.8.30;
 import {NavePirataFactory} from 'contracts/NavePirataFactory.sol';
 import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
 
+import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
+
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
@@ -77,10 +79,10 @@ abstract contract UnitNavePirataFactoryBase is Test {
       captain: _captain,
       metadataURI: 'ipfs://squad',
       squadParams: INavePirataFactory.SquadParams({
-        crewChangeDelay: 7 days,
-        proposalExpiry: 7 days,
+        crewChangeDelay: CREW_CHANGE_DELAY,
+        proposalExpiry: PROPOSAL_EXPIRY,
         crewVoteMode: ITreasuryAuthority.CrewVoteMode.QUORUM_OF_CAST,
-        quorumBps: 3000
+        quorumBps: SQUAD_QUORUM_BPS
       }),
       quartermasterMasterCopy: _qmMasterCopy,
       mutinyMasterCopy: _mmMasterCopy,

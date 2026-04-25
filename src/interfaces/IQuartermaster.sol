@@ -213,7 +213,7 @@ interface IQuartermaster is IQuiescent {
 
   /**
    * @notice Update the crew change delay. TreasuryAuthorityRole-gated.
-   * @dev Must fall within the delay bounds enforced by the inherited `GovernanceParams` base contract.
+   * @dev Must fall within the delay bounds enforced by the inherited `RangeValidator` base contract.
    * @param _newValue New delay in seconds.
    */
   function setCrewChangeDelay(uint256 _newValue) external;

@@ -3,6 +3,9 @@ pragma solidity 0.8.30;
 
 import {Quartermaster} from 'contracts/Quartermaster.sol';
 import {RoleHatClonesFactory} from 'contracts/RoleHatClonesFactory.sol';
+
+import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
+
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
@@ -36,7 +39,7 @@ abstract contract UnitRoleHatClonesFactoryBase is Test {
       mutinyRoleHatId: 3,
       quartermasterRoleHatId: 4,
       treasuryAuthorityRoleHatId: 5,
-      crewChangeDelay: 7 days
+      crewChangeDelay: CREW_CHANGE_DELAY
     });
     _data = abi.encodeCall(Quartermaster.initialize, (_p));
   }
@@ -58,7 +61,7 @@ contract UnitRoleHatClonesFactoryCreate is UnitRoleHatClonesFactoryBase {
     assertEq(_clone, _predicted);
     assertEq(Quartermaster(_clone).captainHatId(), 1);
     assertEq(Quartermaster(_clone).crewHatId(), 2);
-    assertEq(Quartermaster(_clone).crewChangeDelay(), 7 days);
+    assertEq(Quartermaster(_clone).crewChangeDelay(), CREW_CHANGE_DELAY);
   }
 
   function test_CreateClone_AcceptsEmptyInitData() external {
