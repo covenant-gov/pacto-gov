@@ -121,7 +121,6 @@ interface IQuartermaster is IQuiescent {
 
   /// @notice The crew hat has reached its max supply cap.
   error Quartermaster_CrewFull();
-
   /// @notice A required address argument was zero.
   error Quartermaster_ZeroAddress();
 

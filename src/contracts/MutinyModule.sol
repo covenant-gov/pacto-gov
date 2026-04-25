@@ -82,22 +82,16 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
 
   /// @inheritdoc IMutinyModule
   uint256 public override CAPTAIN_HAT_ID;
-
   /// @inheritdoc IMutinyModule
   uint256 public override CREW_HAT_ID;
-
   /// @inheritdoc IMutinyModule
   uint256 public override MUTINY_ROLE_HAT_ID;
-
   /// @inheritdoc IMutinyModule
   uint256 public override QUARTERMASTER_ROLE_HAT_ID;
-
   /// @inheritdoc IMutinyModule
   address public override captain;
-
   /// @inheritdoc IMutinyModule
   address public override quartermaster;
-
   /// @inheritdoc IMutinyModule
   uint256 public override activeMutinyId;
 

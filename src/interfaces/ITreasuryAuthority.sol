@@ -156,16 +156,12 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
 
   /// @notice The captain has already approved this proposal.
   error TreasuryAuthority_CaptainAlreadyApproved();
-
   /// @notice The proposal has already been executed.
   error TreasuryAuthority_AlreadyExecuted();
-
   /// @notice Crew vote has not passed under the current mode.
   error TreasuryAuthority_CrewVoteNotPassed();
-
   /// @notice Captain has not approved the proposal.
   error TreasuryAuthority_CaptainNotApproved();
-
   /// @notice The underlying Safe execution failed.
   error TreasuryAuthority_SafeExecutionFailed();
 

@@ -52,28 +52,21 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
 
   /// @inheritdoc IQuartermaster
   uint256 public override CAPTAIN_HAT_ID;
-
   /// @inheritdoc IQuartermaster
   uint256 public override CREW_HAT_ID;
-
   /// @inheritdoc IQuartermaster
   uint256 public override MUTINY_ROLE_HAT_ID;
-
   /// @inheritdoc IQuartermaster
   uint256 public override QUARTERMASTER_ROLE_HAT_ID;
-
   /// @inheritdoc IQuartermaster
   uint256 public override TREASURY_AUTHORITY_ROLE_HAT_ID;
-
   /// @inheritdoc IQuartermaster
   uint256 public override crewChangeDelay;
-
   /// @inheritdoc IQuartermaster
   bool public override mutinyActive;
 
   /// @inheritdoc IQuartermaster
   mapping(address _candidate => uint256 _executableAt) public override pendingCrewAddAt;
-
   /// @inheritdoc IQuartermaster
   mapping(address _crew => uint256 _executableAt) public override pendingCrewRemoveAt;
 
@@ -85,7 +78,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
 
   /// @notice Count of outstanding pending adds. Used by `isQuiet`.
   uint256 internal _pendingAddCount;
-
   /// @notice Count of outstanding pending removes. Used by `isQuiet`.
   uint256 internal _pendingRemoveCount;
 

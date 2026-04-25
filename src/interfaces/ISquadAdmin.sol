@@ -42,13 +42,10 @@ interface ISquadAdmin is IQuiescent {
 
   /// @notice Caller is not the current captain.
   error SquadAdmin_NotCaptain();
-
   /// @notice Caller is not an enabled executor.
   error SquadAdmin_NotExecutor();
-
   /// @notice The target is already an enabled executor.
   error SquadAdmin_AlreadyExecutor();
-
   /// @notice A required address argument was zero.
   error SquadAdmin_ZeroAddress();
 

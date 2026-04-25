@@ -30,7 +30,6 @@ interface IRoleHatClonesFactory {
 
   /// @notice The clone's initializer call reverted.
   error RoleHatClonesFactory_InitializationFailed();
-
   /// @notice Master copy address is zero.
   error RoleHatClonesFactory_ZeroMasterCopy();
 

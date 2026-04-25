@@ -58,7 +58,6 @@ interface IMutinyModule is IQuiescent {
 
   /// @notice A mutiny round is already active.
   error MutinyModule_AlreadyActive();
-
   /// @notice No active mutiny exists for the requested id.
   error MutinyModule_NoActiveMutiny();
 

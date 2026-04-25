@@ -88,10 +88,8 @@ interface INavePirataFactory {
    * @param _field Name of the zero field (for debugging).
    */
   error NavePirataFactory_ZeroAddress(string _field);
-
   /// @notice The Safe deployment call failed.
   error NavePirataFactory_SafeDeployFailed();
-
   /// @notice Teardown of the factory's temporary ownership at the end of the ceremony failed.
   error NavePirataFactory_BootstrapTeardownFailed();
 

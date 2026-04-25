@@ -60,10 +60,8 @@ interface IAssetRescuer {
    * @param destination The intended destination (i.e., the Safe or other configured address).
    */
   error AssetRescuer_SendToDestinationInstead(address destination);
-
   /// @notice The underlying transfer call failed during a rescue.
   error AssetRescuer_RescueFailed();
-
   /// @notice The inheriting contract returned `address(0)` from `_rescueDestination()`.
   error AssetRescuer_ZeroDestination();
 

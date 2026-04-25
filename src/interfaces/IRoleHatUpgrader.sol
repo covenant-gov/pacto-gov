@@ -91,7 +91,6 @@ interface IRoleHatUpgrader {
 
   /// @notice The `Hats.transferHat` call failed during the ceremony.
   error RoleHatUpgrader_TransferFailed();
-
   /// @notice A required address argument was zero.
   error RoleHatUpgrader_ZeroAddress();
 
