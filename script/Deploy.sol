@@ -7,7 +7,7 @@ import {PactoDeploy} from 'script/PactoDeploy.sol';
 /**
  * @title Deploy
  * @author Pacto
- * @notice One-shot chain bootstrap: master copies + infra + registry wiring (tech spec §11 P9.1 + P9.2).
+ * @notice One-shot chain bootstrap: master copies + infra + registry wiring.
  * @dev Chain singletons come from `script/Constants.sol` via `PactoDeploy._externalByChain` (`block.chainid`).
  */
 contract Deploy is PactoDeploy {
@@ -17,5 +17,6 @@ contract Deploy is PactoDeploy {
     _deployFullSystem(_ext, msg.sender);
     vm.stopBroadcast();
     _logDeployment();
+    _writeFullSystemJson(_ext, masters, infra);
   }
 }

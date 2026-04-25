@@ -26,19 +26,19 @@ import {
   SAFE_SINGLETON_141
 } from 'script/Constants.sol';
 import {DeployTypes} from 'script/DeployTypes.sol';
+import {DeploymentArtifacts} from 'script/DeploymentArtifacts.sol';
 import {ScriptGovernanceParams} from 'script/GovernanceParams.s.sol';
 
-import {Script} from 'forge-std/Script.sol';
 import {console} from 'forge-std/console.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
 /**
  * @title PactoDeploy
  * @author Pacto
- * @notice Shared deployment routine: master copies, infra, registry wiring (tech spec §11 P9.1–P9.2).
+ * @notice Shared deployment routine: master copies, infra, registry wiring.
  * @dev `forge script` entrypoints inherit this; integration tests inherit `IntegrationBase` for the same deploy path.
  */
-abstract contract PactoDeploy is Script, ScriptGovernanceParams {
+abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   /// @notice No `ExternalAddresses` entry for `block.chainid` (extend `_initExternalByChain` after adding `Constants`).
   error UnsupportedChain(uint256 chainId);
 

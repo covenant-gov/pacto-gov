@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 /**
  * @title DeployTypes
  * @author Pacto
- * @notice Shared structs for deployment scripts and the integration harness (see tech spec §11 P9).
+ * @notice Shared structs for deployment scripts and the integration harness.
  */
 library DeployTypes {
   /// @notice Chain singletons required by `NavePirataFactory` and master-copy constructors.

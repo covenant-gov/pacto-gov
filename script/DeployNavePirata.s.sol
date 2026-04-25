@@ -3,30 +3,37 @@ pragma solidity 0.8.30;
 
 import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
 
+import {
+  DEPLOY_NAV_PIRATA_SALT_NONCE,
+  MASTER_COPY_MUTINY_MODULE,
+  MASTER_COPY_QUARTERMASTER,
+  MASTER_COPY_SQUAD_ADMIN_IMPL,
+  MASTER_COPY_TREASURY_AUTHORITY
+} from 'script/Constants.sol';
+import {DeploymentArtifacts} from 'script/DeploymentArtifacts.sol';
 import {ScriptGovernanceParams} from 'script/GovernanceParams.s.sol';
 
-import {Script} from 'forge-std/Script.sol';
 import {console} from 'forge-std/console.sol';
 
 /**
  * @title DeployNavePirata
  * @author Pacto
- * @notice Per-squad bootstrap: `NavePirataFactory.deployNavePirata` (tech spec §11 P9.3).
+ * @notice Per-squad bootstrap: `NavePirataFactory.deployNavePirata`.
  * @dev Expects infra + master copies already deployed. Uses **production** squad params (same as `ScriptGovernanceParams`).
- *      Env: `NAVE_PIRATA_FACTORY`, `CAPTAIN`, `SQUAD_METADATA_URI`, `MASTER_QUARTERMASTER`, `MASTER_MUTINY`,
- *      `MASTER_TREASURY_AUTHORITY`, `SQUAD_ADMIN_IMPLEMENTATION`, `SALT_NONCE`.
+ *      Master copy addresses and `saltNonce` come from `script/Constants.sol` (update after `DeployMasterCopies`).
+ *      Requires forge environment variables: `NAVE_PIRATA_FACTORY`, `CAPTAIN`, `SQUAD_METADATA_URI`.
  */
-contract DeployNavePirata is Script, ScriptGovernanceParams {
+contract DeployNavePirata is DeploymentArtifacts, ScriptGovernanceParams {
   function run() external {
     INavePirataFactory.DeployParams memory _p = INavePirataFactory.DeployParams({
       captain: vm.envAddress('CAPTAIN'),
       metadataURI: vm.envString('SQUAD_METADATA_URI'),
       squadParams: squadParamsProduction(),
-      quartermasterMasterCopy: vm.envAddress('MASTER_QUARTERMASTER'),
-      mutinyMasterCopy: vm.envAddress('MASTER_MUTINY'),
-      treasuryAuthorityMasterCopy: vm.envAddress('MASTER_TREASURY_AUTHORITY'),
-      squadAdminImplementation: vm.envAddress('SQUAD_ADMIN_IMPLEMENTATION'),
-      saltNonce: vm.envUint('SALT_NONCE')
+      quartermasterMasterCopy: MASTER_COPY_QUARTERMASTER,
+      mutinyMasterCopy: MASTER_COPY_MUTINY_MODULE,
+      treasuryAuthorityMasterCopy: MASTER_COPY_TREASURY_AUTHORITY,
+      squadAdminImplementation: MASTER_COPY_SQUAD_ADMIN_IMPL,
+      saltNonce: DEPLOY_NAV_PIRATA_SALT_NONCE
     });
 
     INavePirataFactory _factory = INavePirataFactory(vm.envAddress('NAVE_PIRATA_FACTORY'));
@@ -41,6 +48,10 @@ contract DeployNavePirata is Script, ScriptGovernanceParams {
       address _squadAdminProxy
     ) = _factory.deployNavePirata(_p);
     vm.stopBroadcast();
+
+    _writeSquadDeploymentJson(
+      _topHatId, _safe, _quartermaster, _mutinyModule, _treasuryAuthority, _squadAdminProxy, _p.saltNonce
+    );
 
     console.log('topHatId:', _topHatId);
     console.log('safe:', _safe);

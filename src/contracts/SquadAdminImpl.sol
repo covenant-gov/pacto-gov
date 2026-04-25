@@ -111,9 +111,8 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
 
   /// @inheritdoc IQuiescent
   function isQuiet() external pure override returns (bool _quiet) {
-    // v1 has no timelocked, pending, or in-flight state; always quiet. When Phase 11 introduces
-    // asynchronous flows (EIP-712 nonces with windows, scheduled policy changes, etc.) this
-    // reflects the relevant emptiness.
+    // v1 has no timelocked, pending, or in-flight state; always quiet. Future implementations with
+    // asynchronous flows (e.g. EIP-712 nonces with windows, scheduled policy changes) should tighten this.
     _quiet = true;
   }
 
