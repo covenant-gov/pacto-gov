@@ -209,19 +209,17 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
     )
   {
     Proposal storage _p = _proposals[_id];
-    return (
-      _p.proposer,
-      _p.to,
-      _p.value,
-      _p.op,
-      _p.data,
-      _p.deadline,
-      _p.snapshot,
-      _p.yeas,
-      _p.nays,
-      _p.captainApproved,
-      _p.executed
-    );
+    _proposer = _p.proposer;
+    _to = _p.to;
+    _value = _p.value;
+    _op = _p.op;
+    _data = _p.data;
+    _deadline = _p.deadline;
+    _snapshot = _p.snapshot;
+    _yeas = _p.yeas;
+    _nays = _p.nays;
+    _captainApproved = _p.captainApproved;
+    _executed = _p.executed;
   }
 
   /// @inheritdoc ITreasuryAuthority
@@ -230,13 +228,13 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function SAFE() external view override returns (address) {
-    return avatar;
+  function SAFE() external view override returns (address _safe) {
+    _safe = avatar;
   }
 
   /// @inheritdoc IQuiescent
-  function isQuiet() external view override returns (bool) {
-    return block.timestamp >= _maxDeadline;
+  function isQuiet() external view override returns (bool _quiet) {
+    _quiet = block.timestamp >= _maxDeadline;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -323,16 +321,16 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   function _crewVotePassed(Proposal storage _p) internal view returns (bool _passed) {
     uint256 _yeas = _p.yeas;
     if (crewVoteMode == CrewVoteMode.MAJORITY_SNAPSHOT) {
-      return _yeas * 2 > _p.snapshot;
+      _passed = _yeas * 2 > _p.snapshot;
     }
 
     uint256 _cast = _yeas + _p.nays;
     if (_cast * 10_000 < uint256(_p.snapshot) * quorumBps) return false;
-    return _yeas > _p.nays;
+    _passed = _yeas > _p.nays;
   }
 
   /// @inheritdoc AssetRescuer
-  function _rescueDestination() internal view override returns (address) {
-    return avatar;
+  function _rescueDestination() internal view override returns (address _destination) {
+    _destination = avatar;
   }
 }

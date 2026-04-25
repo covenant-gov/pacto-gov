@@ -188,37 +188,42 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     returns (address _proposedNewCaptain, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed)
   {
     MutinyRound storage _r = _rounds[_id];
-    return (_r.proposedNewCaptain, _r.startedAt, _r.snapshot, _r.yeas, _r.executed);
+    _proposedNewCaptain = _r.proposedNewCaptain;
+    _startedAt = _r.startedAt;
+    _snapshot = _r.snapshot;
+    _yeas = _r.yeas;
+    _executed = _r.executed;
   }
 
   /// @inheritdoc IMutinyModule
   function hasVoted(uint256 _mutinyId, address _voter) external view override returns (bool _voted) {
-    return _hasVoted[_mutinyId][_voter];
+    _voted = _hasVoted[_mutinyId][_voter];
   }
 
   /// @inheritdoc IMutinyModule
   function isInSnapshot(uint256 _mutinyId, address _voter) external view override returns (bool _inSnapshot) {
     MutinyRound storage _r = _rounds[_mutinyId];
     if (_r.startedAt == 0 || _r.executed || _mutinyId != activeMutinyId) return false;
-    return _HATS.isWearerOfHat(_voter, CREW_HAT_ID);
+    _inSnapshot = _HATS.isWearerOfHat(_voter, CREW_HAT_ID);
   }
 
   /**
    * @notice Captain hat eligibility: only cached `captain` is eligible; `standing` always `true`
    * @dev Called on mint/transfer; `captain` is set before `transferHat` so the new wearer passes
    * @param _wearer Wearer to evaluate
-   * @return eligible Whether `_wearer == captain`
-   * @return standing Always `true`
+   * @return _eligible Whether `_wearer == captain`
+   * @return _standing Always `true`
    */
   function getWearerStatus(
     address _wearer,
     uint256 /*_hatId*/
-  ) external view override returns (bool eligible, bool standing) {
-    return (_wearer == captain, true);
+  ) external view override returns (bool _eligible, bool _standing) {
+    _eligible = _wearer == captain;
+    _standing = true;
   }
 
   /// @inheritdoc IQuiescent
   function isQuiet() external view override returns (bool _quiet) {
-    return activeMutinyId == 0;
+    _quiet = activeMutinyId == 0;
   }
 }

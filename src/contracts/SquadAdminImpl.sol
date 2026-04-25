@@ -118,25 +118,25 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
 
   /// @inheritdoc ISquadAdmin
   function isExecutor(address _executor) external view override returns (bool _enabled) {
-    return _getStorage().executors[_executor];
+    _enabled = _getStorage().executors[_executor];
   }
 
   /// @inheritdoc ISquadAdmin
   function CAPTAIN_HAT_ID() external view override returns (uint256 _captainHatId) {
-    return _getStorage().captainHatId;
+    _captainHatId = _getStorage().captainHatId;
   }
 
   /// @inheritdoc ISquadAdmin
   function SQUAD_ADMIN_HAT_ID() external view override returns (uint256 _squadAdminHatId) {
-    return _getStorage().squadAdminHatId;
+    _squadAdminHatId = _getStorage().squadAdminHatId;
   }
 
   /// @inheritdoc IQuiescent
   function isQuiet() external pure override returns (bool _quiet) {
     // v1 has no timelocked, pending, or in-flight state; always quiet. When Phase 11 introduces
     // asynchronous flows (EIP-712 nonces with windows, scheduled policy changes, etc.) this
-    // returns the relevant emptiness.
-    return true;
+    // reflects the relevant emptiness.
+    _quiet = true;
   }
 
   /*///////////////////////////////////////////////////////////////

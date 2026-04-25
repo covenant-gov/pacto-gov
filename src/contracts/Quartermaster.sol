@@ -217,18 +217,19 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
    *      this module is only ever attached to the crew hat; answering uniformly for any
    *      hat id keeps the function side-effect free and avoids a revert path in Hats.
    * @param _wearer Current or prospective crew-hat wearer.
-   * @return eligible Whether the wearer is currently eligible.
-   * @return standing Whether the wearer is in good standing (always `true`).
+   * @return _eligible Whether the wearer is currently eligible.
+   * @return _standing Whether the wearer is in good standing (always `true`).
    */
   function getWearerStatus(
     address _wearer,
     uint256 /*_hatId*/
-  ) external view override returns (bool eligible, bool standing) {
-    return (_crewEligible[_wearer], true);
+  ) external view override returns (bool _eligible, bool _standing) {
+    _eligible = _crewEligible[_wearer];
+    _standing = true;
   }
 
   /// @inheritdoc IQuiescent
   function isQuiet() external view override returns (bool _quiet) {
-    return _pendingAddCount == 0 && _pendingRemoveCount == 0 && !mutinyActive;
+    _quiet = _pendingAddCount == 0 && _pendingRemoveCount == 0 && !mutinyActive;
   }
 }
