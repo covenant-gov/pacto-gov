@@ -43,21 +43,15 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
                             ADMIN WIRING
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice One-shot setter for the factory address. Reverts after the first successful call.
-   * @param _factory Address of the `NavePirataFactory` authorised to register deployments.
-   */
-  function setFactory(address _factory) external onlyOwner {
+  /// @inheritdoc INavePirataRegistry
+  function setFactory(address _factory) external override onlyOwner {
     if (factory != address(0)) revert NavePirataRegistry_AlreadyWired();
     if (_factory == address(0)) revert NavePirataRegistry_ZeroAddress();
     factory = _factory;
   }
 
-  /**
-   * @notice One-shot setter for the upgrader address. Reverts after the first successful call.
-   * @param _upgrader Address of the `RoleHatUpgrader` authorised to record upgrades.
-   */
-  function setUpgrader(address _upgrader) external onlyOwner {
+  /// @inheritdoc INavePirataRegistry
+  function setUpgrader(address _upgrader) external override onlyOwner {
     if (upgrader != address(0)) revert NavePirataRegistry_AlreadyWired();
     if (_upgrader == address(0)) revert NavePirataRegistry_ZeroAddress();
     upgrader = _upgrader;

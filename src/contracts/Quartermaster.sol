@@ -210,16 +210,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
                         VIEWS
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Returns eligibility and standing for a prospective or current crew-hat wearer.
-   * @dev Standing is always `true`; revocations are expressed purely via `eligible`. The
-   *      hat id parameter is part of the `IHatsEligibility` ABI but not used here because
-   *      this module is only ever attached to the crew hat; answering uniformly for any
-   *      hat id keeps the function side-effect free and avoids a revert path in Hats.
-   * @param _wearer Current or prospective crew-hat wearer.
-   * @return _eligible Whether the wearer is currently eligible.
-   * @return _standing Whether the wearer is in good standing (always `true`).
-   */
+  /// @inheritdoc IHatsEligibility
   function getWearerStatus(
     address _wearer,
     uint256 /*_hatId*/

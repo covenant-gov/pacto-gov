@@ -8,6 +8,7 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
 import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
 
 import {Module} from '@gnosis-guild/zodiac/contracts/core/Module.sol';
+import {FactoryFriendly} from '@gnosis-guild/zodiac/contracts/factory/FactoryFriendly.sol';
 import {Enum} from '@gnosis.pm/safe-contracts/contracts/common/Enum.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
@@ -241,14 +242,9 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
                             ZODIAC FACTORY SHIM
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Zodiac `FactoryFriendly.setUp` shim. Decodes `InitParams` and runs the same
-   *         initialization path as `initialize`. Satisfies the `FactoryFriendly` abstract
-   *         surface so this module is compatible with Zodiac's `ModuleProxyFactory`, even
-   *         though Pacto itself bootstraps via `Clones` + `initialize`.
-   * @param _initializeParams ABI-encoded `InitParams`.
-   */
-  function setUp(bytes memory _initializeParams) public override initializer {
+  /// @inheritdoc ITreasuryAuthority
+  /// @dev Also satisfies the Zodiac `Module` / `FactoryFriendly` `setUp` surface for `ModuleProxyFactory`.
+  function setUp(bytes memory _initializeParams) public override(ITreasuryAuthority, FactoryFriendly) initializer {
     _applyInit(abi.decode(_initializeParams, (InitParams)));
   }
 

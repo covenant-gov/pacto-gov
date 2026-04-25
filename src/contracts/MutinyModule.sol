@@ -169,13 +169,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     else _inSnapshot = _HATS.isWearerOfHat(_voter, crewHatId);
   }
 
-  /**
-   * @notice Captain hat eligibility: only cached `captain` is eligible; `standing` always `true`
-   * @dev Called on mint/transfer; `captain` is set before `transferHat` so the new wearer passes
-   * @param _wearer Wearer to evaluate
-   * @return _eligible Whether `_wearer == captain`
-   * @return _standing Always `true`
-   */
+  /// @inheritdoc IHatsEligibility
   function getWearerStatus(
     address _wearer,
     uint256 /*_hatId*/

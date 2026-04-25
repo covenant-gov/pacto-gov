@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IHats} from 'hats-core/Interfaces/IHats.sol';
+import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+
 /**
  * @title IRoleHatUpgrader
  * @author Pacto
@@ -140,4 +144,22 @@ interface IRoleHatUpgrader {
    * @return _allowed True if allowed.
    */
   function isMasterCopyAllowed(RoleKind _kind, address _masterCopy) external view returns (bool _allowed);
+
+  /**
+   * @notice Hats Protocol singleton used for admin checks and hat transfers.
+   * @return _hats Hats address.
+   */
+  function hats() external view returns (IHats _hats);
+
+  /**
+   * @notice Generic EIP-1167 CREATE2 factory used to deploy new role-clone replacements.
+   * @return _clones Clones factory address.
+   */
+  function clonesFactory() external view returns (IRoleHatClonesFactory _clones);
+
+  /**
+   * @notice On-chain registry receiving upgrade audit records.
+   * @return _registry Registry address.
+   */
+  function registry() external view returns (INavePirataRegistry _registry);
 }

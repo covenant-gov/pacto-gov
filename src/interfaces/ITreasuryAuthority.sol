@@ -211,6 +211,12 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    */
   function initialize(InitParams calldata _p) external;
 
+  /**
+   * @notice Zodiac `FactoryFriendly` / `Module` init shim: ABI-encoded `InitParams` for `ModuleProxyFactory` compatibility.
+   * @param _initializeParams ABI-encoded `InitParams`.
+   */
+  function setUp(bytes memory _initializeParams) external;
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/

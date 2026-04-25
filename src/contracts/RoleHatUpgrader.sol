@@ -131,27 +131,18 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
     _allowed = _allowedMasterCopies[_kind][_masterCopy];
   }
 
-  /**
-   * @notice Hats Protocol singleton used for admin checks and hat transfers.
-   * @return _hats Hats address.
-   */
-  function hats() external view returns (IHats _hats) {
+  /// @inheritdoc IRoleHatUpgrader
+  function hats() external view override returns (IHats _hats) {
     _hats = _HATS;
   }
 
-  /**
-   * @notice Generic EIP-1167 CREATE2 factory used to deploy new role-clone replacements.
-   * @return _clones Clones factory address.
-   */
-  function clonesFactory() external view returns (IRoleHatClonesFactory _clones) {
+  /// @inheritdoc IRoleHatUpgrader
+  function clonesFactory() external view override returns (IRoleHatClonesFactory _clones) {
     _clones = _CLONES;
   }
 
-  /**
-   * @notice On-chain registry receiving upgrade audit records.
-   * @return _registry Registry address.
-   */
-  function registry() external view returns (INavePirataRegistry _registry) {
+  /// @inheritdoc IRoleHatUpgrader
+  function registry() external view override returns (INavePirataRegistry _registry) {
     _registry = _REGISTRY;
   }
 }
