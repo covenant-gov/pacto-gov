@@ -15,7 +15,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title TreasuryAuthority
  * @author Pacto
- * @notice Zodiac + Safe owner: crew threshold + `captainApproved`, then `execute` → `avatar`. `exec` from a wallet hits `AssetRescuer` (no ERC-1271)
+ * @notice Zodiac + Safe owner: crew threshold + captain `captainVote(true)`, then `execute` → `avatar`. Captain may `captainVote(false)` to veto early. `exec` from a wallet hits `AssetRescuer` (no ERC-1271)
  * @dev EIP-1167 master; `initialize` / `setUp` then `renounceOwnership` on `Module` so `avatar`/`target` are fixed. Param setters: TA role hat (via a passing proposal with `to` here). Rescue → Safe
  */
 contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidator, AssetRescuer {
@@ -122,25 +122,22 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function crewVote(uint256 _proposalId, bool _yea) external override onlyHatWearer(crewHatId) {
+  function crewVote(uint256 _proposalId, bool _support) external override onlyHatWearer(crewHatId) {
     Proposal storage _p = _requireAlive(_proposalId);
+    if (_p.captainDefeated) revert TreasuryAuthority_NotExecutable(_proposalId);
     if (_voted[_proposalId][msg.sender]) revert TreasuryAuthority_AlreadyVoted(msg.sender);
 
     _voted[_proposalId][msg.sender] = true;
     unchecked {
-      if (_yea) _p.yeas += 1;
+      if (_support) _p.yeas += 1;
       else _p.nays += 1;
     }
-    emit CrewVoted(_proposalId, msg.sender, _yea);
+    emit CrewVoted(_proposalId, msg.sender, _support);
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function captainApprove(uint256 _proposalId) external override onlyHatWearer(captainHatId) {
-    Proposal storage _p = _requireAlive(_proposalId);
-    if (_p.captainApproved) revert TreasuryAuthority_CaptainAlreadyApproved();
-
-    _p.captainApproved = true;
-    emit CaptainApproved(_proposalId, msg.sender);
+  function captainVote(uint256 _proposalId, bool _support) external override onlyHatWearer(captainHatId) {
+    _captainVote(_proposalId, _support);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -150,8 +147,9 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /// @inheritdoc ITreasuryAuthority
   function execute(uint256 _proposalId) external override {
     Proposal storage _p = _requireAlive(_proposalId);
-    if (!_crewVotePassed(_p)) revert TreasuryAuthority_CrewVoteNotPassed();
-    if (!_p.captainApproved) revert TreasuryAuthority_CaptainNotApproved();
+    if (_p.captainDefeated || !_crewVotePassed(_p) || !_p.captainApproved) {
+      revert TreasuryAuthority_NotExecutable(_proposalId);
+    }
 
     _p.executed = true;
     delete openProposalOf[_p.proposer];
@@ -210,6 +208,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
       uint64 _yeas,
       uint64 _nays,
       bool _captainApproved,
+      bool _captainDefeated,
       bool _executed
     )
   {
@@ -224,6 +223,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     _yeas = _p.yeas;
     _nays = _p.nays;
     _captainApproved = _p.captainApproved;
+    _captainDefeated = _p.captainDefeated;
     _executed = _p.executed;
   }
 
@@ -308,6 +308,21 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     if (_p.proposer == address(0)) revert TreasuryAuthority_ProposalDoesNotExist(_proposalId);
     if (_p.executed) revert TreasuryAuthority_AlreadyExecuted();
     if (block.timestamp >= _p.deadline) revert TreasuryAuthority_ProposalExpired(_proposalId);
+  }
+
+  /**
+   * @notice Captain votes once per proposal; veto clears `openProposalOf` for a new proposal from proposer.
+   */
+  function _captainVote(uint256 _proposalId, bool _support) internal {
+    Proposal storage _p = _requireAlive(_proposalId);
+    if (_p.captainApproved || _p.captainDefeated) revert TreasuryAuthority_CaptainAlreadyVoted(msg.sender);
+    if (_support) {
+      _p.captainApproved = true;
+    } else {
+      _p.captainDefeated = true;
+      delete openProposalOf[_p.proposer];
+    }
+    emit CaptainVoted(_proposalId, msg.sender, _support);
   }
 
   /**
