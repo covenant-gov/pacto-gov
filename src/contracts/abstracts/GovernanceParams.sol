@@ -4,12 +4,8 @@ pragma solidity 0.8.30;
 /**
  * @title GovernanceParams
  * @author Pacto
- * @notice Shared sanity bounds and revert signatures for Nave Pirata governance
- *         parameters (delays and quorums). Per-parameter events live on each
- *         role contract's own interface; only the bound errors are shared here
- *         because they're meaningful across contracts.
- * @dev Designed to be inherited by contracts that expose TreasuryAuthorityRole-gated
- *      setters (e.g. `Quartermaster.setCrewChangeDelay`, `TreasuryAuthority.setProposalExpiry`).
+ * @notice Shared min/max for delays and quorum bps, plus `GovernanceParams_OutOfRange`. Consuming contracts emit their own events
+ * @dev Mixed into TA / QM (and similar) for bounded setters; 1 minute min delay is intentional for testing
  */
 abstract contract GovernanceParams {
   /// @notice Minimum accepted value for any governance delay parameter (in seconds).

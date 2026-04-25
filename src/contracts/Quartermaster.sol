@@ -13,15 +13,8 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title Quartermaster
  * @author Pacto
- * @notice Timelocked crew-hat administrator and eligibility module for the crew hat. The
- *         Quartermaster clone wears `QuartermasterRole`, which makes it admin of the crew
- *         hat in Hats Protocol; it also serves as the crew hat's eligibility module so that
- *         wearer-specific revocations can be performed by writing to local storage and
- *         pinging Hats to re-query status.
- * @dev Deployed as the master copy for EIP-1167 clones. The constructor disables direct
- *      initialization; each clone is initialized via `initialize(InitParams)`. All peer
- *      authority is resolved through Hats gate checks (see `HatGated`) — no peer contract
- *      addresses are stored.
+ * @notice Timelocked crew add/remove; crew-hat `IHatsEligibility`; `QuartermasterRole` admin. Revokes via local flags + Hats re-checks
+ * @dev EIP-1167 master; `initialize` for clones. Access = hats only
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, GovernanceParams, Initializable {
   /*///////////////////////////////////////////////////////////////

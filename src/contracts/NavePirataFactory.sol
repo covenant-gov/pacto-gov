@@ -17,27 +17,9 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title NavePirataFactory
  * @author Pacto
- * @notice One-shot bootstrap factory: in a single transaction it deploys a Safe, mints the
- *         complete hat tree, clones `Quartermaster`, `MutinyModule` and `TreasuryAuthority`,
- *         deploys a `SquadAdmin` UUPS proxy, mints role and captain hats, wires the
- *         `TreasuryAuthority` as the Safe's sole module and sole owner, and registers the
- *         deployment in `NavePirataRegistry`.
- * @dev Design notes:
- *      - The factory temporarily owns the Safe (`threshold = 1`) for setup, then replaces itself
- *        with the `TreasuryAuthority` clone via a self-executed `swapOwner` call authenticated
- *        by a pre-validated Safe signature (`v = 1`, `r = factory`).
- *      - Role-clone addresses are deterministic in `(deployer, saltNonce, kind)` via the
- *        shared `RoleHatClonesFactory`; pacto-app can precompute them before the tx lands.
- *      - The Safe salt is namespaced by `(deployer, saltNonce)` to prevent different callers
- *        colliding on the same `saltNonce`.
- *      - Role-hat `eligibility` / `toggle` slots that do not yet carry semantics are pointed at
- *        the upgrader. The upgrader does not implement `getWearerStatus` / `getHatStatus`, so
- *        Hats Protocol falls back to the default "eligible + active" path (see
- *        `Hats._isEligible` / `Hats._isActive`). The slots stay non-zero so `createHat` is
- *        satisfied, and upgrading those semantics later is a non-breaking change.
- *      - `INavePirataFactory.DeployParams.squadParams` is `SquadParams` (bootstrap input struct), not
- *        the `GovernanceParams` abstract contract (shared min/max validation helpers on role
- *        contracts).
+ * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, SquadAdmin, TA wiring, registry (see `INavePirataFactory`)
+ * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts = `(msg.sender, saltNonce, kind)`. Placeholder
+ *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `GovernanceParams` base
  */
 contract NavePirataFactory is INavePirataFactory {
   /*///////////////////////////////////////////////////////////////

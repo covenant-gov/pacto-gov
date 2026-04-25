@@ -12,21 +12,8 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title RoleHatUpgrader
  * @author Pacto
- * @notice Coordinates the Nave Pirata role-hat upgrade ceremony: admin gate ⇒ Quiet-Window check
- *         ⇒ clone deploy ⇒ hat transfer ⇒ registry record. Shared across all squads.
- * @dev Admin gate is delegated to Hats Protocol: the caller must be an admin of the target role
- *      hat in the sense of `IHats.isAdminOfHat`. For infra role hats (Quartermaster, Mutiny,
- *      TreasuryAuthority), admin derives from the tophat, which the squad Safe wears — so an
- *      effective call comes from a passing two-body proposal. The master-copy allow-list is
- *      optional and off by default; when enabled, only allow-listed master copies may be cloned.
- *
- *      SquadAdmin is intentionally not supported here: it upgrades in-place via UUPS, governed
- *      exclusively by the captain.
- *
- *      Salt mixing: the caller's `_salt` is mixed with `_roleHatId` to namespace CREATE2
- *      addresses per role hat. This prevents accidental cross-hat address collisions when squads
- *      reuse low-entropy salts (e.g., `bytes32(0)`) and keeps each hat's upgrade address space
- *      independent in `RoleHatClonesFactory`.
+ * @notice Hats admin + `isQuiet` → new clone + `transferHat` + registry. Optional allow-list. See `IRoleHatUpgrader`
+ * @dev `salt` mixes with `roleHatId` for CREATE2. UUPS `SquadAdmin` is out of scope here
  */
 contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   /*///////////////////////////////////////////////////////////////

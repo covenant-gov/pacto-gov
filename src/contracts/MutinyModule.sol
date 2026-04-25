@@ -13,27 +13,8 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title MutinyModule
  * @author Pacto
- * @notice Crew-driven captain succession. Wears `MutinyRole` (admin of the captain hat) and
- *         doubles as the captain hat's `IHatsEligibility` module. Succession happens via one of
- *         two paths: (a) crew-forced mutiny (snapshot-gated 51% yea threshold, permissionless
- *         finalization) or (b) captain voluntary resignation (captain-gated, blocked during
- *         active mutiny). Both paths perform the captain-hat transfer and the Quartermaster crew
- *         mint / hand-off atomically; mutiny also drives `Quartermaster.setMutinyActive` so the
- *         crew roster is frozen for the duration of the round.
- * @dev Deployed as the master copy for EIP-1167 clones. Constructor disables direct init; each
- *      clone is wired by `initialize(InitParams)`. Because Hats Protocol exposes no
- *      `wearerOfHat(id)` getter, the Quartermaster peer address is stored at init and every
- *      outbound peer call re-asserts `IHats.isWearerOfHat(quartermaster, QUARTERMASTER_ROLE_HAT_ID)`
- *      so a stale pointer (after a QuartermasterRole upgrade) reverts rather than silently misroutes.
- *      The captain cache is similarly kept authoritative by this contract being the sole admin of
- *      the captain hat.
- *
- *      There is no mutiny-expiry path: a mutiny that never reaches threshold leaves the round
- *      open and Quartermaster frozen. The release valve is the captain's own `captainResign`
- *      path, which is blocked during active mutiny — so a stalled mutiny must either be carried
- *      through to execution or cleared by a governance-level intervention. This is an
- *      acknowledged product-side risk (see architecture invariant #13 / participation risk) and
- *      not a safety concern.
+ * @notice 51% snapshot mutiny or captain resignation; `IHatsEligibility` for the captain hat; `Quartermaster.setMutinyActive` while a round is live
+ * @dev EIP-1167 master. Hats has no `wearerOfHat(hatId)` — store `quartermaster` and re-check `isWearerOfHat` on each call. A mutiny with no timeout can pin QM in mutiny until governance intervenes; see product notes on participation risk
  */
 contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializable {
   /*///////////////////////////////////////////////////////////////
@@ -95,15 +76,11 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /// @inheritdoc IMutinyModule
   uint256 public override activeMutinyId;
 
-  /**
-   * @notice Monotonically increasing id counter for new rounds. First issued id is `1`; id `0`
-   *         is reserved as the "no active mutiny" sentinel.
-   */
+  /// @notice Monotonic round id counter; first issued is `1`, `0` means no active mutiny
   uint256 internal _nextMutinyId;
 
   /// @notice Round state indexed by mutiny id.
   mapping(uint256 _mutinyId => MutinyRound _round) internal _rounds;
-
   /// @notice Vote-registry; `true` iff `_voter` has cast a yea in `_mutinyId`.
   mapping(uint256 _mutinyId => mapping(address _voter => bool _voted)) internal _hasVoted;
 
@@ -112,21 +89,16 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Master-copy constructor; bakes the Hats singleton into runtime code shared by all
-   *         clones and disables direct initialization of the master copy itself.
-   * @param hats_ Hats Protocol address for this chain.
+   * @notice Master copy: sets immutable Hats; disables direct init on the implementation
+   * @param hats_ Hats Protocol address
    */
   constructor(IHats hats_) HatGated(hats_) {
     _disableInitializers();
   }
 
   /**
-   * @notice Per-clone initializer. Seeds hat ids and the two peer addresses (initial captain,
-   *         Quartermaster clone). The initial captain is marked eligible via
-   *         `getWearerStatus(captain, captainHatId)` so that the factory's subsequent
-   *         `Hats.mintHat(captainHatId, captain)` passes the eligibility check routed through
-   *         this module.
-   * @param _p Bootstrap parameters.
+   * @notice One-shot init: hat ids, `captain`, `quartermaster`. Eligibility for factory `mintHat` flows through `getWearerStatus` here
+   * @param _p Bootstrap parameters
    */
   function initialize(InitParams calldata _p) external initializer {
     if (_p.captain == address(0) || _p.quartermaster == address(0)) revert MutinyModule_ZeroAddress();
@@ -171,8 +143,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   function castVote(uint256 _mutinyId) external override onlyHatWearer(CREW_HAT_ID) {
     if (_mutinyId == 0 || _mutinyId != activeMutinyId) revert MutinyModule_NoActiveMutiny();
     if (_hasVoted[_mutinyId][msg.sender]) revert MutinyModule_AlreadyVoted(msg.sender);
-    // Snapshot membership is equivalent to current crew-hat wearership while the round is open,
-    // because Quartermaster freezes the roster for the duration of the active mutiny.
+    // Roster is frozen for the round, so current crew wearership matches snapshot membership
     _hasVoted[_mutinyId][msg.sender] = true;
     unchecked {
       _rounds[_mutinyId].yeas += 1;
@@ -215,16 +186,10 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Performs the captain-hat transfer and the matching crew-side mint / hand-off
-   *         (for EOA predecessors only) in a single atomic sequence. Updates the local captain
-   *         cache before the `transferHat` call so the eligibility callback routed through
-   *         `getWearerStatus` admits the incoming wearer.
-   * @dev Contract predecessors get no crew seat (the "human-captain" rule — they are not
-   *      considered crew by the architecture). For EOA predecessors the module either hands off
-   *      the successor's existing crew hat (successor already crew) or mints a fresh one through
-   *      Quartermaster.
-   * @param _from Outgoing captain.
-   * @param _to Incoming captain.
+   * @notice Transfers captain hat; updates `captain` before `transferHat` so `getWearerStatus` accepts the new wearer. EOA ex-captain: QM mint or crew handoff
+   * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`
+   * @param _from Outgoing captain
+   * @param _to Incoming captain
    */
   function _succeedCaptain(address _from, address _to) internal {
     address _qm = _liveQuartermaster();
@@ -241,20 +206,15 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   }
 
   /**
-   * @notice Returns the Quartermaster peer address after verifying it still wears
-   *         `QUARTERMASTER_ROLE_HAT_ID`. Reverts with `MutinyModule_StaleQuartermaster` if the
-   *         role hat has moved (indicating this module needs a paired upgrade).
-   * @return _qm Live Quartermaster clone address.
+   * @notice Returns stored `quartermaster` if it still wears `QUARTERMASTER_ROLE_HAT_ID`, else reverts `MutinyModule_StaleQuartermaster` (role hat moved)
+   * @return _qm Live Quartermaster clone
    */
   function _liveQuartermaster() internal view returns (address _qm) {
     _qm = quartermaster;
     if (!_HATS.isWearerOfHat(_qm, QUARTERMASTER_ROLE_HAT_ID)) revert MutinyModule_StaleQuartermaster(_qm);
   }
 
-  /**
-   * @notice Verifies the cached captain address still wears `CAPTAIN_HAT_ID`. Mutiny cannot be
-   *         opened against a phantom captain.
-   */
+  /// @notice Reverts if cached `captain` does not wear `CAPTAIN_HAT_ID` (stale or phantom)
   function _requireLiveCaptain() internal view {
     if (!_HATS.isWearerOfHat(captain, CAPTAIN_HAT_ID)) revert MutinyModule_StaleCaptain(captain);
   }
@@ -287,15 +247,11 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   }
 
   /**
-   * @notice `IHatsEligibility` implementation for the captain hat. Only the address currently
-   *         cached as `captain` is eligible; everyone else is ineligible. Standing is always
-   *         `true` — there is no good-standing differentiation for captain in this module.
-   * @dev Hats invokes this on `mintHat`, `transferHat`, and explicit `checkHatWearerStatus`
-   *      calls; the cache is updated before every outbound transfer, so the incoming wearer
-   *      passes the check.
-   * @param _wearer Prospective wearer.
-   * @return eligible Whether the wearer is currently the captain in our ledger.
-   * @return standing Always `true`.
+   * @notice Captain hat eligibility: only cached `captain` is eligible; `standing` always `true`
+   * @dev Called on mint/transfer; `captain` is set before `transferHat` so the new wearer passes
+   * @param _wearer Wearer to evaluate
+   * @return eligible Whether `_wearer == captain`
+   * @return standing Always `true`
    */
   function getWearerStatus(
     address _wearer,

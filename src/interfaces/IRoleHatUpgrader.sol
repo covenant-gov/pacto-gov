@@ -4,14 +4,8 @@ pragma solidity 0.8.30;
 /**
  * @title IRoleHatUpgrader
  * @author Pacto
- * @notice Ceremony contract that orchestrates Nave Pirata role-hat upgrades.
- * @dev Upgrades are performed by deploying a new clone of an approved master copy, verifying the
- *      old clone is quiet (`IQuiescent.isQuiet()`), then transferring the role hat from the old
- *      clone to the new one. For infra role hats (MutinyRole, QuartermasterRole,
- *      TreasuryAuthorityRole) the admin hat is the tophat worn by the Safe — so the effective
- *      caller is the Safe (via a passing TreasuryAuthority proposal). The squad-admin hat is
- *      intentionally out of scope: SquadAdmin upgrades in-place via UUPS. An admin-gated
- *      allow-list of approved master copies is optionally enforced.
+ * @notice Role-hat upgrade: `isQuiet`, new clone, `transferHat`, `recordUpgrade`. Infra roles use Safe/tophat admin path; SquadAdmin
+ *         is UUPS-only here. Optional allow-list
  */
 interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
@@ -19,11 +13,10 @@ interface IRoleHatUpgrader {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice The kind of role being upgraded.
-   * @dev SquadAdmin is intentionally not included: it upgrades in-place via UUPS, never via this ceremony.
-   * @param QUARTERMASTER Quartermaster clone.
-   * @param MUTINY_MODULE MutinyModule clone.
-   * @param TREASURY_AUTHORITY TreasuryAuthority clone.
+   * @notice Clonable role kinds (SquadAdmin is UUPS, not in this set)
+   * @param QUARTERMASTER Quartermaster clone
+   * @param MUTINY_MODULE MutinyModule clone
+   * @param TREASURY_AUTHORITY TreasuryAuthority clone
    */
   enum RoleKind {
     QUARTERMASTER,
@@ -99,17 +92,15 @@ interface IRoleHatUpgrader {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Deploy a new clone of `_masterCopy`, initialize it with `_initData`, and transfer
-   *         `_roleHatId` from `_oldClone` to the newly deployed clone.
-   * @dev Reverts unless (a) caller wears the admin hat of `_roleHatId`, (b) `_oldClone` reports
-   *      `isQuiet() == true`, and (c) `_masterCopy` is allow-listed when enforcement is enabled.
-   * @param _kind Role kind.
-   * @param _roleHatId Role hat id to transfer.
-   * @param _oldClone Currently-wearing clone.
-   * @param _masterCopy Implementation to clone for the replacement.
-   * @param _initData Encoded `initialize(...)` calldata for the new clone.
-   * @param _salt CREATE2 salt passed to the clones factory.
-   * @return _newClone Address of the newly deployed clone.
+   * @notice Clone `_masterCopy`, init, move `_roleHatId` from `_oldClone` to the new address
+   * @dev Reverts if not admin of the hat, `_oldClone` not quiet, or allow-list rejects `masterCopy`
+   * @param _kind Discriminant for allow-list
+   * @param _roleHatId Hat to repoint
+   * @param _oldClone Wearer to replace
+   * @param _masterCopy New logic master
+   * @param _initData `initialize` calldata
+   * @param _salt CREATE2 input (upgrader may namespace)
+   * @return _newClone New clone
    */
   function upgradeRole(
     RoleKind _kind,

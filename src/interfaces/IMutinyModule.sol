@@ -6,12 +6,8 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
 /**
  * @title IMutinyModule
  * @author Pacto
- * @notice Crew-driven mutiny module: snapshot electorate, one vote per crew member, strict 51%
- *         majority of the snapshot to replace the captain hat wearer.
- * @dev Orchestrates `Hats.transferHat` on the captain hat and calls `IQuartermaster` for crew
- *      mint / burn / hand-off during succession. The 51% threshold is hard-coded — there are no
- *      governance-mutable parameters on this module. A captain may also resign voluntarily via
- *      `captainResign` (bypassing the vote entirely), but not while a mutiny is already active.
+ * @notice 51% of snapshot crew (yeas) to replace the captain, or `captainResign` if no open mutiny. Captain hat
+ *         `IHatsEligibility`; no tunable params. Drives `transferHat` and QM for crew
  */
 interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
@@ -30,10 +26,9 @@ interface IMutinyModule is IQuiescent {
   );
 
   /**
-   * @notice A crew member cast a yea vote.
-   * @dev A "nay" is simply the absence of a vote; mutiny uses a strict 51%-of-snapshot yea threshold.
-   * @param _mutinyId Round identifier.
-   * @param _voter Crew voter.
+   * @notice Crew yea; pass requires yeas * 2 > snapshot (non-voters are not counted as nays)
+   * @param _mutinyId Round id
+   * @param _voter Voter
    */
   event MutinyVoteCast(uint256 indexed _mutinyId, address indexed _voter);
 
@@ -90,10 +85,8 @@ interface IMutinyModule is IQuiescent {
   error MutinyModule_SameCaptain(address _target);
 
   /**
-   * @notice The cached Quartermaster peer no longer wears `QUARTERMASTER_ROLE_HAT_ID`; a role-hat
-   *         upgrade has invalidated this clone's view of its peer and this clone must itself be
-   *         upgraded via the ceremony before further mutiny operations can proceed.
-   * @param _quartermaster The stale peer address.
+   * @notice `quartermaster` no longer wears `QUARTERMASTER_ROLE_HAT_ID` (peer upgraded); upgrade this module before mutiny
+   * @param _quartermaster Stale address
    */
   error MutinyModule_StaleQuartermaster(address _quartermaster);
 

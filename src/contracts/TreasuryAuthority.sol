@@ -14,25 +14,8 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title TreasuryAuthority
  * @author Pacto
- * @notice Two-body democracy over the squad Safe: a passing crew vote plus explicit captain
- *         approval are both required before any Safe transaction is forwarded by this Zodiac
- *         module. Simultaneously the Safe's sole owner and sole module — the module path is
- *         the only functional execution path because this contract intentionally does not
- *         implement ERC-1271 (any `execTransaction` signature flow reverts via the inherited
- *         `AssetRescuer` fallback).
- * @dev Deployed as the master copy for EIP-1167 clones. The constructor disables direct
- *      initialization and bakes the Hats singleton into runtime code shared by clones; each
- *      clone is wired by `initialize(InitParams)` (or the Zodiac-compatible `setUp(bytes)`
- *      shim). After init, ownership of the `Module` base is renounced so `avatar`/`target`
- *      (both set to the Safe) are immutable for the lifetime of the clone.
- *
- *      Parameter setters are self-gated: they require the caller to wear
- *      `TREASURY_AUTHORITY_ROLE_HAT_ID`, which only this live clone ever wears. In practice
- *      that means setters can only be invoked via a passing two-body proposal whose `to` is
- *      this contract.
- *
- *      Rescue destination is `avatar` (the Safe), so any stray assets land back on the Safe
- *      even on a retired clone whose role hat has been transferred away.
+ * @notice Zodiac + Safe owner: crew threshold + `captainApproved`, then `execute` → `avatar`. `exec` from a wallet hits `AssetRescuer` (no ERC-1271)
+ * @dev EIP-1167 master; `initialize` / `setUp` then `renounceOwnership` on `Module` so `avatar`/`target` are fixed. Param setters: TA role hat (via a passing proposal with `to` here). Rescue → Safe
  */
 contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernanceParams, AssetRescuer {
   /*///////////////////////////////////////////////////////////////

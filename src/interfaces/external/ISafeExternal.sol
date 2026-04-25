@@ -4,16 +4,15 @@ pragma solidity 0.8.30;
 /**
  * @title ISafeProxyFactory
  * @author Pacto
- * @notice Minimal ABI for Safe's proxy factory used by `NavePirataFactory` to deploy per-squad
- *         Safes with deterministic CREATE2 addresses.
+ * @notice `createProxyWithNonce` slice used for squad Safes
  */
 interface ISafeProxyFactory {
   /**
-   * @notice Deploys a Safe proxy via CREATE2 and invokes `initializer` on it.
-   * @param _singleton Safe singleton backing the new proxy.
-   * @param _initializer ABI-encoded `setup(...)` call executed on the fresh proxy.
-   * @param _saltNonce Salt nonce used in CREATE2 derivation.
-   * @return _proxy Address of the deployed Safe proxy.
+   * @notice CREATE2 proxy + run `_initializer` (usually `setup`)
+   * @param _singleton Safe logic singleton
+   * @param _initializer `setup` calldata
+   * @param _saltNonce CREATE2 salt input
+   * @return _proxy Proxy
    */
   function createProxyWithNonce(
     address _singleton,
@@ -25,9 +24,7 @@ interface ISafeProxyFactory {
 /**
  * @title ISafe
  * @author Pacto
- * @notice Minimal ABI for a Safe proxy covering the surface `NavePirataFactory` and
- *         `TreasuryAuthority` need to interact with at bootstrap and runtime. Full Safe source
- *         uses `Enum.Operation`; the ABI-level type is `uint8`.
+ * @notice Subset of Safe used by the factory and execution path. Inner op is `uint8` in ABI; Safe uses `Enum.Operation`
  */
 interface ISafe {
   /**

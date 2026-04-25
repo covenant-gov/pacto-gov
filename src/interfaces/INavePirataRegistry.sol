@@ -4,11 +4,8 @@ pragma solidity 0.8.30;
 /**
  * @title INavePirataRegistry
  * @author Pacto
- * @notice Append-only, on-chain discovery registry for deployed Nave Pirata squads and their
- *         role-hat upgrade history.
- * @dev Writes come exclusively from two trusted contracts wired at deploy time: `NavePirataFactory`
- *      (initial registration) and `RoleHatUpgrader` (upgrade records). Pacto-app consumes this
- *      registry to discover per-squad addresses and hat ids without rescanning events.
+ * @notice Append-only index of squads and role-hat upgrade log. Only the wired `NavePirataFactory` and
+ *         `RoleHatUpgrader` may write
  */
 interface INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////

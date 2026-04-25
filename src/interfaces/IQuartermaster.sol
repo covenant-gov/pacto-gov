@@ -6,11 +6,8 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
 /**
  * @title IQuartermaster
  * @author Pacto
- * @notice Timelocked crew onboarding and offboarding; administers the crew hat in Hats Protocol.
- * @dev Captain-gated request / cancel pattern with permissionless execution after the configured
- *      `crewChangeDelay`. While `mutinyActive`, onboarding is frozen and the MutinyModule drives
- *      crew mint / hand-off paths directly. Parameter setters are gated by the Treasury Authority
- *      role hat so governance changes always flow through the two-body vote.
+ * @notice Timelocked crew add/remove; implements `IHatsEligibility` for the crew hat. Captain requests; anyone
+ *         executes after `crewChangeDelay`. When `mutinyActive`, only mutiny hooks change crew. Delay changes: TA role + two-body
  */
 interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////

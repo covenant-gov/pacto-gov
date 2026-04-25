@@ -11,30 +11,18 @@ import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 /**
  * @title AssetRescuer
  * @author Pacto
- * @notice Abstract base for contracts that should never hold assets. Rejects
- *         voluntary incoming ETH with a helpful error pointing at the rescue
- *         destination, and exposes permissionless sweep functions for any
- *         accidentally-received ETH, ERC-20, ERC-721, or ERC-1155 assets.
- * @dev Inheriting contracts implement `_rescueDestination()` to supply a fixed
- *      destination (e.g., the squad Safe). Rescue remains operational forever —
- *      even on a retired clone whose role hat has been transferred away — so no
- *      funds can be permanently stranded on an inheriting contract's address.
+ * @notice Receive/fallback revert with `_rescueDestination()`. Public sweeps for ETH/ERC20/721/1155; safe after a role hat has moved
+ * @dev Override `_rescueDestination` (e.g. Safe) — funds never meant to sit on this address
  */
 abstract contract AssetRescuer is IAssetRescuer {
   using SafeERC20 for IERC20;
 
-  /**
-   * @notice Reject direct ETH sends with an error that includes the intended destination.
-   * @dev Prevents users silently burning value against a contract that shouldn't hold funds.
-   */
+  /// @notice Reject value + empty calldata; revert names `_rescueDestination`
   receive() external payable {
     revert AssetRescuer_SendToDestinationInstead(_rescueDestination());
   }
 
-  /**
-   * @notice Reject unknown calldata with an error that includes the intended destination.
-   * @dev Matches `receive()` behavior for non-empty calldata sends.
-   */
+  /// @notice Reject unknown calldata; revert names `_rescueDestination`
   fallback() external payable {
     revert AssetRescuer_SendToDestinationInstead(_rescueDestination());
   }
@@ -76,8 +64,7 @@ abstract contract AssetRescuer is IAssetRescuer {
 
   /**
    * @notice Resolve the rescue destination for this contract.
-   * @dev Must be overridden by the inheriting contract. For `TreasuryAuthority`
-   *      this returns the Zodiac `avatar` (the Safe).
+   * @dev Must be overridden. For `TreasuryAuthority` this returns the Zodiac `avatar` (the Safe).
    * @return _destination The address to which rescued assets are forwarded.
    */
   function _rescueDestination() internal view virtual returns (address _destination);

@@ -6,13 +6,8 @@ import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
 /**
  * @title INavePirataFactory
  * @author Pacto
- * @notice One-shot bootstrap factory that deploys a full Nave Pirata squad in a single transaction.
- * @dev Deploys the Safe, mints the hat tree (tophat, captain, crew, squad-admin, and role hats),
- *      clones Quartermaster / MutinyModule / TreasuryAuthority from approved master copies, creates
- *      the SquadAdmin UUPS proxy, initializes each role contract, mints each role hat to its clone,
- *      wires TreasuryAuthority as both the Safe's sole owner and sole Zodiac module, and registers
- *      the deployment in `NavePirataRegistry`. The tophat is transferred to the Safe at the end of
- *      the ceremony.
+ * @notice One transaction: deploy Safe, build hat tree, clone QM / Mutiny / TA + SquadAdmin proxy, mint hats,
+ *         wire `TreasuryAuthority` as sole Safe module+owner, `registerDeployment`, then move tophat to the Safe
  */
 interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////

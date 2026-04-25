@@ -6,12 +6,8 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
 /**
  * @title ISquadAdmin
  * @author Pacto
- * @notice Captain-controlled application-level admin surface for a squad. v1 ships a minimal
- *         executor allow-list and gasless governance predicates.
- * @dev UUPS-upgradeable implementation: `upgradeToAndCall` is captain-hat-gated. The captain
- *      alone authorises SquadAdmin upgrades — SquadAdmin changes do not flow through the
- *      two-body vote, by design. Phase 11 expands this interface with EIP-712 Signed App Actions,
- *      per-channel policies, and richer predicates.
+ * @notice Captain-only product admin (executors + `isExecutor` v1). UUPS upgrades are captain-gated, not two-body.
+ *         More predicates / signed actions come in later versions
  */
 interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
@@ -66,12 +62,9 @@ interface ISquadAdmin is IQuiescent {
   function disableExecutor(address _executor) external;
 
   /**
-   * @notice UUPS upgrade. Captain-hat-gated.
-   * @dev Standard UUPS `upgradeToAndCall` semantics; data location matches OpenZeppelin's
-   *      `UUPSUpgradeable.upgradeToAndCall(address,bytes memory)` so this interface can be
-   *      satisfied by a single overriding function.
-   * @param _newImplementation New logic contract address.
-   * @param _data Optional initializer calldata; pass empty bytes for no call.
+   * @notice UUPS `upgradeToAndCall`; captain-only. `_data` optional post-upgrade call
+   * @param _newImplementation New implementation
+   * @param _data Optional call data after upgrade
    */
   function upgradeToAndCall(address _newImplementation, bytes memory _data) external payable;
 
@@ -80,22 +73,21 @@ interface ISquadAdmin is IQuiescent {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Whether an address is currently an enabled executor.
-   * @dev Single gasless governance predicate for v1. Phase 11 expands to richer role / channel predicates.
-   * @param _executor Address to query.
-   * @return _enabled True if enabled.
+   * @notice v1 gasless gate: enabled executors (more predicates later)
+   * @param _executor Who to query
+   * @return _enabled Whether enabled
    */
   function isExecutor(address _executor) external view returns (bool _enabled);
 
   /**
-   * @notice Captain hat id.
-   * @return _captainHatId The captain hat id.
+   * @notice Captain hat id
+   * @return _captainHatId Hat id
    */
   function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatId);
 
   /**
-   * @notice Squad-admin hat id.
-   * @return _squadAdminHatId The squad-admin hat id worn by this proxy.
+   * @notice Squad admin hat id (this proxy wears it)
+   * @return _squadAdminHatId Hat id
    */
   function SQUAD_ADMIN_HAT_ID() external view returns (uint256 _squadAdminHatId);
 }

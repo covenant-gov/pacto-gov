@@ -6,18 +6,11 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title HatGated
  * @author Pacto
- * @notice Shared base for hat-gated access control. Implements the "Authority Lookup"
- *         pattern by resolving gate checks against Hats Protocol at call time rather
- *         than caching peer addresses.
- * @dev The address of the Hats singleton is baked into the deploying contract's
- *      runtime code as an `immutable`. For EIP-1167 clones this value is inherited
- *      from the master copy (clones delegate-call into the master's runtime code).
+ * @notice Hats is the source of truth for gates; `_HATS` is immutable in the master so clones share it
+ * @dev EIP-1167 min proxies delegate to the same runtime that holds the immutable
  */
 abstract contract HatGated {
-  /**
-   * @notice Hats Protocol singleton used for all gate checks.
-   * @dev Immutable for gas-efficient reads and for inclusion in the master copy runtime code of clones.
-   */
+  /// @notice Hats singleton for `isWearerOfHat` checks
   IHats internal immutable _HATS;
 
   /**

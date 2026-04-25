@@ -4,14 +4,7 @@ pragma solidity 0.8.30;
 /**
  * @title IAssetRescuer
  * @author Pacto
- * @notice Permissionless asset recovery to a fixed destination. Contracts that
- *         inherit this surface hard-code a single destination via an internal hook
- *         and expose sweep functions for any accidentally-received ETH, ERC-20,
- *         ERC-721, or ERC-1155 assets.
- * @dev Intended for contracts that live at user-predictable addresses and should
- *      never hold assets (e.g., `TreasuryAuthority`). Direct ETH sends are
- *      deliberately rejected with a helpful error so wallets surface the correct
- *      destination.
+ * @notice Permissionless sweeps to `_rescueDestination()`; receive/fallback revert with that address. ETH + ERC20/721/1155
  */
 interface IAssetRescuer {
   /*///////////////////////////////////////////////////////////////

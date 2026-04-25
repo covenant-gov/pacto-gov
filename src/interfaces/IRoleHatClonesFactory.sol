@@ -4,11 +4,8 @@ pragma solidity 0.8.30;
 /**
  * @title IRoleHatClonesFactory
  * @author Pacto
- * @notice Generic EIP-1167 minimal-proxy factory for Nave Pirata role contracts.
- * @dev Permissionless: anyone may clone an approved master copy. Trust flows from the caller
- *      — typically `NavePirataFactory` (one-shot bootstrap) or `RoleHatUpgrader` (upgrade
- *      ceremony). The factory itself does not enforce a master-copy allow-list; that is the
- *      responsibility of `RoleHatUpgrader`.
+ * @notice Permissionless CREATE2 EIP-1167 role clones. Clone address = f(master, salt, this); master-copy
+ *         allow-list is on `RoleHatUpgrader` / call policy, not here
  */
 interface IRoleHatClonesFactory {
   /*///////////////////////////////////////////////////////////////
@@ -38,20 +35,19 @@ interface IRoleHatClonesFactory {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Deploy an EIP-1167 clone of `_masterCopy` via CREATE2, then invoke `_initData` on it.
-   * @dev The clone's address is deterministic in `(masterCopy, salt, factory)`.
-   * @param _masterCopy Implementation address.
-   * @param _initData Encoded `initialize(...)` calldata to invoke on the fresh clone.
-   * @param _salt CREATE2 salt.
-   * @return _clone Address of the newly deployed clone.
+   * @notice CREATE2 clone of `_masterCopy`, then `_initData` on the new proxy
+   * @param _masterCopy Master implementation
+   * @param _initData Encoded `initialize(...)` for the clone
+   * @param _salt CREATE2 salt
+   * @return _clone New clone
    */
   function createClone(address _masterCopy, bytes calldata _initData, bytes32 _salt) external returns (address _clone);
 
   /**
-   * @notice Predict the address of a clone for `(masterCopy, salt)`.
-   * @param _masterCopy Implementation address.
-   * @param _salt CREATE2 salt.
-   * @return _predicted Deterministic address of the would-be clone.
+   * @notice Deterministic address for `(masterCopy, salt, this factory)`
+   * @param _masterCopy Master implementation
+   * @param _salt CREATE2 salt
+   * @return _predicted Predicted clone
    */
   function predictCloneAddress(address _masterCopy, bytes32 _salt) external view returns (address _predicted);
 }

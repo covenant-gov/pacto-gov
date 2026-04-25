@@ -12,17 +12,8 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title SquadAdminImpl
  * @author Pacto
- * @notice v1 implementation behind the SquadAdmin UUPS proxy. Exposes a captain-gated executor
- *         roster and the single gasless governance predicate (`isExecutor`) used by the
- *         application layer. Richer product surface (EIP-712 signed app actions, channel-scoped
- *         policy, role / permission enumeration) is intentionally deferred to Phase 11 and will
- *         ship as `SquadAdminImplV2` installed via captain-authorised `upgradeToAndCall`.
- * @dev Storage follows ERC-7201 ([EIP-7201](https://eips.ethereum.org/EIPS/eip-7201)) under the
- *      namespace `pacto.squadadmin.v1`, so future implementation versions may append fields
- *      without colliding with existing state or the inherited `Initializable` /
- *      `UUPSUpgradeable` storage. Upgrade authorisation is captain-hat-gated via
- *      `_authorizeUpgrade`, matching the "SquadAdmin changes do not flow through the two-body
- *      vote" architectural rule — the captain alone controls the product surface.
+ * @notice v1: captain-gated `enable`/`disable` executor and `isExecutor` for app gating. More surface later via UUPS
+ * @dev ERC-7201 `pacto.squadadmin.v1` layout; UUPS is captain-only (not two-body)
  */
 contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable {
   /*///////////////////////////////////////////////////////////////

@@ -7,15 +7,9 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
 /**
  * @title ITreasuryAuthority
  * @author Pacto
- * @notice Two-body democracy authority over the squad Safe: crew majority plus captain approval.
- * @dev Simultaneously the sole Safe owner and the sole Zodiac module on the Safe. Proposals may
- *      originate from the captain or any crew member. Crew voting operates in one of two modes
- *      selectable per squad: majority of the snapshot electorate, or quorum of cast votes.
- *      Captain must explicitly approve (or may reject) before execution. Parameter setters are
- *      self-gated: they are callable only via a passing TreasuryAuthority proposal (i.e. by the
- *      TreasuryAuthorityRole hat wearer, which is this contract itself at the end of execute).
- *      Inherits `IAssetRescuer` so any stray assets sent to the TreasuryAuthority address can be
- *      swept back to the Safe.
+ * @notice Two-body Safe control: crew must pass the vote (snapshot majority or quorum-of-cast), captain must
+ *         approve, then execute. Sole module+owner on the Safe; param changes go through this role hat. `IAssetRescuer`
+ *         sweeps stray balance to the Safe
  */
 interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
@@ -77,11 +71,9 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   event CrewVoted(uint256 indexed _proposalId, address indexed _voter, bool _yea);
 
   /**
-   * @notice The captain approved the proposal.
-   * @dev Rejection has no event or state: it is the implicit default. A proposal without
-   *      captain approval simply dies at its `deadline`.
-   * @param _proposalId Proposal identifier.
-   * @param _captain Address that approved.
+   * @notice Captain approved (no rejection event; missing approval + deadline ends the proposal)
+   * @param _proposalId Proposal id
+   * @param _captain Approver
    */
   event CaptainApproved(uint256 indexed _proposalId, address indexed _captain);
 

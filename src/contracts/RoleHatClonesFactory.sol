@@ -8,13 +8,7 @@ import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 /**
  * @title RoleHatClonesFactory
  * @author Pacto
- * @notice Permissionless CREATE2 factory for EIP-1167 minimal proxies of Nave Pirata role
- *         contracts. Trust flows from the caller (typically `NavePirataFactory` during squad
- *         bootstrap, or `RoleHatUpgrader` during a role-hat upgrade ceremony).
- * @dev The factory itself is stateless — it keeps no registry of emitted clones or allow-listed
- *      master copies. Allow-list enforcement lives on `RoleHatUpgrader`; squad discovery lives
- *      on `NavePirataRegistry`. Each clone's address is deterministic in `(factory, masterCopy,
- *      salt)`, identical to OpenZeppelin's `Clones.cloneDeterministic` / `predictDeterministicAddress`.
+ * @notice Stateless `Clones` wrapper; caller is responsible for which master and salt. See `IRoleHatClonesFactory`
  */
 contract RoleHatClonesFactory is IRoleHatClonesFactory {
   /*///////////////////////////////////////////////////////////////

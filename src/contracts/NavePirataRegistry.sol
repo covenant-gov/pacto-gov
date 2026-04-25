@@ -8,14 +8,8 @@ import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 /**
  * @title NavePirataRegistry
  * @author Pacto
- * @notice Append-only on-chain registry for Nave Pirata squad deployments and their role-hat
- *         upgrade history. Writes are restricted to the two trusted protocol contracts wired at
- *         deploy time: `NavePirataFactory` (initial registration) and `RoleHatUpgrader` (upgrade
- *         records).
- * @dev Wiring pattern: the registry is deployed first, then `factory` and `upgrader` are each
- *      set once by the deploy admin (`Ownable`). Admins renounce ownership once both are set.
- *      The setters are one-shot; there is no write path to overwrite an established wiring or
- *      an existing deployment record.
+ * @notice On-chain, append-only squad + upgrade log; see `INavePirataRegistry`
+ * @dev Factory/upgrader set once; owner should renounce after wiring
  */
 contract NavePirataRegistry is INavePirataRegistry, Ownable {
   /*///////////////////////////////////////////////////////////////
