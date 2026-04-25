@@ -117,71 +117,22 @@ contract NavePirataFactory is INavePirataFactory {
 
     _safe = _deploySafe(_params.saltNonce);
 
-    (bytes32 _qmSalt, bytes32 _mmSalt, bytes32 _taSalt) = _cloneSalts(_params.saltNonce);
-    address _predQuartermaster = _CLONES_FACTORY.predictCloneAddress(_params.quartermasterMasterCopy, _qmSalt);
-    address _predMutinyModule = _CLONES_FACTORY.predictCloneAddress(_params.mutinyMasterCopy, _mmSalt);
+    HatTree memory _hats;
+    {
+      (bytes32 _qmSalt, bytes32 _mmSalt, bytes32 _taSalt) = _cloneSalts(_params.saltNonce);
+      address _predQuartermaster = _CLONES_FACTORY.predictCloneAddress(_params.quartermasterMasterCopy, _qmSalt);
+      address _predMutinyModule = _CLONES_FACTORY.predictCloneAddress(_params.mutinyMasterCopy, _mmSalt);
 
-    HatTree memory _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
-    _topHatId = _hats.topHatId;
+      _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
+      _topHatId = _hats.topHatId;
 
-    _quartermaster = _CLONES_FACTORY.createClone(
-      _params.quartermasterMasterCopy,
-      abi.encodeCall(
-        Quartermaster.initialize,
-        (IQuartermaster.InitParams({
-            captainHatId: _hats.captainHatId,
-            crewHatId: _hats.crewHatId,
-            mutinyRoleHatId: _hats.mutinyRoleHatId,
-            quartermasterRoleHatId: _hats.quartermasterRoleHatId,
-            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            crewChangeDelay: _params.squadParams.crewChangeDelay
-          }))
-      ),
-      _qmSalt
-    );
-
-    _mutinyModule = _CLONES_FACTORY.createClone(
-      _params.mutinyMasterCopy,
-      abi.encodeCall(
-        MutinyModule.initialize,
-        (IMutinyModule.InitParams({
-            captainHatId: _hats.captainHatId,
-            crewHatId: _hats.crewHatId,
-            mutinyRoleHatId: _hats.mutinyRoleHatId,
-            quartermasterRoleHatId: _hats.quartermasterRoleHatId,
-            captain: _params.captain,
-            quartermaster: _quartermaster
-          }))
-      ),
-      _mmSalt
-    );
-
-    _treasuryAuthority = _CLONES_FACTORY.createClone(
-      _params.treasuryAuthorityMasterCopy,
-      abi.encodeCall(
-        TreasuryAuthority.initialize,
-        (ITreasuryAuthority.InitParams({
-            safe: _safe,
-            captainHatId: _hats.captainHatId,
-            crewHatId: _hats.crewHatId,
-            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            proposalExpiry: _params.squadParams.proposalExpiry,
-            crewVoteMode: _params.squadParams.crewVoteMode,
-            quorumBps: _params.squadParams.quorumBps
-          }))
-      ),
-      _taSalt
-    );
-
-    _squadAdminProxy = address(
-      new SquadAdmin(
-        _params.squadAdminImplementation,
-        abi.encodeCall(
-          SquadAdminImpl.initialize,
-          (ISquadAdmin.InitParams({captainHatId: _hats.captainHatId, squadAdminHatId: _hats.squadAdminHatId}))
-        )
-      )
-    );
+      _quartermaster =
+        _deployQuartermasterClone(_params.quartermasterMasterCopy, _hats, _params.squadParams.crewChangeDelay, _qmSalt);
+      _mutinyModule =
+        _deployMutinyModuleClone(_params.mutinyMasterCopy, _hats, _params.captain, _quartermaster, _mmSalt);
+      _treasuryAuthority = _deployTreasuryAuthorityClone(_params, _safe, _hats, _taSalt);
+      _squadAdminProxy = _deploySquadAdminProxy(_params.squadAdminImplementation, _hats);
+    }
 
     _mintRoleHats(_hats, _quartermaster, _mutinyModule, _treasuryAuthority, _squadAdminProxy, _params.captain);
 
@@ -395,6 +346,89 @@ contract NavePirataFactory is INavePirataFactory {
     _qmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_QM));
     _mmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_MM));
     _taSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_TA));
+  }
+
+  function _deployQuartermasterClone(
+    address _masterCopy,
+    HatTree memory _hats,
+    uint256 _crewChangeDelay,
+    bytes32 _salt
+  ) internal returns (address _clone) {
+    _clone = _CLONES_FACTORY.createClone(
+      _masterCopy,
+      abi.encodeCall(
+        Quartermaster.initialize,
+        (IQuartermaster.InitParams({
+            captainHatId: _hats.captainHatId,
+            crewHatId: _hats.crewHatId,
+            mutinyRoleHatId: _hats.mutinyRoleHatId,
+            quartermasterRoleHatId: _hats.quartermasterRoleHatId,
+            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+            crewChangeDelay: _crewChangeDelay
+          }))
+      ),
+      _salt
+    );
+  }
+
+  function _deployMutinyModuleClone(
+    address _masterCopy,
+    HatTree memory _hats,
+    address _captain,
+    address _quartermaster,
+    bytes32 _salt
+  ) internal returns (address _clone) {
+    _clone = _CLONES_FACTORY.createClone(
+      _masterCopy,
+      abi.encodeCall(
+        MutinyModule.initialize,
+        (IMutinyModule.InitParams({
+            captainHatId: _hats.captainHatId,
+            crewHatId: _hats.crewHatId,
+            mutinyRoleHatId: _hats.mutinyRoleHatId,
+            quartermasterRoleHatId: _hats.quartermasterRoleHatId,
+            captain: _captain,
+            quartermaster: _quartermaster
+          }))
+      ),
+      _salt
+    );
+  }
+
+  function _deployTreasuryAuthorityClone(
+    DeployParams calldata _params,
+    address _safe,
+    HatTree memory _hats,
+    bytes32 _salt
+  ) internal returns (address _clone) {
+    _clone = _CLONES_FACTORY.createClone(
+      _params.treasuryAuthorityMasterCopy,
+      abi.encodeCall(
+        TreasuryAuthority.initialize,
+        (ITreasuryAuthority.InitParams({
+            safe: _safe,
+            captainHatId: _hats.captainHatId,
+            crewHatId: _hats.crewHatId,
+            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+            proposalExpiry: _params.squadParams.proposalExpiry,
+            crewVoteMode: _params.squadParams.crewVoteMode,
+            quorumBps: _params.squadParams.quorumBps
+          }))
+      ),
+      _salt
+    );
+  }
+
+  function _deploySquadAdminProxy(address _implementation, HatTree memory _hats) internal returns (address _proxy) {
+    _proxy = address(
+      new SquadAdmin(
+        _implementation,
+        abi.encodeCall(
+          SquadAdminImpl.initialize,
+          (ISquadAdmin.InitParams({captainHatId: _hats.captainHatId, squadAdminHatId: _hats.squadAdminHatId}))
+        )
+      )
+    );
   }
 
   /**
