@@ -1,4 +1,5 @@
 name: Install tools common to all our actions
+description: Installs pinned Foundry, pnpm, Node.js, and project dependencies for CI jobs.
 
 runs:
   using: composite
@@ -6,7 +7,8 @@ runs:
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
       with:
-        version: stable
+        # Pin so `forge fmt --check` matches developer installs (floating `stable` changes formatter output).
+        version: v1.4.1
 
     - name: Install pnpm
       uses: pnpm/action-setup@v4

@@ -5,3 +5,10 @@ interfaces/=src/interfaces
 
 hats-core/=node_modules/hats-core/src
 hats-zodiac/=node_modules/hats-zodiac/src
+
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
+
+@safe-global/safe-contracts/=node_modules/@safe-global/safe-contracts/
+@gnosis-guild/zodiac/=node_modules/@gnosis-guild/zodiac/
+@gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/

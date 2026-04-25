@@ -1,0 +1,41 @@
+---
+description: In-code and NatSpec comment style — concise, purposeful, no noise
+alwaysApply: true
+---
+
+# Comments and NatSpec
+
+## Defaults
+
+- Prefer **self-explanatory names and structure** over comments. If a reader can see it from the signature and one or two lines, do not comment it.
+- Use inline `//` only when something is **non-obvious**: ordering assumptions, security or trust boundaries, subtle EVM/Solidity behavior, or **why** this approach was chosen. Do not narrate **what** the next line does.
+- **Do not** add long explanatory blocks, “tutorial” comments, or restate types, parameter names, or NatSpec in prose above the same code.
+- **Do not** add section divider banners or new comment-heavy style unless the file already uses that pattern consistently.
+
+## When editing
+
+- **Do not delete or rewrite** comments (or NatSpec) that are unrelated to the change. Touch only what the task requires.
+- New comments should **match the density and tone** of the surrounding contract or test file.
+- **Do not** add comments about **legacy behaviour, prior implementations, or refactors** (“used to…”, “previously…”, “we changed X because…”). That reads like a changelog inside the source, confuses anyone joining the codebase, and is especially unhelpful **before production launch**—the code should describe the **current** model only. Put history in git commits or design docs, not inline.
+
+## NatSpec (interfaces, contracts, public API)
+
+- Keep `@notice` / `@dev` / `@param` **short and specific**. One clear sentence beats a paragraph.
+- Avoid duplicating the function name or repeating information already obvious from types and parameter names; use NatSpec for **intent**, edge cases, and invariants callers must respect.
+- Follow project expectations where **lintspec** / CI applies (e.g. `src/`, `script/`, `test/` per project config).
+
+## Examples
+
+```solidity
+// BAD — noise
+// Increment i by 1
+i++;
+
+// BAD — restates the code
+// Transfer the hat to the safe
+_HATS.transferHat(_topHatId, address(this), _safe);
+
+// GOOD — encodes a non-obvious invariant or ordering
+// Safe must be module+owner before tophat moves; see _bootstrapSafe
+_HATS.transferHat(_topHatId, address(this), _safe);
+```

@@ -1,17 +1,29 @@
-<img src="https://raw.githubusercontent.com/defi-wonderland/brand/v1.0.0/external/solidity-foundry-boilerplate-banner.png" alt="wonderland banner" align="center" />
-<br />
+# Pacto Gov — Nave Pirata
 
-<div align="center"><strong>Start your next Solidity project with Foundry in seconds</strong></div>
-<div align="center">A highly scalable foundation focused on DX and best practices</div>
+Governance contracts for Pacto squads. Each squad deploys a "Nave Pirata" (pirate ship) — a hat-governed mesh of role contracts sitting on top of a Safe — via a one-shot factory call.
 
-<br />
+## Nave Pirata contracts
 
-## Features
+The system is built around **Hats-Pointer Upgradeability**: authority is a Hats Protocol hat, and upgrading a role contract is a `transferHat` call rather than a proxy migration. See the design docs for the full architecture.
+
+**Docs**:
+- [Architecture](./ai-docs/nave-pirata-hats-pointer-architecture.md) — hat tree, roles, invariants, upgrade paths, named patterns.
+- [Tech spec](./ai-docs/nave-pirata-tech-spec.md) — interfaces, storage strategy, bootstrap sequence, resolved decisions, execution phases.
+
+**Contracts (v1)**:
+- `Quartermaster` — timelocked crew roster, admin of the crew hat.
+- `MutinyModule` — 51%-of-snapshot captain accountability, admin of the captain hat; also supports voluntary captain resignation.
+- `TreasuryAuthority` — two-body democracy (crew majority + captain approval) over the squad's Safe. Both the Safe's sole owner *and* its sole Zodiac module. Inherits `AssetRescuer`.
+- `SquadAdmin` — UUPS proxy for application-level admin predicates; captain-upgradeable.
+- `NavePirataFactory` — one-shot bootstrap that atomically deploys the Safe, creates the hat tree, deploys clones, wires the Safe, and registers the deployment.
+- `NavePirataRegistry`, `RoleHatClonesFactory`, `RoleHatUpgrader` — infra for discovery and upgrade ceremonies.
+- `AssetRescuer` (abstract) — shared primitive; permissionless sweep of accidentally-received ETH / ERC-20 / ERC-721 / ERC-1155 to a fixed destination.
+
+---
+
+## Boilerplate features
 
 <dl>
-  <dt>Nave Pirata contracts</dt>
-  <dd>Quartermaster, MutinyModule, PactoAdmin, and related interfaces—see NatSpec in <code>src/contracts/</code> and <code>src/interfaces/</code>.</dd>
-
   <dt>Foundry setup</dt>
   <dd>Foundry configuration with multiple custom profiles and remappings.</dd>
 

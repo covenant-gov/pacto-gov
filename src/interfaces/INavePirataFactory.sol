@@ -1,115 +1,170 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
+
 /**
  * @title INavePirataFactory
  * @author Pacto
- * @notice One-shot deployment of Nave Pirata contracts and Hats tree wiring (implementation-specific).
- * @dev Parameters may grow; keep this interface minimal until `Quartermaster` and `MutinyModule` constructors are fixed.
+ * @notice One transaction: deploy Safe, build hat tree, clone QM / Mutiny / TA + SquadAdmin proxy, mint hats,
+ *         wire `TreasuryAuthority` as sole Safe module+owner, `registerDeployment`, then move tophat to the Safe
  */
 interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
-                            EVENTS
+                            TYPES
   //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Governance defaults for a new squad.
+   * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
+   * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires.
+   * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast).
+   * @param quorumBps Quorum in basis points, only applied when `crewVoteMode == QUORUM_OF_CAST`.
+   */
+  struct SquadParams {
+    uint256 crewChangeDelay;
+    uint256 proposalExpiry;
+    ITreasuryAuthority.CrewVoteMode crewVoteMode;
+    uint256 quorumBps;
+  }
 
   /**
-   * @notice A full Nave Pirata deployment was completed
-   * @param _quartermaster Deployed Quartermaster
-   * @param _mutinyModule Deployed mutiny module
-   * @param _pactoAdmin Pacto Admin contract address (Hats wearer for Pacto-admin hat)
-   * @param _topHatId Tophat id in Hats
-   * @param _captainHatId Captain hat id
-   * @param _crewHatId Crew hat id
+   * @notice Deployment parameters supplied by the caller.
+   * @param captain Initial captain (EOA or contract; non-zero).
+   * @param metadataURI Squad metadata URI (surfaced by pacto-app).
+   * @param squadParams Initial governance values (validated by each role’s initializer).
+   * @param quartermasterMasterCopy Approved Quartermaster master copy to clone.
+   * @param mutinyMasterCopy Approved MutinyModule master copy to clone.
+   * @param treasuryAuthorityMasterCopy Approved TreasuryAuthority master copy to clone.
+   * @param squadAdminImplementation SquadAdmin UUPS implementation to back the proxy.
+   * @param saltNonce CREATE2 nonce for Safe + clone determinism.
+   */
+  struct DeployParams {
+    address captain;
+    string metadataURI;
+    SquadParams squadParams;
+    address quartermasterMasterCopy;
+    address mutinyMasterCopy;
+    address treasuryAuthorityMasterCopy;
+    address squadAdminImplementation;
+    uint256 saltNonce;
+  }
+
+  /**
+   * @notice Hat id bundle produced while building a squad's tree, threaded through clone-init and mints.
+   * @param topHatId Squad tophat id (initially worn by the factory, transferred to the Safe at the end of the ceremony).
+   * @param mutinyRoleHatId MutinyRole hat id (worn by the MutinyModule clone).
+   * @param quartermasterRoleHatId QuartermasterRole hat id (worn by the Quartermaster clone).
+   * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id (worn by the TreasuryAuthority clone).
+   * @param captainHatId Captain hat id (worn by `DeployParams.captain`).
+   * @param crewHatId Crew hat id (empty at bootstrap; filled by Quartermaster onboarding).
+   * @param squadAdminHatId Squad-admin hat id (worn by the SquadAdmin UUPS proxy).
+   */
+  struct HatTree {
+    uint256 topHatId;
+    uint256 mutinyRoleHatId;
+    uint256 quartermasterRoleHatId;
+    uint256 treasuryAuthorityRoleHatId;
+    uint256 captainHatId;
+    uint256 crewHatId;
+    uint256 squadAdminHatId;
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            EVENTS
+  //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice A new Nave Pirata squad was deployed.
+   * @param _topHatId Squad tophat id (registry key).
+   * @param _captain Initial captain.
+   * @param _safe Deployed Safe.
+   * @param _quartermaster Quartermaster clone.
+   * @param _mutinyModule MutinyModule clone.
+   * @param _treasuryAuthority TreasuryAuthority clone.
+   * @param _squadAdminProxy SquadAdmin UUPS proxy.
    */
   event NavePirataDeployed(
-    address indexed _quartermaster,
-    address indexed _mutinyModule,
-    address indexed _pactoAdmin,
-    uint256 _topHatId,
-    uint256 _captainHatId,
-    uint256 _crewHatId
+    uint256 indexed _topHatId,
+    address indexed _captain,
+    address _safe,
+    address _quartermaster,
+    address _mutinyModule,
+    address _treasuryAuthority,
+    address _squadAdminProxy
   );
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
-   * @notice Deploy parameters failed validation
+   * @notice A required deployment field was the zero address.
+   * @param _field Name of the zero field (for debugging).
    */
-  error NavePirataFactory_InvalidParams();
-
-  /**
-   * @notice Hats interaction failed during deploy
-   */
-  error NavePirataFactory_HatsError();
+  error NavePirataFactory_ZeroAddress(string _field);
+  /// @notice The Safe deployment call failed.
+  error NavePirataFactory_SafeDeployFailed();
+  /// @notice Teardown of the factory's temporary ownership at the end of the ceremony failed.
+  error NavePirataFactory_BootstrapTeardownFailed();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
-   * @notice Deploy Quartermaster + Mutiny module, create tophat/captain/crew hats, wire admins and initial captain mint
-   * @param _hats Hats Protocol contract
-   * @param _safeTophatWearer Safe that will wear the tophat
-   * @param _deployerCaptain Address receiving the captain hat at bootstrap (initial captain)
-   * @param _pactoAdmin Pacto Admin contract (must be deployed first; receives Pacto-admin hat mint in tree wiring)
-   * @param _crewChangeDelay Delay for Quartermaster schedule/execute crew changes
-   * @param _crewHatMaxSupply Max supply for crew hat (e.g. 10_000)
-   * @param _topHatDetails Metadata/details string for tophat
-   * @param _captainHatDetails Metadata/details string for captain hat
-   * @param _crewHatDetails Metadata/details string for crew hat
-   * @return _quartermaster Deployed Quartermaster
-   * @return _mutinyModule Deployed mutiny module
-   * @return _topHatId Created tophat id
-   * @return _captainHatId Created captain hat id
-   * @return _crewHatId Created crew hat id
+   * @notice Deploy a full Nave Pirata squad in one transaction.
+   * @param _params Deployment parameters.
+   * @return _topHatId Tophat id minted for this squad.
+   * @return _safe Deployed Safe.
+   * @return _quartermaster Quartermaster clone.
+   * @return _mutinyModule MutinyModule clone.
+   * @return _treasuryAuthority TreasuryAuthority clone.
+   * @return _squadAdminProxy SquadAdmin UUPS proxy.
    */
-  function deployNavePirata(
-    address _hats,
-    address _safeTophatWearer,
-    address _deployerCaptain,
-    address _pactoAdmin,
-    uint256 _crewChangeDelay,
-    uint256 _crewHatMaxSupply,
-    string calldata _topHatDetails,
-    string calldata _captainHatDetails,
-    string calldata _crewHatDetails
-  )
+  function deployNavePirata(DeployParams calldata _params)
     external
     returns (
+      uint256 _topHatId,
+      address _safe,
       address _quartermaster,
       address _mutinyModule,
-      uint256 _topHatId,
-      uint256 _captainHatId,
-      uint256 _crewHatId
+      address _treasuryAuthority,
+      address _squadAdminProxy
     );
 
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Hats Protocol singleton.
+   * @return _hats The Hats contract address.
+   */
+  function HATS() external view returns (address _hats);
 
   /**
-   * @notice Hats Protocol used by deployments from this factory
-   * @return _hats The Hats contract address
+   * @notice Safe proxy factory used to deploy squad Safes.
+   * @return _factory The Safe proxy factory.
    */
-  function hats() external view returns (address _hats);
+  function SAFE_PROXY_FACTORY() external view returns (address _factory);
 
   /**
-   * @notice Most recently deployed Quartermaster from this factory
-   * @return _quartermaster Address or zero if none
+   * @notice Safe singleton backing deployed proxies.
+   * @return _singleton The Safe singleton.
    */
-  function lastQuartermaster() external view returns (address _quartermaster);
+  function SAFE_SINGLETON() external view returns (address _singleton);
 
   /**
-   * @notice Most recently deployed mutiny module from this factory
-   * @return _mutinyModule Address or zero if none
+   * @notice Role-hat clones factory used during bootstrap.
+   * @return _clones The clones factory address.
    */
-  function lastMutinyModule() external view returns (address _mutinyModule);
+  function CLONES_FACTORY() external view returns (address _clones);
 
   /**
-   * @notice Pacto Admin address passed into the most recent `deployNavePirata` call
-   * @return _pactoAdmin Address or zero if none
+   * @notice Registry recording each deployment.
+   * @return _registry The registry address.
    */
-  function lastPactoAdmin() external view returns (address _pactoAdmin);
+  function REGISTRY() external view returns (address _registry);
+
+  /**
+   * @notice Upgrader wired into each deployment.
+   * @return _upgrader The upgrader address.
+   */
+  function UPGRADER() external view returns (address _upgrader);
 }

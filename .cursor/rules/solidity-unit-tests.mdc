@@ -1,0 +1,55 @@
+---
+description: Solidity unit-test conventions for pacto-gov (no mock contracts; use Foundry vm cheatcodes)
+globs: test/unit/**/*.sol
+alwaysApply: false
+---
+
+# Solidity unit tests — no mock contracts
+
+**Never** deploy helper / mock / stub Solidity contracts inside `test/unit/**`. All external-contract behaviour must be stubbed with Foundry cheatcodes. This keeps unit tests hermetic, fast, and free from hidden mock-contract bugs.
+
+## Forbidden
+
+- Inline test-only contracts that mimic external dependencies (`MockERC20`, `MockHats`, `SquadAdminImplV2Mock`, `FakeQuartermaster`, etc.).
+- Extending production contracts solely to expose internals or override behaviour for tests.
+- Using OpenZeppelin / Solmate / similar token-mock helpers from dependencies.
+
+## Required
+
+Stage external behaviour with `vm.mockCall` / `vm.mockCallRevert`. If bytecode must exist at a target address (e.g. a `call` to `.code.length > 0`), use `vm.etch(addr, hex'00')`. Read and assert storage with `vm.load` / `vm.store`. Stage state with `vm.prank`, `vm.warp`, `vm.roll`, `vm.deal`.
+
+```solidity
+// BAD — helper mock contract in a test file
+contract MockHats {
+  mapping(address => mapping(uint256 => bool)) _wearers;
+  function isWearerOfHat(address a, uint256 h) external view returns (bool) {
+    return _wearers[a][h];
+  }
+}
+
+// GOOD — mock the external call directly
+address constant _HATS = address(uint160(uint256(keccak256('test.HATS'))));
+vm.etch(_HATS, hex'00');
+vm.mockCall(_HATS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _user, _hatId), abi.encode(true));
+```
+
+## Proxy / upgrade targets
+
+UUPS / ERC-1967 upgrades need real bytecode at the target address (delegatecall cannot be mocked). Deploy an **independent instance of the same production contract** — never a test-only subclass. Verify upgrade effects with `vm.load` against the ERC-1967 implementation slot (`0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`), not via a mock `version()` getter.
+
+```solidity
+// GOOD — use a second production impl as the upgrade target
+SquadAdminImpl _nextImpl = new SquadAdminImpl(_hats);
+vm.prank(_captain);
+_admin.upgradeToAndCall(address(_nextImpl), '');
+assertEq(
+  address(uint160(uint256(vm.load(address(_proxy), _ERC1967_IMPLEMENTATION_SLOT)))),
+  address(_nextImpl)
+);
+```
+
+## Accepted exceptions
+
+- **Production contracts** (including their abstracts) deployed as the contract under test or as upgrade targets.
+- **`forge-std/Test.sol`** primitives (`Test`, `Vm`, `StdUtils`, etc.).
+- **Integration tests** (`test/integration/**`) — these live outside this rule's scope and may spin up real peer contracts by design.
