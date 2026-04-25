@@ -313,8 +313,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   /**
    * @notice Evaluates the crew-vote pass condition under the current `crewVoteMode`.
    * @dev `MAJORITY_SNAPSHOT`: yeas strictly greater than half the snapshot (`2*yeas > snapshot`).
-   *      `QUORUM_OF_CAST`: cast-total reaches `quorumBps` of snapshot AND yeas strictly greater
-   *      than nays.
+   *      `QUORUM_OF_CAST`: cast-total reaches `quorumBps` of snapshot AND yeas strictly greater than nays.
    * @param _p Proposal being evaluated.
    * @return _passed True iff the crew vote passes under the configured mode.
    */
@@ -322,11 +321,11 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
     uint256 _yeas = _p.yeas;
     if (crewVoteMode == CrewVoteMode.MAJORITY_SNAPSHOT) {
       _passed = _yeas * 2 > _p.snapshot;
+    } else {
+      uint256 _cast = _yeas + _p.nays;
+      if (_cast * 10_000 < uint256(_p.snapshot) * quorumBps) _passed = false;
+      else _passed = _yeas > _p.nays;
     }
-
-    uint256 _cast = _yeas + _p.nays;
-    if (_cast * 10_000 < uint256(_p.snapshot) * quorumBps) _passed = false;
-    _passed = _yeas > _p.nays;
   }
 
   /// @inheritdoc AssetRescuer
