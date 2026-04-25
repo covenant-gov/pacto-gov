@@ -71,17 +71,17 @@ abstract contract UnitMutinyModuleBase is Test {
     vm.mockCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _hatId, _from, _to), abi.encode());
   }
 
-  function _mockQMMutinyActive(bool _active) internal {
+  function _mockQmMutinyActive(bool _active) internal {
     vm.mockCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, _active), abi.encode());
   }
 
-  function _mockQMMintCrewFromMutiny(address _formerCaptain) internal {
+  function _mockQmMintCrewFromMutiny(address _formerCaptain) internal {
     vm.mockCall(
       _quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _formerCaptain), abi.encode()
     );
   }
 
-  function _mockQMCrewHandoffForMutiny(address _formerCaptain, address _newCaptain) internal {
+  function _mockQmCrewHandoffForMutiny(address _formerCaptain, address _newCaptain) internal {
     vm.mockCall(
       _quartermaster,
       abi.encodeWithSelector(IQuartermaster.crewHandoffForMutiny.selector, _formerCaptain, _newCaptain),
@@ -96,7 +96,7 @@ abstract contract UnitMutinyModuleBase is Test {
     _mockWearer(_bob, _CREW_HAT, true);
     _mockWearer(_carol, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
 
     vm.prank(_alice);
     _mm.startMutiny(_proposedNewCaptain);
@@ -192,7 +192,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
 
     vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, true));
     vm.expectEmit(true, true, true, true, address(_mm));
@@ -237,7 +237,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
 
     vm.prank(_alice);
     _mm.startMutiny(_newCaptainEoa);
@@ -276,7 +276,7 @@ contract UnitMutinyModuleVote is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
     vm.prank(_alice);
     _mm.startMutiny(_newCaptainEoa);
     _mutinyId = _mm.activeMutinyId();
@@ -343,8 +343,8 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
     _mockWearer(_newCaptainEoa, _CREW_HAT, false);
-    _mockQMMintCrewFromMutiny(_captain);
-    _mockQMMutinyActive(false);
+    _mockQmMintCrewFromMutiny(_captain);
+    _mockQmMutinyActive(false);
 
     vm.expectCall(
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _CAPTAIN_HAT, _captain, _newCaptainEoa)
@@ -375,8 +375,8 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _crewSuccessor);
     _mockWearer(_crewSuccessor, _CREW_HAT, true);
-    _mockQMCrewHandoffForMutiny(_captain, _crewSuccessor);
-    _mockQMMutinyActive(false);
+    _mockQmCrewHandoffForMutiny(_captain, _crewSuccessor);
+    _mockQmMutinyActive(false);
 
     vm.expectCall(
       _quartermaster, abi.encodeWithSelector(IQuartermaster.crewHandoffForMutiny.selector, _captain, _crewSuccessor)
@@ -406,7 +406,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockWearer(_bob, _CREW_HAT, true);
     _mockWearer(_carol, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
 
     vm.prank(_alice);
     _mm2.startMutiny(_newCaptainEoa);
@@ -420,7 +420,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mm2.castVote(_id);
 
     _mockTransferHat(_CAPTAIN_HAT, _contractCaptain, _newCaptainEoa);
-    _mockQMMutinyActive(false);
+    _mockQmMutinyActive(false);
 
     // NOTE: We don't mock mintCrewFromMutiny — if it's called, the test will fail because the
     // call returns empty bytes but the mock is absent. vm.expectCall negation is not a feature,
@@ -443,8 +443,8 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     uint256 _id = _stageWinningMutiny(_newCaptainEoa);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
     _mockWearer(_newCaptainEoa, _CREW_HAT, false);
-    _mockQMMintCrewFromMutiny(_captain);
-    _mockQMMutinyActive(false);
+    _mockQmMintCrewFromMutiny(_captain);
+    _mockQmMutinyActive(false);
     _mm.executeMutiny(_id);
 
     vm.expectRevert(IMutinyModule.MutinyModule_NoActiveMutiny.selector);
@@ -456,7 +456,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockWearer(_alice, _CREW_HAT, true);
     _mockWearer(_bob, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
 
     vm.prank(_alice);
     _mm.startMutiny(_newCaptainEoa);
@@ -489,7 +489,7 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
     _mockWearer(_newCaptainEoa, _CREW_HAT, false);
-    _mockQMMintCrewFromMutiny(_captain);
+    _mockQmMintCrewFromMutiny(_captain);
 
     vm.expectCall(
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _CAPTAIN_HAT, _captain, _newCaptainEoa)
@@ -509,7 +509,7 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _crewSuccessor);
     _mockWearer(_crewSuccessor, _CREW_HAT, true);
-    _mockQMCrewHandoffForMutiny(_captain, _crewSuccessor);
+    _mockQmCrewHandoffForMutiny(_captain, _crewSuccessor);
 
     vm.expectCall(
       _quartermaster, abi.encodeWithSelector(IQuartermaster.crewHandoffForMutiny.selector, _captain, _crewSuccessor)
@@ -545,7 +545,7 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQMMutinyActive(true);
+    _mockQmMutinyActive(true);
     vm.prank(_alice);
     _mm.startMutiny(_newCaptainEoa);
 

@@ -201,6 +201,8 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   error TreasuryAuthority_CaptainNotApproved();
   /// @notice The underlying Safe execution failed.
   error TreasuryAuthority_SafeExecutionFailed();
+  /// @notice `block.timestamp + proposalExpiry` exceeds `type(uint64).max` (proposal `deadline` storage width).
+  error TreasuryAuthority_DeadlineOverflow();
 
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER

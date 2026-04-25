@@ -227,7 +227,11 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
     _mockCaptainOrCrew(_captain, true, false);
     _mockCrewSupply(10);
 
-    uint64 _expectedDeadline = uint64(block.timestamp + _DEFAULT_EXPIRY);
+    uint256 _deadline256 = block.timestamp + _DEFAULT_EXPIRY;
+    assertLe(_deadline256, type(uint64).max);
+    // casting to 'uint64' is safe because `assertLe` bounds `_deadline256` above.
+    // forge-lint: disable-next-line(unsafe-typecast)
+    uint64 _expectedDeadline = uint64(_deadline256);
 
     vm.expectEmit();
     emit ITreasuryAuthority.ProposalCreated(

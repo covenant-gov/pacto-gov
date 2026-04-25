@@ -237,19 +237,19 @@ contract NavePirataFactory is INavePirataFactory {
    *         the captain and crew hats is wired to the predicted MutinyModule / Quartermaster
    *         clone addresses; eligibility and toggle on role and squad-admin hats default to
    *         the upgrader (non-implementing contract => Hats falls back to `!badStandings`).
-   * @param _metadataURI Squad metadata URI stored on the tophat.
+   * @param _metadataUri Squad metadata URI stored on the tophat.
    * @param _predMutinyModule Predicted MutinyModule clone address (captain-hat eligibility).
    * @param _predQuartermaster Predicted Quartermaster clone address (crew-hat eligibility).
    * @return _hats Fully populated `HatTree` struct.
    */
   function _createHatTree(
-    string memory _metadataURI,
+    string memory _metadataUri,
     address _predMutinyModule,
     address _predQuartermaster
   ) internal returns (HatTree memory _hats) {
     address _placeholder = _UPGRADER;
 
-    _hats.topHatId = _HATS.mintTopHat(address(this), _metadataURI, '');
+    _hats.topHatId = _HATS.mintTopHat(address(this), _metadataUri, '');
     _hats.mutinyRoleHatId = _HATS.createHat(_hats.topHatId, 'MutinyRole', 1, _placeholder, _placeholder, false, '');
     _hats.quartermasterRoleHatId =
       _HATS.createHat(_hats.topHatId, 'QuartermasterRole', 1, _placeholder, _placeholder, false, '');

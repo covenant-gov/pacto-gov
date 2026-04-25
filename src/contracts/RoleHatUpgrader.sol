@@ -82,8 +82,7 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
     }
     if (!IQuiescent(_oldClone).isQuiet()) revert RoleHatUpgrader_NotQuiet(_oldClone);
 
-    bytes32 _namespaced = keccak256(abi.encode(_roleHatId, _salt));
-    _newClone = _CLONES.createClone(_masterCopy, _initData, _namespaced);
+    _newClone = _CLONES.createClone(_masterCopy, _initData, _namespacedSalt(_roleHatId, _salt));
 
     try _HATS.transferHat(_roleHatId, _oldClone, _newClone) {}
     catch {
@@ -144,5 +143,18 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   /// @inheritdoc IRoleHatUpgrader
   function registry() external view override returns (INavePirataRegistry _registry) {
     _registry = _REGISTRY;
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+  //////////////////////////////////////////////////////////////*/
+
+  /// @dev Byte-identical to `keccak256(abi.encode(_roleHatId, _salt))`; avoids `abi.encode` allocation.
+  function _namespacedSalt(uint256 _roleHatId, bytes32 _salt) private pure returns (bytes32 _out) {
+    assembly ('memory-safe') {
+      mstore(0x00, _roleHatId)
+      mstore(0x20, _salt)
+      _out := keccak256(0x00, 0x40)
+    }
   }
 }

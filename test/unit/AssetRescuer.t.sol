@@ -57,19 +57,19 @@ contract UnitAssetRescuer is Test {
                          MOCK HELPERS
   //////////////////////////////////////////////////////////////*/
 
-  function _mockERC20BalanceOf(address _token, address _account, uint256 _balance) internal {
+  function _mockErc20BalanceOf(address _token, address _account, uint256 _balance) internal {
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.balanceOf.selector, _account), abi.encode(_balance));
   }
 
-  function _mockERC20TransferOk(address _token, address _to, uint256 _amount) internal {
+  function _mockErc20TransferOk(address _token, address _to, uint256 _amount) internal {
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.transfer.selector, _to, _amount), abi.encode(true));
   }
 
-  function _mockERC721TransferFrom(address _token, address _from, address _to, uint256 _tokenId) internal {
+  function _mockErc721TransferFrom(address _token, address _from, address _to, uint256 _tokenId) internal {
     vm.mockCall(_token, abi.encodeWithSelector(IERC721.transferFrom.selector, _from, _to, _tokenId), '');
   }
 
-  function _mockERC1155SafeTransferFrom(
+  function _mockErc1155SafeTransferFrom(
     address _token,
     address _from,
     address _to,
@@ -128,8 +128,8 @@ contract UnitAssetRescuer is Test {
 
   function test_RescueERC20_SweepsFullBalanceToDestination() external {
     uint256 _amount = 1000e18;
-    _mockERC20BalanceOf(_TOKEN_ERC20, address(_rescuer), _amount);
-    _mockERC20TransferOk(_TOKEN_ERC20, _destination, _amount);
+    _mockErc20BalanceOf(_TOKEN_ERC20, address(_rescuer), _amount);
+    _mockErc20TransferOk(_TOKEN_ERC20, _destination, _amount);
 
     vm.expectCall(_TOKEN_ERC20, abi.encodeWithSelector(IERC20.balanceOf.selector, address(_rescuer)));
     vm.expectCall(_TOKEN_ERC20, abi.encodeWithSelector(IERC20.transfer.selector, _destination, _amount));
@@ -139,8 +139,8 @@ contract UnitAssetRescuer is Test {
   }
 
   function test_RescueERC20_ZeroBalanceSucceedsEmittingZero() external {
-    _mockERC20BalanceOf(_TOKEN_ERC20, address(_rescuer), 0);
-    _mockERC20TransferOk(_TOKEN_ERC20, _destination, 0);
+    _mockErc20BalanceOf(_TOKEN_ERC20, address(_rescuer), 0);
+    _mockErc20TransferOk(_TOKEN_ERC20, _destination, 0);
 
     vm.expectEmit(true, true, false, true, address(_rescuer));
     emit IAssetRescuer.AssetRescuedERC20(_TOKEN_ERC20, _destination, 0);
@@ -149,7 +149,7 @@ contract UnitAssetRescuer is Test {
 
   function test_RescueERC20_RevertsOnZeroDestination() external {
     _rescuer.setDestination(address(0));
-    _mockERC20BalanceOf(_TOKEN_ERC20, address(_rescuer), 1);
+    _mockErc20BalanceOf(_TOKEN_ERC20, address(_rescuer), 1);
 
     vm.expectRevert(IAssetRescuer.AssetRescuer_ZeroDestination.selector);
     _rescuer.rescue(_TOKEN_ERC20);
@@ -161,7 +161,7 @@ contract UnitAssetRescuer is Test {
 
   function test_RescueERC721_TransfersTokenToDestination() external {
     uint256 _id = 7;
-    _mockERC721TransferFrom(_TOKEN_ERC721, address(_rescuer), _destination, _id);
+    _mockErc721TransferFrom(_TOKEN_ERC721, address(_rescuer), _destination, _id);
 
     vm.expectCall(
       _TOKEN_ERC721, abi.encodeWithSelector(IERC721.transferFrom.selector, address(_rescuer), _destination, _id)
@@ -185,7 +185,7 @@ contract UnitAssetRescuer is Test {
   function test_RescueERC1155_TransfersBalanceToDestination() external {
     uint256 _id = 3;
     uint256 _amount = 10;
-    _mockERC1155SafeTransferFrom(_TOKEN_ERC1155, address(_rescuer), _destination, _id, _amount);
+    _mockErc1155SafeTransferFrom(_TOKEN_ERC1155, address(_rescuer), _destination, _id, _amount);
 
     vm.expectCall(
       _TOKEN_ERC1155,

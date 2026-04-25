@@ -94,7 +94,11 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
     }
 
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
-    uint64 _deadline = uint64(block.timestamp + proposalExpiry);
+    uint256 _deadline256 = block.timestamp + proposalExpiry;
+    if (_deadline256 > type(uint64).max) revert TreasuryAuthority_DeadlineOverflow();
+    // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
+    // forge-lint: disable-next-line(unsafe-typecast)
+    uint64 _deadline = uint64(_deadline256);
 
     _proposalId = ++_nextProposalId;
 
