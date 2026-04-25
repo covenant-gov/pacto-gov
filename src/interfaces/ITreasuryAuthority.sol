@@ -195,13 +195,17 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    */
   error TreasuryAuthority_AlreadyVoted(address _voter);
 
-  /// @notice The captain may only vote once per proposal.
+  /**
+   * @notice The captain may only vote once per proposal.
+   * @param _captain Captain that attempted a second vote.
+   */
   error TreasuryAuthority_CaptainAlreadyVoted(address _captain);
   /// @notice The proposal has already been executed.
   error TreasuryAuthority_AlreadyExecuted();
   /**
    * @notice The proposal cannot be executed yet (captain vetoed, crew threshold not met, or captain has not
    *         approved), or crew cannot vote because the captain vetoed. Inspect `proposal(_id)` on-chain for why.
+   * @param _proposalId The proposal that cannot be executed or voted on by crew.
    */
   error TreasuryAuthority_NotExecutable(uint256 _proposalId);
   /// @notice The underlying Safe execution failed.

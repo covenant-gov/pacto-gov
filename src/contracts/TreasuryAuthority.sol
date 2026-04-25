@@ -312,6 +312,8 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
 
   /**
    * @notice Captain votes once per proposal; veto clears `openProposalOf` for a new proposal from proposer.
+   * @param _proposalId Proposal id.
+   * @param _support True to approve, false to veto.
    */
   function _captainVote(uint256 _proposalId, bool _support) internal {
     Proposal storage _p = _requireAlive(_proposalId);
