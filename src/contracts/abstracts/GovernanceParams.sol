@@ -18,24 +18,16 @@ pragma solidity 0.8.30;
  *      review.
  */
 abstract contract GovernanceParams {
-  /**
-   * @notice Minimum accepted value for any governance delay parameter (in seconds).
-   */
+  /// @notice Minimum accepted value for any governance delay parameter (in seconds).
   uint256 internal constant _MIN_GOV_DELAY = 1 minutes;
 
-  /**
-   * @notice Maximum accepted value for any governance delay parameter (in seconds).
-   */
+  /// @notice Maximum accepted value for any governance delay parameter (in seconds).
   uint256 internal constant _MAX_GOV_DELAY = 60 days;
 
-  /**
-   * @notice Minimum accepted quorum expressed in basis points (5%).
-   */
+  /// @notice Minimum accepted quorum expressed in basis points (5%).
   uint256 internal constant _MIN_QUORUM_BPS = 500;
 
-  /**
-   * @notice Maximum accepted quorum expressed in basis points (100%).
-   */
+  /// @notice Maximum accepted quorum expressed in basis points (100%).
   uint256 internal constant _MAX_QUORUM_BPS = 10_000;
 
   /**

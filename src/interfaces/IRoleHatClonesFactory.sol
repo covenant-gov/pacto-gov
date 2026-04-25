@@ -28,14 +28,10 @@ interface IRoleHatClonesFactory {
                             ERRORS
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice The clone's initializer call reverted.
-   */
+  /// @notice The clone's initializer call reverted.
   error RoleHatClonesFactory_InitializationFailed();
 
-  /**
-   * @notice Master copy address is zero.
-   */
+  /// @notice Master copy address is zero.
   error RoleHatClonesFactory_ZeroMasterCopy();
 
   /*///////////////////////////////////////////////////////////////

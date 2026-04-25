@@ -89,14 +89,10 @@ interface INavePirataFactory {
    */
   error NavePirataFactory_ZeroAddress(string _field);
 
-  /**
-   * @notice The Safe deployment call failed.
-   */
+  /// @notice The Safe deployment call failed.
   error NavePirataFactory_SafeDeployFailed();
 
-  /**
-   * @notice Teardown of the factory's temporary ownership at the end of the ceremony failed.
-   */
+  /// @notice Teardown of the factory's temporary ownership at the end of the ceremony failed.
   error NavePirataFactory_BootstrapTeardownFailed();
 
   /*///////////////////////////////////////////////////////////////

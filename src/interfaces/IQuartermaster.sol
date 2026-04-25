@@ -85,9 +85,7 @@ interface IQuartermaster is IQuiescent {
                             ERRORS
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Crew onboarding is blocked while a mutiny is active.
-   */
+  /// @notice Crew onboarding is blocked while a mutiny is active.
   error Quartermaster_MutinyActive();
 
   /**
@@ -121,14 +119,10 @@ interface IQuartermaster is IQuiescent {
    */
   error Quartermaster_NotCrew(address _target);
 
-  /**
-   * @notice The crew hat has reached its max supply cap.
-   */
+  /// @notice The crew hat has reached its max supply cap.
   error Quartermaster_CrewFull();
 
-  /**
-   * @notice A required address argument was zero.
-   */
+  /// @notice A required address argument was zero.
   error Quartermaster_ZeroAddress();
 
   /*///////////////////////////////////////////////////////////////

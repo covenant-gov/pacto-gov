@@ -61,14 +61,10 @@ interface IAssetRescuer {
    */
   error AssetRescuer_SendToDestinationInstead(address destination);
 
-  /**
-   * @notice The underlying transfer call failed during a rescue.
-   */
+  /// @notice The underlying transfer call failed during a rescue.
   error AssetRescuer_RescueFailed();
 
-  /**
-   * @notice The inheriting contract returned `address(0)` from `_rescueDestination()`.
-   */
+  /// @notice The inheriting contract returned `address(0)` from `_rescueDestination()`.
   error AssetRescuer_ZeroDestination();
 
   /*///////////////////////////////////////////////////////////////

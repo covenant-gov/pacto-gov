@@ -83,14 +83,10 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
    */
   mapping(address _wearer => bool _eligible) internal _crewEligible;
 
-  /**
-   * @notice Count of outstanding pending adds. Used by `isQuiet`.
-   */
+  /// @notice Count of outstanding pending adds. Used by `isQuiet`.
   uint256 internal _pendingAddCount;
 
-  /**
-   * @notice Count of outstanding pending removes. Used by `isQuiet`.
-   */
+  /// @notice Count of outstanding pending removes. Used by `isQuiet`.
   uint256 internal _pendingRemoveCount;
 
   /*///////////////////////////////////////////////////////////////

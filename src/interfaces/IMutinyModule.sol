@@ -56,14 +56,10 @@ interface IMutinyModule is IQuiescent {
                             ERRORS
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice A mutiny round is already active.
-   */
+  /// @notice A mutiny round is already active.
   error MutinyModule_AlreadyActive();
 
-  /**
-   * @notice No active mutiny exists for the requested id.
-   */
+  /// @notice No active mutiny exists for the requested id.
   error MutinyModule_NoActiveMutiny();
 
   /**
@@ -85,9 +81,7 @@ interface IMutinyModule is IQuiescent {
    */
   error MutinyModule_ThresholdNotReached(uint256 _yeas, uint256 _snapshot);
 
-  /**
-   * @notice A required address argument was zero.
-   */
+  /// @notice A required address argument was zero.
   error MutinyModule_ZeroAddress();
 
   /**

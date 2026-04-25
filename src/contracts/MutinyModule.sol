@@ -107,14 +107,10 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
    */
   uint256 internal _nextMutinyId;
 
-  /**
-   * @notice Round state indexed by mutiny id.
-   */
+  /// @notice Round state indexed by mutiny id.
   mapping(uint256 _mutinyId => MutinyRound _round) internal _rounds;
 
-  /**
-   * @notice Vote-registry; `true` iff `_voter` has cast a yea in `_mutinyId`.
-   */
+  /// @notice Vote-registry; `true` iff `_voter` has cast a yea in `_mutinyId`.
   mapping(uint256 _mutinyId => mapping(address _voter => bool _voted)) internal _hasVoted;
 
   /*///////////////////////////////////////////////////////////////

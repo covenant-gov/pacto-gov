@@ -89,14 +89,10 @@ interface IRoleHatUpgrader {
    */
   error RoleHatUpgrader_MasterCopyNotAllowed(RoleKind _kind, address _masterCopy);
 
-  /**
-   * @notice The `Hats.transferHat` call failed during the ceremony.
-   */
+  /// @notice The `Hats.transferHat` call failed during the ceremony.
   error RoleHatUpgrader_TransferFailed();
 
-  /**
-   * @notice A required address argument was zero.
-   */
+  /// @notice A required address argument was zero.
   error RoleHatUpgrader_ZeroAddress();
 
   /*///////////////////////////////////////////////////////////////
