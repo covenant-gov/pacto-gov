@@ -91,28 +91,6 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   }
 
   /*///////////////////////////////////////////////////////////////
-                            UPGRADE AUTHORISATION
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice UUPS upgrade authorisation hook. Captain-hat-gated — SquadAdmin changes bypass the
-   *         two-body vote by design.
-   * @param _newImplementation Address of the proposed new implementation.
-   */
-  function _authorizeUpgrade(address _newImplementation) internal view override {
-    _requireCaptain();
-    if (_newImplementation == address(0)) revert SquadAdmin_ZeroAddress();
-  }
-
-  /// @inheritdoc ISquadAdmin
-  function upgradeToAndCall(
-    address _newImplementation,
-    bytes memory _data
-  ) public payable override(ISquadAdmin, UUPSUpgradeable) {
-    super.upgradeToAndCall(_newImplementation, _data);
-  }
-
-  /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
 
@@ -140,18 +118,28 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   }
 
   /*///////////////////////////////////////////////////////////////
-                            INTERNAL HELPERS
+                            UUPS UPGRADE
   //////////////////////////////////////////////////////////////*/
 
+  /// @inheritdoc ISquadAdmin
+  function upgradeToAndCall(
+    address _newImplementation,
+    bytes memory _data
+  ) public payable override(ISquadAdmin, UUPSUpgradeable) {
+    super.upgradeToAndCall(_newImplementation, _data);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+  //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Returns a pointer to the ERC-7201 `SquadAdminStorageV1` struct.
-   * @return _s Storage-pointer to the v1 namespaced storage.
+   * @notice UUPS upgrade authorisation hook. Captain-hat-gated — SquadAdmin changes bypass the
+   *         two-body vote by design.
+   * @param _newImplementation Address of the proposed new implementation.
    */
-  function _getStorage() internal pure returns (SquadAdminStorageV1 storage _s) {
-    bytes32 _slot = _SQUAD_ADMIN_STORAGE_V1;
-    assembly {
-      _s.slot := _slot
-    }
+  function _authorizeUpgrade(address _newImplementation) internal view override {
+    _requireCaptain();
+    if (_newImplementation == address(0)) revert SquadAdmin_ZeroAddress();
   }
 
   /**
@@ -162,5 +150,16 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   function _requireCaptain() internal view {
     uint256 _captainHatId = _getStorage().captainHatId;
     if (!_HATS.isWearerOfHat(msg.sender, _captainHatId)) revert SquadAdmin_NotCaptain();
+  }
+
+  /**
+   * @notice Returns a pointer to the ERC-7201 `SquadAdminStorageV1` struct.
+   * @return _s Storage-pointer to the v1 namespaced storage.
+   */
+  function _getStorage() internal pure returns (SquadAdminStorageV1 storage _s) {
+    bytes32 _slot = _SQUAD_ADMIN_STORAGE_V1;
+    assembly {
+      _s.slot := _slot
+    }
   }
 }

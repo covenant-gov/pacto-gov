@@ -139,44 +139,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   }
 
   /*///////////////////////////////////////////////////////////////
-                            INTERNAL HELPERS
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Transfers captain hat; updates `captain` before `transferHat` so `getWearerStatus` accepts the new wearer. EOA ex-captain: QM mint or crew handoff
-   * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`
-   * @param _from Outgoing captain
-   * @param _to Incoming captain
-   */
-  function _succeedCaptain(address _from, address _to) internal {
-    address _qm = _liveQuartermaster();
-    captain = _to;
-    _HATS.transferHat(captainHatId, _from, _to);
-
-    if (_from.code.length == 0) {
-      if (_HATS.isWearerOfHat(_to, crewHatId)) {
-        IQuartermaster(_qm).crewHandoffForMutiny(_from, _to);
-      } else {
-        IQuartermaster(_qm).mintCrewFromMutiny(_from);
-      }
-    }
-  }
-
-  /**
-   * @notice Returns stored `quartermaster` if it still wears `quartermasterRoleHatId`, else reverts `MutinyModule_StaleQuartermaster` (role hat moved)
-   * @return _qm Live Quartermaster clone
-   */
-  function _liveQuartermaster() internal view returns (address _qm) {
-    _qm = quartermaster;
-    if (!_HATS.isWearerOfHat(_qm, quartermasterRoleHatId)) revert MutinyModule_StaleQuartermaster(_qm);
-  }
-
-  /// @notice Reverts if cached `captain` does not wear `captainHatId` (stale or phantom)
-  function _requireLiveCaptain() internal view {
-    if (!_HATS.isWearerOfHat(captain, captainHatId)) revert MutinyModule_StaleCaptain(captain);
-  }
-
-  /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
 
@@ -225,5 +187,43 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /// @inheritdoc IQuiescent
   function isQuiet() external view override returns (bool _quiet) {
     _quiet = activeMutinyId == 0;
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Transfers captain hat; updates `captain` before `transferHat` so `getWearerStatus` accepts the new wearer. EOA ex-captain: QM mint or crew handoff
+   * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`
+   * @param _from Outgoing captain
+   * @param _to Incoming captain
+   */
+  function _succeedCaptain(address _from, address _to) internal {
+    address _qm = _liveQuartermaster();
+    captain = _to;
+    _HATS.transferHat(captainHatId, _from, _to);
+
+    if (_from.code.length == 0) {
+      if (_HATS.isWearerOfHat(_to, crewHatId)) {
+        IQuartermaster(_qm).crewHandoffForMutiny(_from, _to);
+      } else {
+        IQuartermaster(_qm).mintCrewFromMutiny(_from);
+      }
+    }
+  }
+
+  /**
+   * @notice Returns stored `quartermaster` if it still wears `quartermasterRoleHatId`, else reverts `MutinyModule_StaleQuartermaster` (role hat moved)
+   * @return _qm Live Quartermaster clone
+   */
+  function _liveQuartermaster() internal view returns (address _qm) {
+    _qm = quartermaster;
+    if (!_HATS.isWearerOfHat(_qm, quartermasterRoleHatId)) revert MutinyModule_StaleQuartermaster(_qm);
+  }
+
+  /// @notice Reverts if cached `captain` does not wear `captainHatId` (stale or phantom)
+  function _requireLiveCaptain() internal view {
+    if (!_HATS.isWearerOfHat(captain, captainHatId)) revert MutinyModule_StaleCaptain(captain);
   }
 }
