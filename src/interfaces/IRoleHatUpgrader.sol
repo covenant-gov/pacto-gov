@@ -11,7 +11,6 @@ interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Clonable role kinds (SquadAdmin is UUPS, not in this set)
    * @param QUARTERMASTER Quartermaster clone
@@ -27,7 +26,6 @@ interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A role hat was successfully upgraded from `_oldClone` to `_newClone`.
    * @param _roleHatId Role hat id that was transferred.
@@ -61,7 +59,6 @@ interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Caller is not the admin of the role hat and cannot authorise the upgrade.
    * @param _roleHatId The role hat id in question.
@@ -90,7 +87,6 @@ interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Clone `_masterCopy`, init, move `_roleHatId` from `_oldClone` to the new address
    * @dev Reverts if not admin of the hat, `_oldClone` not quiet, or allow-list rejects `masterCopy`
@@ -114,7 +110,6 @@ interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             PARAMETER SETTERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Toggle allow-list enforcement. Admin-gated (Ownable).
    * @param _enabled New enforcement state.
@@ -132,7 +127,6 @@ interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Whether the master-copy allow-list is enforced.
    * @return _enabled Current enforcement state.

@@ -13,7 +13,6 @@ interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Governance defaults for a new squad.
    * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
@@ -73,7 +72,6 @@ interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A new Nave Pirata squad was deployed.
    * @param _topHatId Squad tophat id (registry key).
@@ -97,7 +95,6 @@ interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A required deployment field was the zero address.
    * @param _field Name of the zero field (for debugging).
@@ -111,7 +108,6 @@ interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Deploy a full Nave Pirata squad in one transaction.
    * @param _params Deployment parameters.
@@ -136,7 +132,6 @@ interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Hats Protocol singleton.
    * @return _hats The Hats contract address.

@@ -15,7 +15,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Crew vote counting mode.
    * @param MAJORITY_SNAPSHOT Proposal passes when yeas exceed 50% of the crew snapshot at proposal time.
@@ -87,7 +86,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A proposal was created.
    * @param _proposalId Proposal identifier.
@@ -162,7 +160,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Caller is neither the captain nor a crew member.
    * @param _caller Caller that failed the gate check.
@@ -208,7 +205,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Per-clone initializer with a typed parameter struct. Preferred entry point for Pacto factories.
    * @param _p Bootstrap parameters.
@@ -218,7 +214,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Create a proposal to execute `(to, value, data, op)` against the Safe.
    * @dev Gated to the captain or current crew members. One open proposal per proposer.
@@ -260,7 +255,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             PARAMETER SETTERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Update the proposal expiry. TreasuryAuthorityRole-gated (self-gated).
    * @param _newValue New expiry in seconds.
@@ -282,7 +276,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Current proposal expiry in seconds.
    * @return _expiry The expiry value.
@@ -358,17 +351,17 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    * @notice Captain hat id.
    * @return _captainHatId The captain hat id.
    */
-  function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatId);
+  function captainHatId() external view returns (uint256 _captainHatId);
 
   /**
    * @notice Crew hat id.
    * @return _crewHatId The crew hat id.
    */
-  function CREW_HAT_ID() external view returns (uint256 _crewHatId);
+  function crewHatId() external view returns (uint256 _crewHatId);
 
   /**
    * @notice Role hat worn by the active TreasuryAuthority clone.
    * @return _treasuryAuthorityRoleHatId The role hat id.
    */
-  function TREASURY_AUTHORITY_ROLE_HAT_ID() external view returns (uint256 _treasuryAuthorityRoleHatId);
+  function treasuryAuthorityRoleHatId() external view returns (uint256 _treasuryAuthorityRoleHatId);
 }

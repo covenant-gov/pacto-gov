@@ -122,12 +122,12 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   }
 
   /// @inheritdoc ISquadAdmin
-  function CAPTAIN_HAT_ID() external view override returns (uint256 _captainHatId) {
+  function captainHatId() external view override returns (uint256 _captainHatId) {
     _captainHatId = _getStorage().captainHatId;
   }
 
   /// @inheritdoc ISquadAdmin
-  function SQUAD_ADMIN_HAT_ID() external view override returns (uint256 _squadAdminHatId) {
+  function squadAdminHatId() external view override returns (uint256 _squadAdminHatId) {
     _squadAdminHatId = _getStorage().squadAdminHatId;
   }
 

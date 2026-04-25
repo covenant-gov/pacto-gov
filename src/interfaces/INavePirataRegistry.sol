@@ -11,7 +11,6 @@ interface INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Initial deployment record for a squad.
    * @param safe Squad Safe address.
@@ -65,7 +64,6 @@ interface INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A new squad was registered.
    * @param _topHatId Tophat id used as the squad key.
@@ -83,7 +81,6 @@ interface INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Caller is not the registered factory.
    * @param _caller Calling address.
@@ -116,7 +113,6 @@ interface INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Record a new squad deployment. Factory-only.
    * @param _deployment The deployment record to store.
@@ -133,7 +129,6 @@ interface INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice The factory authorised to register deployments.
    * @return _factory Factory address.

@@ -62,8 +62,8 @@ contract UnitSquadAdminInit is UnitSquadAdminBase {
   }
 
   function test_Initialize_SeedsStorageBehindProxy() external view {
-    assertEq(_admin.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
-    assertEq(_admin.SQUAD_ADMIN_HAT_ID(), _SQUAD_ADMIN_HAT);
+    assertEq(_admin.captainHatId(), _CAPTAIN_HAT);
+    assertEq(_admin.squadAdminHatId(), _SQUAD_ADMIN_HAT);
     assertTrue(_admin.isQuiet());
   }
 
@@ -188,8 +188,8 @@ contract UnitSquadAdminUpgrade is UnitSquadAdminBase {
     _admin.upgradeToAndCall(address(_nextImpl), '');
 
     assertEq(_readImplementationSlot(), address(_nextImpl));
-    assertEq(_admin.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
-    assertEq(_admin.SQUAD_ADMIN_HAT_ID(), _SQUAD_ADMIN_HAT);
+    assertEq(_admin.captainHatId(), _CAPTAIN_HAT);
+    assertEq(_admin.squadAdminHatId(), _SQUAD_ADMIN_HAT);
     assertTrue(_admin.isExecutor(_alice));
   }
 

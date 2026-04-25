@@ -13,7 +13,6 @@ interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Parameters required to initialize a SquadAdmin proxy.
    * @param captainHatId Captain hat id that gates executor management and UUPS upgrades.
@@ -28,7 +27,6 @@ interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice An executor was granted application-level powers.
    * @param _executor Address newly allowed to execute.
@@ -63,7 +61,6 @@ interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice One-shot proxy initializer; seeds the captain and squad-admin hat ids.
    * @param _p Bootstrap parameters.
@@ -73,7 +70,6 @@ interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Enable an executor. Captain-hat-gated.
    * @param _executor Address to enable.
@@ -96,7 +92,6 @@ interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice v1 gasless gate: enabled executors (more predicates later)
    * @param _executor Who to query
@@ -108,11 +103,11 @@ interface ISquadAdmin is IQuiescent {
    * @notice Captain hat id
    * @return _captainHatId Hat id
    */
-  function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatId);
+  function captainHatId() external view returns (uint256 _captainHatId);
 
   /**
    * @notice Squad admin hat id (this proxy wears it)
    * @return _squadAdminHatId Hat id
    */
-  function SQUAD_ADMIN_HAT_ID() external view returns (uint256 _squadAdminHatId);
+  function squadAdminHatId() external view returns (uint256 _squadAdminHatId);
 }

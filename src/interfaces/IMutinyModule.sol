@@ -13,7 +13,6 @@ interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Parameters required to initialize a MutinyModule clone.
    * @param captainHatId Captain hat id administered by this clone (as MutinyRole wearer).
@@ -53,7 +52,6 @@ interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A mutiny round was opened.
    * @param _mutinyId Round identifier.
@@ -90,12 +88,6 @@ interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
-  /// @notice A mutiny round is already active.
-  error MutinyModule_AlreadyActive();
-  /// @notice No active mutiny exists for the requested id.
-  error MutinyModule_NoActiveMutiny();
-
   /**
    * @notice Voter has already voted in this round.
    * @param _voter Address that attempted a duplicate vote.
@@ -115,9 +107,6 @@ interface IMutinyModule is IQuiescent {
    */
   error MutinyModule_ThresholdNotReached(uint256 _yeas, uint256 _snapshot);
 
-  /// @notice A required address argument was zero.
-  error MutinyModule_ZeroAddress();
-
   /**
    * @notice The specified new captain already wears the captain hat or matches the current captain.
    * @param _target The rejected address.
@@ -125,7 +114,7 @@ interface IMutinyModule is IQuiescent {
   error MutinyModule_SameCaptain(address _target);
 
   /**
-   * @notice `quartermaster` no longer wears `QUARTERMASTER_ROLE_HAT_ID` (peer upgraded); upgrade this module before mutiny
+   * @notice `quartermaster` no longer wears the quartermaster role hat (peer upgraded); upgrade this module before mutiny
    * @param _quartermaster Stale address
    */
   error MutinyModule_StaleQuartermaster(address _quartermaster);
@@ -138,10 +127,16 @@ interface IMutinyModule is IQuiescent {
    */
   error MutinyModule_StaleCaptain(address _captain);
 
+  /// @notice A mutiny round is already active.
+  error MutinyModule_AlreadyActive();
+  /// @notice No active mutiny exists for the requested id.
+  error MutinyModule_NoActiveMutiny();
+  /// @notice A required address argument was zero.
+  error MutinyModule_ZeroAddress();
+
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice One-shot init: hat ids, `captain`, `quartermaster`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
    * @param _p Bootstrap parameters.
@@ -151,7 +146,6 @@ interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Open a mutiny round. Crew-hat-gated.
    * @dev Fixes the snapshot electorate to the current crew supply and toggles Quartermaster mutiny mode.
@@ -182,7 +176,6 @@ interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Id of the currently active mutiny, or zero if none.
    * @return _id The active mutiny id.
@@ -223,25 +216,25 @@ interface IMutinyModule is IQuiescent {
    * @notice Captain hat id.
    * @return _captainHatId The captain hat id.
    */
-  function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatId);
+  function captainHatId() external view returns (uint256 _captainHatId);
 
   /**
    * @notice Crew hat id.
    * @return _crewHatId The crew hat id.
    */
-  function CREW_HAT_ID() external view returns (uint256 _crewHatId);
+  function crewHatId() external view returns (uint256 _crewHatId);
 
   /**
    * @notice Role hat worn by the active MutinyModule clone.
    * @return _mutinyRoleHatId The MutinyRole hat id.
    */
-  function MUTINY_ROLE_HAT_ID() external view returns (uint256 _mutinyRoleHatId);
+  function mutinyRoleHatId() external view returns (uint256 _mutinyRoleHatId);
 
   /**
    * @notice Role hat worn by the active Quartermaster clone.
    * @return _quartermasterRoleHatId The QuartermasterRole hat id.
    */
-  function QUARTERMASTER_ROLE_HAT_ID() external view returns (uint256 _quartermasterRoleHatId);
+  function quartermasterRoleHatId() external view returns (uint256 _quartermasterRoleHatId);
 
   /**
    * @notice Current captain-hat wearer as tracked by this module.
@@ -254,7 +247,7 @@ interface IMutinyModule is IQuiescent {
 
   /**
    * @notice Quartermaster clone address used for mutiny-driven crew mint / hand-off calls.
-   * @dev Captured at `initialize`; verified to still wear `QUARTERMASTER_ROLE_HAT_ID` at every
+   * @dev Captured at `initialize`; verified to still wear `quartermasterRoleHatId` at every
    *      outbound peer call so a stale pointer (e.g. after a QuartermasterRole upgrade ceremony)
    *      reverts rather than silently calls the wrong contract. Re-deploying MutinyModule
    *      alongside a Quartermaster upgrade is the canonical recovery path.

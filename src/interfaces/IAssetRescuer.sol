@@ -10,7 +10,6 @@ interface IAssetRescuer {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Emitted after a successful native ETH rescue.
    * @param destination The address that received the ETH.
@@ -46,7 +45,6 @@ interface IAssetRescuer {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Thrown by `receive` / `fallback` to block voluntary ETH sends to the
    *         contract. Included in the revert so wallets can surface the correct destination.
@@ -61,7 +59,6 @@ interface IAssetRescuer {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Sweep this contract's full balance of `token` to the rescue destination.
    * @dev Use `address(0)` as `token` to sweep native ETH instead of an ERC-20 balance.

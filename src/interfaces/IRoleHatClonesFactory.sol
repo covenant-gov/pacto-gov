@@ -11,7 +11,6 @@ interface IRoleHatClonesFactory {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A new clone was created.
    * @param _masterCopy Implementation cloned via EIP-1167.
@@ -33,7 +32,6 @@ interface IRoleHatClonesFactory {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice CREATE2 clone of `_masterCopy`, then `_initData` on the new proxy
    * @param _masterCopy Master implementation

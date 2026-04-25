@@ -56,8 +56,8 @@ contract UnitRoleHatClonesFactoryCreate is UnitRoleHatClonesFactoryBase {
     address _clone = _factory.createClone(address(_master), _init, _salt);
 
     assertEq(_clone, _predicted);
-    assertEq(Quartermaster(_clone).CAPTAIN_HAT_ID(), 1);
-    assertEq(Quartermaster(_clone).CREW_HAT_ID(), 2);
+    assertEq(Quartermaster(_clone).captainHatId(), 1);
+    assertEq(Quartermaster(_clone).crewHatId(), 2);
     assertEq(Quartermaster(_clone).crewChangeDelay(), 7 days);
   }
 
@@ -66,7 +66,7 @@ contract UnitRoleHatClonesFactoryCreate is UnitRoleHatClonesFactoryBase {
     address _clone = _factory.createClone(address(_master), '', _salt);
 
     assertEq(_clone, _factory.predictCloneAddress(address(_master), _salt));
-    assertEq(Quartermaster(_clone).CAPTAIN_HAT_ID(), 0);
+    assertEq(Quartermaster(_clone).captainHatId(), 0);
   }
 
   function test_CreateClone_RevertsOnZeroMasterCopy() external {

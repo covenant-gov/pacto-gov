@@ -13,7 +13,6 @@ interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Parameters required to initialize a Quartermaster clone.
    * @param captainHatId Captain hat id for authority checks.
@@ -35,7 +34,6 @@ interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice A crew add was scheduled by the captain.
    * @param _candidate Address that may receive the crew hat after the delay.
@@ -103,10 +101,6 @@ interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
-
-  /// @notice Crew onboarding is blocked while a mutiny is active.
-  error Quartermaster_MutinyActive();
-
   /**
    * @notice No pending operation exists for the target.
    * @param _target Address whose pending entry was expected but missing.
@@ -138,6 +132,8 @@ interface IQuartermaster is IQuiescent {
    */
   error Quartermaster_NotCrew(address _target);
 
+  /// @notice Crew onboarding is blocked while a mutiny is active.
+  error Quartermaster_MutinyActive();
   /// @notice The crew hat has reached its max supply cap.
   error Quartermaster_CrewFull();
   /// @notice A required address argument was zero.
@@ -146,7 +142,6 @@ interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Per-clone initializer; sets hat ids and the crew-change delay.
    * @param _p Bootstrap parameters.
@@ -156,7 +151,6 @@ interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Schedule minting the crew hat to `_candidate` after `crewChangeDelay`. Captain-gated.
    * @dev Reverts if a mutiny is active or the candidate already wears crew / is the captain.
@@ -227,7 +221,6 @@ interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Seconds between scheduling and executing a crew add / remove.
    * @return _delay The current delay value.
@@ -258,29 +251,29 @@ interface IQuartermaster is IQuiescent {
    * @notice Captain hat id for access-control checks.
    * @return _captainHatId The captain hat id.
    */
-  function CAPTAIN_HAT_ID() external view returns (uint256 _captainHatId);
+  function captainHatId() external view returns (uint256 _captainHatId);
 
   /**
    * @notice Crew hat id administered by this contract.
    * @return _crewHatId The crew hat id.
    */
-  function CREW_HAT_ID() external view returns (uint256 _crewHatId);
+  function crewHatId() external view returns (uint256 _crewHatId);
 
   /**
    * @notice Role hat worn by the active MutinyModule clone.
    * @return _mutinyRoleHatId The MutinyRole hat id.
    */
-  function MUTINY_ROLE_HAT_ID() external view returns (uint256 _mutinyRoleHatId);
+  function mutinyRoleHatId() external view returns (uint256 _mutinyRoleHatId);
 
   /**
    * @notice Role hat worn by the active Quartermaster clone.
    * @return _quartermasterRoleHatId The QuartermasterRole hat id.
    */
-  function QUARTERMASTER_ROLE_HAT_ID() external view returns (uint256 _quartermasterRoleHatId);
+  function quartermasterRoleHatId() external view returns (uint256 _quartermasterRoleHatId);
 
   /**
    * @notice Role hat worn by the active TreasuryAuthority clone.
    * @return _treasuryAuthorityRoleHatId The TreasuryAuthorityRole hat id.
    */
-  function TREASURY_AUTHORITY_ROLE_HAT_ID() external view returns (uint256 _treasuryAuthorityRoleHatId);
+  function treasuryAuthorityRoleHatId() external view returns (uint256 _treasuryAuthorityRoleHatId);
 }

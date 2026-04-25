@@ -126,10 +126,10 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
   }
 
   function test_Initialize_SetsStorage() external view {
-    assertEq(_mm.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
-    assertEq(_mm.CREW_HAT_ID(), _CREW_HAT);
-    assertEq(_mm.MUTINY_ROLE_HAT_ID(), _MUTINY_ROLE_HAT);
-    assertEq(_mm.QUARTERMASTER_ROLE_HAT_ID(), _QM_ROLE_HAT);
+    assertEq(_mm.captainHatId(), _CAPTAIN_HAT);
+    assertEq(_mm.crewHatId(), _CREW_HAT);
+    assertEq(_mm.mutinyRoleHatId(), _MUTINY_ROLE_HAT);
+    assertEq(_mm.quartermasterRoleHatId(), _QM_ROLE_HAT);
     assertEq(_mm.captain(), _captain);
     assertEq(_mm.quartermaster(), _quartermaster);
     assertEq(_mm.activeMutinyId(), 0);

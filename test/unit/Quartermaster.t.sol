@@ -118,11 +118,11 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
   }
 
   function test_Initialize_SetsHatIdsAndDelay() external view {
-    assertEq(_qm.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
-    assertEq(_qm.CREW_HAT_ID(), _CREW_HAT);
-    assertEq(_qm.MUTINY_ROLE_HAT_ID(), _MUTINY_ROLE_HAT);
-    assertEq(_qm.QUARTERMASTER_ROLE_HAT_ID(), _QUARTERMASTER_ROLE_HAT);
-    assertEq(_qm.TREASURY_AUTHORITY_ROLE_HAT_ID(), _TREASURY_AUTHORITY_ROLE_HAT);
+    assertEq(_qm.captainHatId(), _CAPTAIN_HAT);
+    assertEq(_qm.crewHatId(), _CREW_HAT);
+    assertEq(_qm.mutinyRoleHatId(), _MUTINY_ROLE_HAT);
+    assertEq(_qm.quartermasterRoleHatId(), _QUARTERMASTER_ROLE_HAT);
+    assertEq(_qm.treasuryAuthorityRoleHatId(), _TREASURY_AUTHORITY_ROLE_HAT);
     assertEq(_qm.crewChangeDelay(), _DEFAULT_DELAY);
     assertFalse(_qm.mutinyActive());
   }

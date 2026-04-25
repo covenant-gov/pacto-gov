@@ -23,11 +23,11 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override CAPTAIN_HAT_ID;
+  uint256 public override captainHatId;
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override CREW_HAT_ID;
+  uint256 public override crewHatId;
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override TREASURY_AUTHORITY_ROLE_HAT_ID;
+  uint256 public override treasuryAuthorityRoleHatId;
   /// @inheritdoc ITreasuryAuthority
   uint256 public override proposalExpiry;
   /// @inheritdoc ITreasuryAuthority
@@ -92,7 +92,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
       }
     }
 
-    uint64 _snapshot = _HATS.hatSupply(CREW_HAT_ID);
+    uint64 _snapshot = _HATS.hatSupply(crewHatId);
     uint64 _deadline = uint64(block.timestamp + proposalExpiry);
 
     _proposalId = ++_nextProposalId;
@@ -117,7 +117,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function crewVote(uint256 _proposalId, bool _yea) external override onlyHatWearer(CREW_HAT_ID) {
+  function crewVote(uint256 _proposalId, bool _yea) external override onlyHatWearer(crewHatId) {
     Proposal storage _p = _requireAlive(_proposalId);
     if (_voted[_proposalId][msg.sender]) revert TreasuryAuthority_AlreadyVoted(msg.sender);
 
@@ -130,7 +130,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function captainApprove(uint256 _proposalId) external override onlyHatWearer(CAPTAIN_HAT_ID) {
+  function captainApprove(uint256 _proposalId) external override onlyHatWearer(captainHatId) {
     Proposal storage _p = _requireAlive(_proposalId);
     if (_p.captainApproved) revert TreasuryAuthority_CaptainAlreadyApproved();
 
@@ -163,7 +163,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function setProposalExpiry(uint256 _newValue) external override onlyHatWearer(TREASURY_AUTHORITY_ROLE_HAT_ID) {
+  function setProposalExpiry(uint256 _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
     uint256 _old = proposalExpiry;
     proposalExpiry = _newValue;
@@ -171,14 +171,14 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function setCrewVoteMode(CrewVoteMode _newValue) external override onlyHatWearer(TREASURY_AUTHORITY_ROLE_HAT_ID) {
+  function setCrewVoteMode(CrewVoteMode _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
     CrewVoteMode _old = crewVoteMode;
     crewVoteMode = _newValue;
     emit CrewVoteModeUpdated(_old, _newValue);
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function setQuorumBps(uint256 _newValue) external override onlyHatWearer(TREASURY_AUTHORITY_ROLE_HAT_ID) {
+  function setQuorumBps(uint256 _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateQuorumBps(_newValue);
     uint256 _old = quorumBps;
     quorumBps = _newValue;
@@ -270,9 +270,9 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
 
     __Ownable_init(msg.sender);
 
-    CAPTAIN_HAT_ID = _p.captainHatId;
-    CREW_HAT_ID = _p.crewHatId;
-    TREASURY_AUTHORITY_ROLE_HAT_ID = _p.treasuryAuthorityRoleHatId;
+    captainHatId = _p.captainHatId;
+    crewHatId = _p.crewHatId;
+    treasuryAuthorityRoleHatId = _p.treasuryAuthorityRoleHatId;
     proposalExpiry = _p.proposalExpiry;
     crewVoteMode = _p.crewVoteMode;
     quorumBps = _p.quorumBps;
@@ -292,8 +292,8 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
    * @param _caller Address to gate-check.
    */
   function _requireCaptainOrCrew(address _caller) internal view {
-    if (_HATS.isWearerOfHat(_caller, CAPTAIN_HAT_ID)) return;
-    if (_HATS.isWearerOfHat(_caller, CREW_HAT_ID)) return;
+    if (_HATS.isWearerOfHat(_caller, captainHatId)) return;
+    if (_HATS.isWearerOfHat(_caller, crewHatId)) return;
     revert TreasuryAuthority_NotCaptainOrCrew(_caller);
   }
 

@@ -121,9 +121,9 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
   }
 
   function test_Initialize_SetsStateAndWiresSafe() external view {
-    assertEq(_ta.CAPTAIN_HAT_ID(), _CAPTAIN_HAT);
-    assertEq(_ta.CREW_HAT_ID(), _CREW_HAT);
-    assertEq(_ta.TREASURY_AUTHORITY_ROLE_HAT_ID(), _TREASURY_AUTHORITY_ROLE_HAT);
+    assertEq(_ta.captainHatId(), _CAPTAIN_HAT);
+    assertEq(_ta.crewHatId(), _CREW_HAT);
+    assertEq(_ta.treasuryAuthorityRoleHatId(), _TREASURY_AUTHORITY_ROLE_HAT);
     assertEq(_ta.proposalExpiry(), _DEFAULT_EXPIRY);
     assertEq(uint256(_ta.crewVoteMode()), uint256(ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT));
     assertEq(_ta.quorumBps(), _DEFAULT_QUORUM_BPS);
