@@ -223,8 +223,8 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function hasVoted(uint256 _proposalId, address _voter) external view override returns (bool) {
-    return _voted[_proposalId][_voter];
+  function hasVoted(uint256 _proposalId, address _voter) external view override returns (bool __voted) {
+    __voted = _voted[_proposalId][_voter];
   }
 
   /// @inheritdoc ITreasuryAuthority
@@ -325,7 +325,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
     }
 
     uint256 _cast = _yeas + _p.nays;
-    if (_cast * 10_000 < uint256(_p.snapshot) * quorumBps) return false;
+    if (_cast * 10_000 < uint256(_p.snapshot) * quorumBps) _passed = false;
     _passed = _yeas > _p.nays;
   }
 

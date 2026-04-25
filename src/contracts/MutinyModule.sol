@@ -203,7 +203,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /// @inheritdoc IMutinyModule
   function isInSnapshot(uint256 _mutinyId, address _voter) external view override returns (bool _inSnapshot) {
     MutinyRound storage _r = _rounds[_mutinyId];
-    if (_r.startedAt == 0 || _r.executed || _mutinyId != activeMutinyId) return false;
+    if (_r.startedAt == 0 || _r.executed || _mutinyId != activeMutinyId) _inSnapshot = false;
     _inSnapshot = _HATS.isWearerOfHat(_voter, CREW_HAT_ID);
   }
 
