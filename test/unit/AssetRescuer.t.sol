@@ -210,8 +210,10 @@ contract UnitAssetRescuer is Test {
   function test_Receive_RevertsDirectETHSend() external {
     vm.deal(_stranger, 1 ether);
     vm.prank(_stranger);
-    vm.expectRevert(abi.encodeWithSelector(IAssetRescuer.AssetRescuer_SendToDestinationInstead.selector, _destination));
-    payable(address(_rescuer)).transfer(1 wei);
+    // `transfer` only forwards 2300 gas; this `receive` path needs more to return the custom error.
+    (bool _ok, bytes memory _data) = payable(address(_rescuer)).call{value: 1 wei}('');
+    assertFalse(_ok);
+    assertEq(_data, abi.encodeWithSelector(IAssetRescuer.AssetRescuer_SendToDestinationInstead.selector, _destination));
   }
 
   function test_Fallback_RevertsUnknownCalldata() external {

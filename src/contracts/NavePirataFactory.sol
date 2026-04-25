@@ -333,6 +333,14 @@ contract NavePirataFactory is INavePirataFactory {
     if (!_okSwap) revert NavePirataFactory_BootstrapTeardownFailed();
   }
 
+  /**
+   * @notice Creates the Quartermaster EIP-1167 clone and initializes it with hat ids from `_hats`.
+   * @param _masterCopy Quartermaster implementation to clone.
+   * @param _hats Hat tree from `_createHatTree` (ids wired into `InitParams`).
+   * @param _crewChangeDelay Initial crew add/remove timelock (seconds).
+   * @param _salt CREATE2 salt for this clone.
+   * @return _clone Deployed Quartermaster clone address.
+   */
   function _deployQuartermasterClone(
     address _masterCopy,
     HatTree memory _hats,
@@ -356,6 +364,15 @@ contract NavePirataFactory is INavePirataFactory {
     );
   }
 
+  /**
+   * @notice Creates the MutinyModule EIP-1167 clone and initializes it with `_hats`, captain, and Quartermaster.
+   * @param _masterCopy MutinyModule implementation to clone.
+   * @param _hats Hat tree from `_createHatTree`.
+   * @param _captain Initial captain address.
+   * @param _quartermaster Deployed Quartermaster clone (peer for init).
+   * @param _salt CREATE2 salt for this clone.
+   * @return _clone Deployed MutinyModule clone address.
+   */
   function _deployMutinyModuleClone(
     address _masterCopy,
     HatTree memory _hats,
@@ -380,6 +397,14 @@ contract NavePirataFactory is INavePirataFactory {
     );
   }
 
+  /**
+   * @notice Creates the TreasuryAuthority EIP-1167 clone; init uses `_safe`, `_hats`, and squad params from `_params`.
+   * @param _params Full deploy params (`treasuryAuthorityMasterCopy`, `squadParams`).
+   * @param _safe Squad Safe proxy for Zodiac wiring.
+   * @param _hats Hat tree from `_createHatTree`.
+   * @param _salt CREATE2 salt for this clone.
+   * @return _clone Deployed TreasuryAuthority clone address.
+   */
   function _deployTreasuryAuthorityClone(
     DeployParams calldata _params,
     address _safe,
@@ -404,6 +429,12 @@ contract NavePirataFactory is INavePirataFactory {
     );
   }
 
+  /**
+   * @notice Deploys the SquadAdmin UUPS proxy with `_implementation` and initializes captain / squad-admin hat ids.
+   * @param _implementation SquadAdmin logic implementation.
+   * @param _hats Hat tree from `_createHatTree`.
+   * @return _proxy Deployed SquadAdmin proxy address.
+   */
   function _deploySquadAdminProxy(address _implementation, HatTree memory _hats) internal returns (address _proxy) {
     _proxy = address(
       new SquadAdmin(

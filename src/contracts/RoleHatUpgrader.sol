@@ -149,7 +149,13 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
 
-  /// @dev Byte-identical to `keccak256(abi.encode(_roleHatId, _salt))`; avoids `abi.encode` allocation.
+  /**
+   * @notice Namespaced CREATE2 salt: `keccak256` over ABI-encoded `roleHatId` and `salt`.
+   * @param _roleHatId Role hat id being upgraded.
+   * @param _salt Caller-supplied entropy mixed into the digest.
+   * @return _out Salt argument for `createClone`.
+   * @dev Byte-identical to `keccak256(abi.encode(_roleHatId, _salt))` without allocating `abi.encode` memory.
+   */
   function _namespacedSalt(uint256 _roleHatId, bytes32 _salt) private pure returns (bytes32 _out) {
     assembly ('memory-safe') {
       mstore(0x00, _roleHatId)
