@@ -333,21 +333,6 @@ contract NavePirataFactory is INavePirataFactory {
     if (!_okSwap) revert NavePirataFactory_BootstrapTeardownFailed();
   }
 
-  /**
-   * @notice Derives the three clone salts for this deployment. The salt is mixed with
-   *         `msg.sender` and `saltNonce` so that, within `RoleHatClonesFactory`, no two squad
-   *         bootstraps can collide on a single clone kind.
-   * @param _saltNonce Caller-supplied determinism nonce.
-   * @return _qmSalt Salt for the Quartermaster clone.
-   * @return _mmSalt Salt for the MutinyModule clone.
-   * @return _taSalt Salt for the TreasuryAuthority clone.
-   */
-  function _cloneSalts(uint256 _saltNonce) internal view returns (bytes32 _qmSalt, bytes32 _mmSalt, bytes32 _taSalt) {
-    _qmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_QM));
-    _mmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_MM));
-    _taSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_TA));
-  }
-
   function _deployQuartermasterClone(
     address _masterCopy,
     HatTree memory _hats,
@@ -429,6 +414,21 @@ contract NavePirataFactory is INavePirataFactory {
         )
       )
     );
+  }
+
+  /**
+   * @notice Derives the three clone salts for this deployment. The salt is mixed with
+   *         `msg.sender` and `saltNonce` so that, within `RoleHatClonesFactory`, no two squad
+   *         bootstraps can collide on a single clone kind.
+   * @param _saltNonce Caller-supplied determinism nonce.
+   * @return _qmSalt Salt for the Quartermaster clone.
+   * @return _mmSalt Salt for the MutinyModule clone.
+   * @return _taSalt Salt for the TreasuryAuthority clone.
+   */
+  function _cloneSalts(uint256 _saltNonce) internal view returns (bytes32 _qmSalt, bytes32 _mmSalt, bytes32 _taSalt) {
+    _qmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_QM));
+    _mmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_MM));
+    _taSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_TA));
   }
 
   /**
