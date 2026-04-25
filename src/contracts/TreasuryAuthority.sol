@@ -19,58 +19,6 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  */
 contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernanceParams, AssetRescuer {
   /*///////////////////////////////////////////////////////////////
-                            TYPES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Parameters required to initialize a TreasuryAuthority clone.
-   * @param safe Squad Safe address. Set as both Zodiac `avatar` and `target`.
-   * @param captainHatId Captain hat id used to gate `captainApprove` and the propose surface.
-   * @param crewHatId Crew hat id used to gate `crewVote` and the propose surface.
-   * @param treasuryAuthorityRoleHatId Role hat worn by this live clone; gates parameter setters.
-   * @param proposalExpiry Seconds from creation until a proposal expires.
-   * @param crewVoteMode Crew vote counting mode.
-   * @param quorumBps Quorum in basis points (applied only in `QUORUM_OF_CAST`).
-   */
-  struct InitParams {
-    address safe;
-    uint256 captainHatId;
-    uint256 crewHatId;
-    uint256 treasuryAuthorityRoleHatId;
-    uint256 proposalExpiry;
-    CrewVoteMode crewVoteMode;
-    uint256 quorumBps;
-  }
-
-  /**
-   * @notice Persisted proposal state. Laid out for compact slot packing.
-   * @param proposer Proposer address. (slot 0: 20 bytes)
-   * @param deadline Unix timestamp after which the proposal cannot execute. (slot 0: +8 bytes)
-   * @param op Operation type (CALL / DELEGATECALL). (slot 0: +1 byte)
-   * @param captainApproved Whether the captain has approved. (slot 0: +1 byte)
-   * @param executed Whether the proposal has been finalized. (slot 0: +1 byte)
-   * @param to Target address for the Safe call. (slot 1: 20 bytes)
-   * @param snapshot Crew snapshot at creation time. (slot 1: +8 bytes)
-   * @param yeas Yea vote count. (slot 1: +? overflow — see slot 2)
-   * @param nays Nay vote count. (slot 2)
-   * @param value ETH value. (slot 3)
-   * @param data Calldata payload. (slot 4 onwards)
-   */
-  struct Proposal {
-    address proposer;
-    uint64 deadline;
-    Operation op;
-    bool captainApproved;
-    bool executed;
-    address to;
-    uint64 snapshot;
-    uint64 yeas;
-    uint64 nays;
-    uint256 value;
-    bytes data;
-  }
-
-  /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
 
@@ -118,12 +66,8 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, GovernancePa
     _disableInitializers();
   }
 
-  /**
-   * @notice Per-clone initializer with a typed parameter struct. Preferred entry point for
-   *         Pacto factories.
-   * @param _p Bootstrap parameters.
-   */
-  function initialize(InitParams calldata _p) external initializer {
+  /// @inheritdoc ITreasuryAuthority
+  function initialize(InitParams calldata _p) external override initializer {
     _applyInit(_p);
   }
 

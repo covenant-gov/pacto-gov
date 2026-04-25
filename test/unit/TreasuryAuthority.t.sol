@@ -56,7 +56,7 @@ abstract contract UnitTreasuryAuthorityBase is Test {
   }
 
   function _initDefault(ITreasuryAuthority.CrewVoteMode _mode) internal {
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: _SAFE_ADDRESS,
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
@@ -107,7 +107,7 @@ abstract contract UnitTreasuryAuthorityBase is Test {
 
 contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
   function test_Constructor_DisablesInitializersOnMaster() external {
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: _SAFE_ADDRESS,
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
@@ -134,7 +134,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
   }
 
   function test_Initialize_RevertsIfAlreadyInitialized() external {
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: _SAFE_ADDRESS,
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
@@ -149,7 +149,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
 
   function test_Initialize_RevertsOnZeroSafe() external {
     TreasuryAuthority _fresh = TreasuryAuthority(payable(Clones.clone(address(_master))));
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: address(0),
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
@@ -164,7 +164,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
 
   function test_Initialize_RevertsOnOutOfBoundsDelay() external {
     TreasuryAuthority _fresh = TreasuryAuthority(payable(Clones.clone(address(_master))));
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: _SAFE_ADDRESS,
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
@@ -183,7 +183,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
 
   function test_Initialize_RevertsOnOutOfBoundsQuorumBps() external {
     TreasuryAuthority _fresh = TreasuryAuthority(payable(Clones.clone(address(_master))));
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: _SAFE_ADDRESS,
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
@@ -202,7 +202,7 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
 
   function test_SetUp_ZodiacShimAppliesInitialization() external {
     TreasuryAuthority _fresh = TreasuryAuthority(payable(Clones.clone(address(_master))));
-    TreasuryAuthority.InitParams memory _p = TreasuryAuthority.InitParams({
+    ITreasuryAuthority.InitParams memory _p = ITreasuryAuthority.InitParams({
       safe: _SAFE_ADDRESS,
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,

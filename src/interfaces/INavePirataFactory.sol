@@ -50,6 +50,26 @@ interface INavePirataFactory {
     uint256 saltNonce;
   }
 
+  /**
+   * @notice Hat id bundle produced while building a squad's tree, threaded through clone-init and mints.
+   * @param topHatId Squad tophat id (initially worn by the factory, transferred to the Safe at the end of the ceremony).
+   * @param mutinyRoleHatId MutinyRole hat id (worn by the MutinyModule clone).
+   * @param quartermasterRoleHatId QuartermasterRole hat id (worn by the Quartermaster clone).
+   * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id (worn by the TreasuryAuthority clone).
+   * @param captainHatId Captain hat id (worn by `DeployParams.captain`).
+   * @param crewHatId Crew hat id (empty at bootstrap; filled by Quartermaster onboarding).
+   * @param squadAdminHatId Squad-admin hat id (worn by the SquadAdmin UUPS proxy).
+   */
+  struct HatTree {
+    uint256 topHatId;
+    uint256 mutinyRoleHatId;
+    uint256 quartermasterRoleHatId;
+    uint256 treasuryAuthorityRoleHatId;
+    uint256 captainHatId;
+    uint256 crewHatId;
+    uint256 squadAdminHatId;
+  }
+
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/

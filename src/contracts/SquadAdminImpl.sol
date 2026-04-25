@@ -21,20 +21,10 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Parameters required to initialize a SquadAdmin proxy.
-   * @param captainHatId Captain hat id that gates executor management and UUPS upgrades.
-   * @param squadAdminHatId Squad-admin hat id worn by this proxy (informational for v1; used
-   *        in Phase 11 predicates).
-   */
-  struct InitParams {
-    uint256 captainHatId;
-    uint256 squadAdminHatId;
-  }
-
-  /**
    * @notice ERC-7201 namespaced storage layout for SquadAdmin v1.
    * @dev New fields may be appended in later implementation versions; never reordered or
-   *      removed, so existing proxies upgrade-in-place without state migration.
+   *      removed, so existing proxies upgrade-in-place without state migration. Kept on the
+   *      implementation because Solidity interface structs cannot contain mappings.
    * @param captainHatId Captain hat id used for gate checks.
    * @param squadAdminHatId Squad-admin hat id worn by this proxy.
    * @param executors Mapping of address → enabled-flag for v1's single predicate.
@@ -69,11 +59,8 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
     _disableInitializers();
   }
 
-  /**
-   * @notice One-shot proxy initializer. Seeds the captain and squad-admin hat ids.
-   * @param _p Bootstrap parameters.
-   */
-  function initialize(InitParams calldata _p) external initializer {
+  /// @inheritdoc ISquadAdmin
+  function initialize(InitParams calldata _p) external override initializer {
     // OZ v5 UUPSUpgradeable is stateless; no initializer needs to run.
     SquadAdminStorageV1 storage _s = _getStorage();
     _s.captainHatId = _p.captainHatId;

@@ -18,46 +18,6 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  */
 contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializable {
   /*///////////////////////////////////////////////////////////////
-                            TYPES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Parameters required to initialize a MutinyModule clone.
-   * @param captainHatId Captain hat id administered by this clone (as MutinyRole wearer).
-   * @param crewHatId Crew hat id (consulted for snapshot-gated voting checks).
-   * @param mutinyRoleHatId MutinyRole hat id worn by this clone.
-   * @param quartermasterRoleHatId QuartermasterRole hat id worn by the peer Quartermaster clone.
-   * @param captain Initial captain-hat wearer (must be marked eligible before the factory mints the hat).
-   * @param quartermaster Peer Quartermaster clone address (verified at every outbound call).
-   */
-  struct InitParams {
-    uint256 captainHatId;
-    uint256 crewHatId;
-    uint256 mutinyRoleHatId;
-    uint256 quartermasterRoleHatId;
-    address captain;
-    address quartermaster;
-  }
-
-  /**
-   * @notice Persisted mutiny round state.
-   * @param proposedNewCaptain Successor if the round passes.
-   * @param fromCaptain Captain at the time the round opened (snapshot-locked).
-   * @param startedAt Timestamp the round opened.
-   * @param snapshot Size of the crew electorate at `startedAt`.
-   * @param yeas Yea vote count.
-   * @param executed Whether the round has been finalized.
-   */
-  struct MutinyRound {
-    address proposedNewCaptain;
-    address fromCaptain;
-    uint64 startedAt;
-    uint64 snapshot;
-    uint64 yeas;
-    bool executed;
-  }
-
-  /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
 
@@ -96,11 +56,8 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     _disableInitializers();
   }
 
-  /**
-   * @notice One-shot init: hat ids, `captain`, `quartermaster`. Eligibility for factory `mintHat` flows through `getWearerStatus` here
-   * @param _p Bootstrap parameters
-   */
-  function initialize(InitParams calldata _p) external initializer {
+  /// @inheritdoc IMutinyModule
+  function initialize(InitParams calldata _p) external override initializer {
     if (_p.captain == address(0) || _p.quartermaster == address(0)) revert MutinyModule_ZeroAddress();
     CAPTAIN_HAT_ID = _p.captainHatId;
     CREW_HAT_ID = _p.crewHatId;

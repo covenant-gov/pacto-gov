@@ -11,6 +11,28 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
  */
 interface IQuartermaster is IQuiescent {
   /*///////////////////////////////////////////////////////////////
+                            TYPES
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Parameters required to initialize a Quartermaster clone.
+   * @param captainHatId Captain hat id for authority checks.
+   * @param crewHatId Crew hat id administered by this clone.
+   * @param mutinyRoleHatId MutinyRole hat id; mutiny hooks require this gate.
+   * @param quartermasterRoleHatId QuartermasterRole hat id worn by this clone.
+   * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id; gates parameter setters.
+   * @param crewChangeDelay Initial timelock in seconds for requested crew adds / removes.
+   */
+  struct InitParams {
+    uint256 captainHatId;
+    uint256 crewHatId;
+    uint256 mutinyRoleHatId;
+    uint256 quartermasterRoleHatId;
+    uint256 treasuryAuthorityRoleHatId;
+    uint256 crewChangeDelay;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
 
@@ -120,6 +142,16 @@ interface IQuartermaster is IQuiescent {
   error Quartermaster_CrewFull();
   /// @notice A required address argument was zero.
   error Quartermaster_ZeroAddress();
+
+  /*///////////////////////////////////////////////////////////////
+                        CONSTRUCTOR / INITIALIZER
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Per-clone initializer; sets hat ids and the crew-change delay.
+   * @param _p Bootstrap parameters.
+   */
+  function initialize(InitParams calldata _p) external;
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

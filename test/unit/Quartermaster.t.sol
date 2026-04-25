@@ -49,7 +49,7 @@ abstract contract UnitQuartermasterBase is Test {
   }
 
   function _initDefault() internal {
-    Quartermaster.InitParams memory _p = Quartermaster.InitParams({
+    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -105,7 +105,7 @@ abstract contract UnitQuartermasterBase is Test {
 
 contract UnitQuartermasterInit is UnitQuartermasterBase {
   function test_Constructor_DisablesInitializersOnMaster() external {
-    Quartermaster.InitParams memory _p = Quartermaster.InitParams({
+    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -128,7 +128,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
   }
 
   function test_Initialize_RevertsIfAlreadyInitialized() external {
-    Quartermaster.InitParams memory _p = Quartermaster.InitParams({
+    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -142,7 +142,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
 
   function test_Initialize_RevertsOnDelayBelowMin() external {
     Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
-    Quartermaster.InitParams memory _p = Quartermaster.InitParams({
+    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -156,7 +156,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
 
   function test_Initialize_RevertsOnDelayAboveMax() external {
     Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
-    Quartermaster.InitParams memory _p = Quartermaster.InitParams({
+    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -657,7 +657,7 @@ contract UnitQuartermasterEligibility is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestRemoveCrew(_alice);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(_qm.pendingCrewRemoveAt(_alice));
     _mockWearer(_alice, _CREW_HAT, true);
     _mockCheckHatWearerStatus(_CREW_HAT, _alice, true);
     _qm.executeRemoveCrew(_alice);

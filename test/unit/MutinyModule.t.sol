@@ -46,7 +46,7 @@ abstract contract UnitMutinyModuleBase is Test {
   }
 
   function _initDefault(address _initialCaptain, address _qmPeer) internal {
-    MutinyModule.InitParams memory _p = MutinyModule.InitParams({
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -113,7 +113,7 @@ abstract contract UnitMutinyModuleBase is Test {
 
 contract UnitMutinyModuleInit is UnitMutinyModuleBase {
   function test_Constructor_DisablesInitializersOnMaster() external {
-    MutinyModule.InitParams memory _p = MutinyModule.InitParams({
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -138,7 +138,7 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
 
   function test_Initialize_RevertsOnZeroCaptain() external {
     MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
-    MutinyModule.InitParams memory _p = MutinyModule.InitParams({
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -152,7 +152,7 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
 
   function test_Initialize_RevertsOnZeroQuartermaster() external {
     MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
-    MutinyModule.InitParams memory _p = MutinyModule.InitParams({
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -165,7 +165,7 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
   }
 
   function test_Initialize_RevertsIfAlreadyInitialized() external {
-    MutinyModule.InitParams memory _p = MutinyModule.InitParams({
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
@@ -391,7 +391,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     MutinyModule _mm2 = MutinyModule(Clones.clone(address(_master)));
     address _contractCaptain = address(_master); // any address with bytecode
     _mockWearer(_quartermaster, _QM_ROLE_HAT, true);
-    MutinyModule.InitParams memory _p = MutinyModule.InitParams({
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,

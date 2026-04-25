@@ -5,6 +5,7 @@ import {Quartermaster} from 'contracts/Quartermaster.sol';
 import {RoleHatClonesFactory} from 'contracts/RoleHatClonesFactory.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
+import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
 import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
 
 /**
@@ -29,7 +30,7 @@ abstract contract UnitRoleHatClonesFactoryBase is Test {
   }
 
   function _defaultQmInit() internal pure returns (bytes memory _data) {
-    Quartermaster.InitParams memory _p = Quartermaster.InitParams({
+    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
       captainHatId: 1,
       crewHatId: 2,
       mutinyRoleHatId: 3,

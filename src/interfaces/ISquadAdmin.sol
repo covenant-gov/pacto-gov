@@ -11,6 +11,21 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
  */
 interface ISquadAdmin is IQuiescent {
   /*///////////////////////////////////////////////////////////////
+                            TYPES
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Parameters required to initialize a SquadAdmin proxy.
+   * @param captainHatId Captain hat id that gates executor management and UUPS upgrades.
+   * @param squadAdminHatId Squad-admin hat id worn by this proxy (informational for v1; used
+   *        in Phase 11 predicates).
+   */
+  struct InitParams {
+    uint256 captainHatId;
+    uint256 squadAdminHatId;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
 
@@ -44,6 +59,16 @@ interface ISquadAdmin is IQuiescent {
   error SquadAdmin_AlreadyExecutor();
   /// @notice A required address argument was zero.
   error SquadAdmin_ZeroAddress();
+
+  /*///////////////////////////////////////////////////////////////
+                        CONSTRUCTOR / INITIALIZER
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice One-shot proxy initializer; seeds the captain and squad-admin hat ids.
+   * @param _p Bootstrap parameters.
+   */
+  function initialize(InitParams calldata _p) external;
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

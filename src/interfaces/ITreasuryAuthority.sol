@@ -36,6 +36,54 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
     DELEGATECALL
   }
 
+  /**
+   * @notice Parameters required to initialize a TreasuryAuthority clone.
+   * @param safe Squad Safe address. Set as both Zodiac `avatar` and `target`.
+   * @param captainHatId Captain hat id used to gate `captainApprove` and the propose surface.
+   * @param crewHatId Crew hat id used to gate `crewVote` and the propose surface.
+   * @param treasuryAuthorityRoleHatId Role hat worn by this live clone; gates parameter setters.
+   * @param proposalExpiry Seconds from creation until a proposal expires.
+   * @param crewVoteMode Crew vote counting mode.
+   * @param quorumBps Quorum in basis points (applied only in `QUORUM_OF_CAST`).
+   */
+  struct InitParams {
+    address safe;
+    uint256 captainHatId;
+    uint256 crewHatId;
+    uint256 treasuryAuthorityRoleHatId;
+    uint256 proposalExpiry;
+    CrewVoteMode crewVoteMode;
+    uint256 quorumBps;
+  }
+
+  /**
+   * @notice Persisted proposal state. Laid out for compact slot packing.
+   * @param proposer Proposer address. (slot 0: 20 bytes)
+   * @param deadline Unix timestamp after which the proposal cannot execute. (slot 0: +8 bytes)
+   * @param op Operation type (CALL / DELEGATECALL). (slot 0: +1 byte)
+   * @param captainApproved Whether the captain has approved. (slot 0: +1 byte)
+   * @param executed Whether the proposal has been finalized. (slot 0: +1 byte)
+   * @param to Target address for the Safe call. (slot 1: 20 bytes)
+   * @param snapshot Crew snapshot at creation time. (slot 1: +8 bytes)
+   * @param yeas Yea vote count.
+   * @param nays Nay vote count.
+   * @param value ETH value.
+   * @param data Calldata payload.
+   */
+  struct Proposal {
+    address proposer;
+    uint64 deadline;
+    Operation op;
+    bool captainApproved;
+    bool executed;
+    address to;
+    uint64 snapshot;
+    uint64 yeas;
+    uint64 nays;
+    uint256 value;
+    bytes data;
+  }
+
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
@@ -156,6 +204,16 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   error TreasuryAuthority_CaptainNotApproved();
   /// @notice The underlying Safe execution failed.
   error TreasuryAuthority_SafeExecutionFailed();
+
+  /*///////////////////////////////////////////////////////////////
+                        CONSTRUCTOR / INITIALIZER
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Per-clone initializer with a typed parameter struct. Preferred entry point for Pacto factories.
+   * @param _p Bootstrap parameters.
+   */
+  function initialize(InitParams calldata _p) external;
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

@@ -7,9 +7,13 @@ import {SquadAdmin} from 'contracts/SquadAdmin.sol';
 import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
 import {TreasuryAuthority} from 'contracts/TreasuryAuthority.sol';
 
+import {IMutinyModule} from 'interfaces/IMutinyModule.sol';
 import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
+import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
 import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+import {ISquadAdmin} from 'interfaces/ISquadAdmin.sol';
+import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
 import {ISafe, ISafeProxyFactory} from 'interfaces/external/ISafeExternal.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
@@ -22,33 +26,6 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `GovernanceParams` base
  */
 contract NavePirataFactory is INavePirataFactory {
-  /*///////////////////////////////////////////////////////////////
-                            TYPES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Internal bundle of every hat id produced by `_createHatTree`, threaded through the
-   *         subsequent clone-init and mint calls. Exists only to keep `deployNavePirata`
-   *         under the stack-depth limit and to make cross-helper dataflow explicit.
-   * @param topHatId Squad tophat id (initially worn by the factory, transferred to the Safe
-   *        at the end of the ceremony).
-   * @param mutinyRoleHatId MutinyRole hat id (worn by the MutinyModule clone).
-   * @param quartermasterRoleHatId QuartermasterRole hat id (worn by the Quartermaster clone).
-   * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id (worn by the TreasuryAuthority clone).
-   * @param captainHatId Captain hat id (worn by `DeployParams.captain`).
-   * @param crewHatId Crew hat id (empty at bootstrap; filled by Quartermaster onboarding).
-   * @param squadAdminHatId Squad-admin hat id (worn by the SquadAdmin UUPS proxy).
-   */
-  struct _HatTree {
-    uint256 topHatId;
-    uint256 mutinyRoleHatId;
-    uint256 quartermasterRoleHatId;
-    uint256 treasuryAuthorityRoleHatId;
-    uint256 captainHatId;
-    uint256 crewHatId;
-    uint256 squadAdminHatId;
-  }
-
   /*///////////////////////////////////////////////////////////////
                             CONSTANTS
   //////////////////////////////////////////////////////////////*/
@@ -144,14 +121,14 @@ contract NavePirataFactory is INavePirataFactory {
     address _predQuartermaster = _CLONES_FACTORY.predictCloneAddress(_params.quartermasterMasterCopy, _qmSalt);
     address _predMutinyModule = _CLONES_FACTORY.predictCloneAddress(_params.mutinyMasterCopy, _mmSalt);
 
-    _HatTree memory _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
+    HatTree memory _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
     _topHatId = _hats.topHatId;
 
     _quartermaster = _CLONES_FACTORY.createClone(
       _params.quartermasterMasterCopy,
       abi.encodeCall(
         Quartermaster.initialize,
-        (Quartermaster.InitParams({
+        (IQuartermaster.InitParams({
             captainHatId: _hats.captainHatId,
             crewHatId: _hats.crewHatId,
             mutinyRoleHatId: _hats.mutinyRoleHatId,
@@ -167,7 +144,7 @@ contract NavePirataFactory is INavePirataFactory {
       _params.mutinyMasterCopy,
       abi.encodeCall(
         MutinyModule.initialize,
-        (MutinyModule.InitParams({
+        (IMutinyModule.InitParams({
             captainHatId: _hats.captainHatId,
             crewHatId: _hats.crewHatId,
             mutinyRoleHatId: _hats.mutinyRoleHatId,
@@ -183,7 +160,7 @@ contract NavePirataFactory is INavePirataFactory {
       _params.treasuryAuthorityMasterCopy,
       abi.encodeCall(
         TreasuryAuthority.initialize,
-        (TreasuryAuthority.InitParams({
+        (ITreasuryAuthority.InitParams({
             safe: _safe,
             captainHatId: _hats.captainHatId,
             crewHatId: _hats.crewHatId,
@@ -201,7 +178,7 @@ contract NavePirataFactory is INavePirataFactory {
         _params.squadAdminImplementation,
         abi.encodeCall(
           SquadAdminImpl.initialize,
-          (SquadAdminImpl.InitParams({captainHatId: _hats.captainHatId, squadAdminHatId: _hats.squadAdminHatId}))
+          (ISquadAdmin.InitParams({captainHatId: _hats.captainHatId, squadAdminHatId: _hats.squadAdminHatId}))
         )
       )
     );
@@ -312,13 +289,13 @@ contract NavePirataFactory is INavePirataFactory {
    * @param _metadataURI Squad metadata URI stored on the tophat.
    * @param _predMutinyModule Predicted MutinyModule clone address (captain-hat eligibility).
    * @param _predQuartermaster Predicted Quartermaster clone address (crew-hat eligibility).
-   * @return _hats Fully populated `_HatTree` struct.
+   * @return _hats Fully populated `HatTree` struct.
    */
   function _createHatTree(
     string memory _metadataURI,
     address _predMutinyModule,
     address _predQuartermaster
-  ) internal returns (_HatTree memory _hats) {
+  ) internal returns (HatTree memory _hats) {
     address _placeholder = _UPGRADER;
 
     _hats.topHatId = _HATS.mintTopHat(address(this), _metadataURI, '');
@@ -347,7 +324,7 @@ contract NavePirataFactory is INavePirataFactory {
    * @param _captain Initial captain address.
    */
   function _mintRoleHats(
-    _HatTree memory _tree,
+    HatTree memory _tree,
     address _quartermaster,
     address _mutinyModule,
     address _treasuryAuthority,

@@ -36,8 +36,8 @@ abstract contract UnitSquadAdminBase is Test {
     vm.etch(_HATS_ADDRESS, hex'00');
     _impl = new SquadAdminImpl(IHats(_HATS_ADDRESS));
 
-    SquadAdminImpl.InitParams memory _p =
-      SquadAdminImpl.InitParams({captainHatId: _CAPTAIN_HAT, squadAdminHatId: _SQUAD_ADMIN_HAT});
+    ISquadAdmin.InitParams memory _p =
+      ISquadAdmin.InitParams({captainHatId: _CAPTAIN_HAT, squadAdminHatId: _SQUAD_ADMIN_HAT});
     bytes memory _initData = abi.encodeCall(SquadAdminImpl.initialize, (_p));
 
     _proxy = new SquadAdmin(address(_impl), _initData);
@@ -55,8 +55,8 @@ abstract contract UnitSquadAdminBase is Test {
 
 contract UnitSquadAdminInit is UnitSquadAdminBase {
   function test_Constructor_DisablesInitializersOnMaster() external {
-    SquadAdminImpl.InitParams memory _p =
-      SquadAdminImpl.InitParams({captainHatId: _CAPTAIN_HAT, squadAdminHatId: _SQUAD_ADMIN_HAT});
+    ISquadAdmin.InitParams memory _p =
+      ISquadAdmin.InitParams({captainHatId: _CAPTAIN_HAT, squadAdminHatId: _SQUAD_ADMIN_HAT});
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _impl.initialize(_p);
   }
@@ -68,7 +68,7 @@ contract UnitSquadAdminInit is UnitSquadAdminBase {
   }
 
   function test_Initialize_RevertsOnDoubleInit() external {
-    SquadAdminImpl.InitParams memory _p = SquadAdminImpl.InitParams({captainHatId: 1, squadAdminHatId: 2});
+    ISquadAdmin.InitParams memory _p = ISquadAdmin.InitParams({captainHatId: 1, squadAdminHatId: 2});
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _admin.initialize(_p);
   }

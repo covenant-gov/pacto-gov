@@ -11,6 +11,46 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
  */
 interface IMutinyModule is IQuiescent {
   /*///////////////////////////////////////////////////////////////
+                            TYPES
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Parameters required to initialize a MutinyModule clone.
+   * @param captainHatId Captain hat id administered by this clone (as MutinyRole wearer).
+   * @param crewHatId Crew hat id (consulted for snapshot-gated voting checks).
+   * @param mutinyRoleHatId MutinyRole hat id worn by this clone.
+   * @param quartermasterRoleHatId QuartermasterRole hat id worn by the peer Quartermaster clone.
+   * @param captain Initial captain-hat wearer (must be marked eligible before the factory mints the hat).
+   * @param quartermaster Peer Quartermaster clone address (verified at every outbound call).
+   */
+  struct InitParams {
+    uint256 captainHatId;
+    uint256 crewHatId;
+    uint256 mutinyRoleHatId;
+    uint256 quartermasterRoleHatId;
+    address captain;
+    address quartermaster;
+  }
+
+  /**
+   * @notice Persisted mutiny round state.
+   * @param proposedNewCaptain Successor if the round passes.
+   * @param fromCaptain Captain at the time the round opened (snapshot-locked).
+   * @param startedAt Timestamp the round opened.
+   * @param snapshot Size of the crew electorate at `startedAt`.
+   * @param yeas Yea vote count.
+   * @param executed Whether the round has been finalized.
+   */
+  struct MutinyRound {
+    address proposedNewCaptain;
+    address fromCaptain;
+    uint64 startedAt;
+    uint64 snapshot;
+    uint64 yeas;
+    bool executed;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
 
@@ -97,6 +137,16 @@ interface IMutinyModule is IQuiescent {
    * @param _captain The stale captain address.
    */
   error MutinyModule_StaleCaptain(address _captain);
+
+  /*///////////////////////////////////////////////////////////////
+                        CONSTRUCTOR / INITIALIZER
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice One-shot init: hat ids, `captain`, `quartermaster`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
+   * @param _p Bootstrap parameters.
+   */
+  function initialize(InitParams calldata _p) external;
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

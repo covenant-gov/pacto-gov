@@ -18,28 +18,6 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, GovernanceParams, Initializable {
   /*///////////////////////////////////////////////////////////////
-                            TYPES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Parameters required to initialize a Quartermaster clone.
-   * @param captainHatId Captain hat id for authority checks.
-   * @param crewHatId Crew hat id administered by this clone.
-   * @param mutinyRoleHatId MutinyRole hat id; mutiny hooks require this gate.
-   * @param quartermasterRoleHatId QuartermasterRole hat id worn by this clone.
-   * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id; gates parameter setters.
-   * @param crewChangeDelay Initial timelock in seconds for requested crew adds / removes.
-   */
-  struct InitParams {
-    uint256 captainHatId;
-    uint256 crewHatId;
-    uint256 mutinyRoleHatId;
-    uint256 quartermasterRoleHatId;
-    uint256 treasuryAuthorityRoleHatId;
-    uint256 crewChangeDelay;
-  }
-
-  /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
 
@@ -87,13 +65,8 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, Governance
     _disableInitializers();
   }
 
-  /**
-   * @notice Per-clone initializer; sets hat ids and the crew-change delay.
-   * @dev Delay is validated against the bounds on the inherited `GovernanceParams` contract. Emits
-   *      `CrewChangeDelayUpdated(0, crewChangeDelay)` so indexers see the initial value.
-   * @param _p Bootstrap parameters.
-   */
-  function initialize(InitParams calldata _p) external initializer {
+  /// @inheritdoc IQuartermaster
+  function initialize(InitParams calldata _p) external override initializer {
     _validateDelay(_p.crewChangeDelay);
     CAPTAIN_HAT_ID = _p.captainHatId;
     CREW_HAT_ID = _p.crewHatId;
