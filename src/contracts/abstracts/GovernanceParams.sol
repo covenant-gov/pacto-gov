@@ -10,12 +10,6 @@ pragma solidity 0.8.30;
  *         because they're meaningful across contracts.
  * @dev Designed to be inherited by contracts that expose TreasuryAuthorityRole-gated
  *      setters (e.g. `Quartermaster.setCrewChangeDelay`, `TreasuryAuthority.setProposalExpiry`).
- *
- *      The lower bound on delays is intentionally permissive (1 minute) to support
- *      alpha testing, demos, and users learning governance hands-on. Safety comes
- *      from the two-body vote that gates every setter, not from a mandatory delay
- *      floor. Squads that want a longer floor can enforce it socially via proposal
- *      review.
  */
 abstract contract GovernanceParams {
   /// @notice Minimum accepted value for any governance delay parameter (in seconds).
@@ -29,8 +23,6 @@ abstract contract GovernanceParams {
 
   /**
    * @notice Value is outside the inclusive `min`–`max` range for a governance parameter.
-   *         Used for both delay validation (`[_MIN_GOV_DELAY, _MAX_GOV_DELAY]`, seconds) and
-   *         quorum bps (`[_MIN_QUORUM_BPS, _MAX_QUORUM_BPS]`).
    * @param value The rejected value.
    * @param min The inclusive lower bound.
    * @param max The inclusive upper bound.

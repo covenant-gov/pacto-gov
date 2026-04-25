@@ -11,9 +11,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  *         than caching peer addresses.
  * @dev The address of the Hats singleton is baked into the deploying contract's
  *      runtime code as an `immutable`. For EIP-1167 clones this value is inherited
- *      from the master copy (clones delegate-call into the master's runtime code),
- *      so one master copy per chain is sufficient even though the `_HATS` address
- *      differs per chain.
+ *      from the master copy (clones delegate-call into the master's runtime code).
  */
 abstract contract HatGated {
   /**

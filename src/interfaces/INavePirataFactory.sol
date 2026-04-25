@@ -20,8 +20,7 @@ interface INavePirataFactory {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Per-squad governance values for factory bootstrap. Distinct from the `GovernanceParams`
-   *         abstract contract (min/max validation helpers on role contracts).
+   * @notice Governance defaults for a new squad.
    * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
    * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires.
    * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast).
