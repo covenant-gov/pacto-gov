@@ -8,7 +8,7 @@ It also supports **captain resignation**: the current captain can voluntarily ha
 
 Together, this makes **leadership change** something the chain can enforce, instead of only social agreement.
 
-## What it does (in plain terms)
+## What it does
 
 1. **Start a mutiny**  
    A crew member proposes an address that should become the new captain. The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad.
@@ -23,7 +23,7 @@ Together, this makes **leadership change** something the chain can enforce, inst
    The module tells the **Quartermaster** to turn on **“mutiny mode.”** That **freezes** the captain’s normal “hire and fire crew” flows so the roster can’t be changed casually during the vote. When the mutiny finishes, mutiny mode is turned off.
 
 5. **After the captain changes (human ex-captains)**  
-   If the old captain was a **person’s wallet** (not a smart contract), the module may ask the Quartermaster to **seat the former captain as crew** again — either by minting them a crew hat or by **handing off** an existing crew hat from the new captain, depending on whether the new captain was already crew.
+   If the old captain was an **EOA / personal wallet** (not a smart contract), the module may ask the Quartermaster to **seat the former captain as crew** again — either by minting them a crew hat or by **handing off** an existing crew hat from the new captain, depending on whether the new captain was already crew.
 
    If the old captain was a **contract**, this automatic “welcome back as crew” step is **skipped** by design.
 

@@ -11,7 +11,7 @@ The design is intentionally **two-key**:
 
 Only then can the proposal **execute** as a transaction **from the Safe** through the module.
 
-## What it does (in plain terms)
+## What it does
 
 ### Proposals
 

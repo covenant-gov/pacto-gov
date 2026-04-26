@@ -6,7 +6,7 @@ A squad needs a **fair, predictable way** to grow and shrink the **crew**: who i
 
 It also connects to **mutiny**: when the crew is voting to replace the captain, you don’t want the captain to **quietly reshuffle the crew** in the same block. So the Quartermaster can enter **mutiny mode**, which **blocks** those normal add/remove paths until the mutiny is resolved.
 
-## What it does (in plain terms)
+## What it does
 
 ### Normal operation (captain-driven)
 
