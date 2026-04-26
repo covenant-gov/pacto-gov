@@ -198,6 +198,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     captain = _to;
     _HATS.transferHat(captainHatId, _from, _to);
 
+    // is ex-captain an EOA? if so, mint or handoff crew hat
     if (_from.code.length == 0) {
       if (_HATS.isWearerOfHat(_to, crewHatId)) {
         IQuartermaster(_qm).crewHandoffForMutiny(_from, _to);

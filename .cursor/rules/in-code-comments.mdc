@@ -24,6 +24,13 @@ alwaysApply: true
 - Avoid duplicating the function name or repeating information already obvious from types and parameter names; use NatSpec for **intent**, edge cases, and invariants callers must respect.
 - Follow project expectations where **lintspec** / CI applies (e.g. `src/`, `script/`, `test/` per project config).
 
+## No pointers to gitignored or local-only docs
+
+- **Do not** reference the `ai-docs/` tree, filenames that live only there, or phrases like “tech spec §…”, “see architecture doc”, or other citations that assume a document absent from a clean clone.
+- **Do not** tell readers to open **gitignored paths** (e.g. `.env`, paths under `ai-docs/` when ignored) as documentation. Describe behavior, required configuration, or env var **names** in neutral terms (“forge environment variables”, “RPC URL for the target chain”) without steering people to ignored files.
+- Rationale: new contributors and CI only see committed sources; comments must not depend on local-only folders.
+- **Do not** be lazy by over-using references. Use references when information is dense and better read in source document, otherwise leave useful succinct comment.
+
 ## Examples
 
 ```solidity

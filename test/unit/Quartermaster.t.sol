@@ -4,8 +4,11 @@ pragma solidity 0.8.30;
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 import {Quartermaster} from 'contracts/Quartermaster.sol';
-import {GovernanceParams} from 'contracts/abstracts/GovernanceParams.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
+
+import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
+
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
@@ -28,7 +31,6 @@ abstract contract UnitQuartermasterBase is Test {
   uint256 internal constant _QUARTERMASTER_ROLE_HAT = 4;
   uint256 internal constant _TREASURY_AUTHORITY_ROLE_HAT = 5;
 
-  uint256 internal constant _DEFAULT_DELAY = 7 days;
   uint32 internal constant _CREW_MAX = 10_000;
 
   Quartermaster internal _master;
@@ -55,7 +57,7 @@ abstract contract UnitQuartermasterBase is Test {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: _DEFAULT_DELAY
+      crewChangeDelay: CREW_CHANGE_DELAY
     });
     _qm.initialize(_p);
   }
@@ -95,7 +97,7 @@ abstract contract UnitQuartermasterBase is Test {
     vm.prank(_captain);
     _qm.requestAddCrew(_candidate);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_candidate, _CREW_HAT, false);
     _mockMintHat(_CREW_HAT, _candidate, true);
 
@@ -111,7 +113,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: _DEFAULT_DELAY
+      crewChangeDelay: CREW_CHANGE_DELAY
     });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _master.initialize(_p);
@@ -123,7 +125,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
     assertEq(_qm.mutinyRoleHatId(), _MUTINY_ROLE_HAT);
     assertEq(_qm.quartermasterRoleHatId(), _QUARTERMASTER_ROLE_HAT);
     assertEq(_qm.treasuryAuthorityRoleHatId(), _TREASURY_AUTHORITY_ROLE_HAT);
-    assertEq(_qm.crewChangeDelay(), _DEFAULT_DELAY);
+    assertEq(_qm.crewChangeDelay(), CREW_CHANGE_DELAY);
     assertFalse(_qm.mutinyActive());
   }
 
@@ -134,7 +136,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: _DEFAULT_DELAY
+      crewChangeDelay: CREW_CHANGE_DELAY
     });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _qm.initialize(_p);
@@ -150,7 +152,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
       crewChangeDelay: 30
     });
-    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_OutOfRange.selector, 30, 60, 60 days));
+    vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 30, 60, 60 days));
     _fresh.initialize(_p);
   }
 
@@ -164,7 +166,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
       crewChangeDelay: 61 days
     });
-    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_OutOfRange.selector, 61 days, 60, 60 days));
+    vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 61 days, 60, 60 days));
     _fresh.initialize(_p);
   }
 }
@@ -176,7 +178,7 @@ contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
     _mockWearer(_alice, _CREW_HAT, false);
     _mockCrewCapacity(0, _CREW_MAX);
 
-    uint256 _expectedEta = block.timestamp + _DEFAULT_DELAY;
+    uint256 _expectedEta = block.timestamp + CREW_CHANGE_DELAY;
     vm.expectEmit(true, false, false, true, address(_qm));
     emit IQuartermaster.CrewAddRequested(_alice, _expectedEta);
 
@@ -302,7 +304,7 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestAddCrew(_alice);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_alice, _CREW_HAT, false);
     _mockMintHat(_CREW_HAT, _alice, true);
 
@@ -349,7 +351,7 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
     vm.prank(_mutinyClone);
     _qm.setMutinyActive(true);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
     _qm.executeAddCrew(_alice);
   }
@@ -362,7 +364,7 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestAddCrew(_alice);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_alice, _CREW_HAT, true);
     vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_AlreadyCrew.selector, _alice));
     _qm.executeAddCrew(_alice);
@@ -374,7 +376,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
     _seedCrew(_alice);
 
     _mockWearer(_alice, _CREW_HAT, true);
-    uint256 _expectedEta = block.timestamp + _DEFAULT_DELAY;
+    uint256 _expectedEta = block.timestamp + CREW_CHANGE_DELAY;
     vm.expectEmit(true, false, false, true, address(_qm));
     emit IQuartermaster.CrewRemoveRequested(_alice, _expectedEta);
     vm.prank(_captain);
@@ -438,7 +440,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestRemoveCrew(_alice);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockCheckHatWearerStatus(_CREW_HAT, _alice, true);
 
@@ -479,7 +481,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
     vm.prank(_mutinyClone);
     _qm.setMutinyActive(true);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
     _qm.executeRemoveCrew(_alice);
   }
@@ -490,7 +492,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestRemoveCrew(_alice);
 
-    vm.warp(block.timestamp + _DEFAULT_DELAY);
+    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_alice, _CREW_HAT, false);
     vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotCrew.selector, _alice));
     _qm.executeRemoveCrew(_alice);
@@ -616,7 +618,7 @@ contract UnitQuartermasterParameterSetters is UnitQuartermasterBase {
     _mockWearer(_treasuryClone, _TREASURY_AUTHORITY_ROLE_HAT, true);
 
     vm.expectEmit(false, false, false, true, address(_qm));
-    emit IQuartermaster.CrewChangeDelayUpdated(_DEFAULT_DELAY, 14 days);
+    emit IQuartermaster.CrewChangeDelayUpdated(CREW_CHANGE_DELAY, 14 days);
     vm.prank(_treasuryClone);
     _qm.setCrewChangeDelay(14 days);
 
@@ -635,7 +637,7 @@ contract UnitQuartermasterParameterSetters is UnitQuartermasterBase {
   function test_SetCrewChangeDelay_RevertsOutOfRange() external {
     _mockWearer(_treasuryClone, _TREASURY_AUTHORITY_ROLE_HAT, true);
     vm.prank(_treasuryClone);
-    vm.expectRevert(abi.encodeWithSelector(GovernanceParams.GovernanceParams_OutOfRange.selector, 0, 60, 60 days));
+    vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 0, 60, 60 days));
     _qm.setCrewChangeDelay(0);
   }
 }

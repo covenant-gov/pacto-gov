@@ -16,8 +16,7 @@ interface ISquadAdmin is IQuiescent {
   /**
    * @notice Parameters required to initialize a SquadAdmin proxy.
    * @param captainHatId Captain hat id that gates executor management and UUPS upgrades.
-   * @param squadAdminHatId Squad-admin hat id worn by this proxy (informational for v1; used
-   *        in Phase 11 predicates).
+   * @param squadAdminHatId Squad-admin hat id worn by this proxy (informational for v1; reserved for richer app-level checks later).
    */
   struct InitParams {
     uint256 captainHatId;

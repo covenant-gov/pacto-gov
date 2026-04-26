@@ -23,7 +23,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  * @author Pacto
  * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, SquadAdmin, TA wiring, registry (see `INavePirataFactory`)
  * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts = `(msg.sender, saltNonce, kind)`. Placeholder
- *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `GovernanceParams` base
+ *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `RangeValidator` base
  */
 contract NavePirataFactory is INavePirataFactory {
   /*///////////////////////////////////////////////////////////////

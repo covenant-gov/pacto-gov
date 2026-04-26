@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
+
+import {DeployTypes} from 'script/DeployTypes.sol';
+
+import {Script} from 'forge-std/Script.sol';
+import {VmSafe} from 'forge-std/Vm.sol';
+
+/**
+ * @title DeploymentArtifacts
+ * @author Pacto
+ * @notice Writes human-readable JSON under `deployments/<chainId>/` when running `forge script` (not `forge test`).
+ * @dev JSON files are written under `deployments/<chainId>/`, relative to the repo root.
+ */
+abstract contract DeploymentArtifacts is Script {
+  function _shouldWriteDeploymentJson() internal view returns (bool) {
+    return vm.isContext(VmSafe.ForgeContext.ScriptDryRun) || vm.isContext(VmSafe.ForgeContext.ScriptBroadcast)
+      || vm.isContext(VmSafe.ForgeContext.ScriptResume);
+  }
+
+  function _deploymentJsonPath(string memory filename) internal view returns (string memory) {
+    return string.concat('deployments/', vm.toString(block.chainid), '/', filename);
+  }
+
+  function _writeExternalAddressesJson(DeployTypes.ExternalAddresses memory ext) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_external';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeAddress(k, 'hats', ext.hats);
+    vm.serializeAddress(k, 'safeProxyFactory', ext.safeProxyFactory);
+    string memory json = vm.serializeAddress(k, 'safeSingleton', ext.safeSingleton);
+    vm.writeJson(json, _deploymentJsonPath('external.json'));
+  }
+
+  function _writeMasterCopiesJson(DeployTypes.MasterCopyAddresses memory m) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_master_copies';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeAddress(k, 'quartermaster', m.quartermaster);
+    vm.serializeAddress(k, 'mutinyModule', m.mutinyModule);
+    vm.serializeAddress(k, 'treasuryAuthority', m.treasuryAuthority);
+    string memory json = vm.serializeAddress(k, 'squadAdminImpl', m.squadAdminImpl);
+    vm.writeJson(json, _deploymentJsonPath('master-copies.json'));
+  }
+
+  function _writeInfraJson(DeployTypes.InfraAddresses memory i) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_infra';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeAddress(k, 'roleHatClonesFactory', i.clonesFactory);
+    vm.serializeAddress(k, 'navePirataRegistry', i.registry);
+    vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
+    string memory json = vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
+    vm.writeJson(json, _deploymentJsonPath('infra.json'));
+  }
+
+  function _writeFullSystemJson(
+    DeployTypes.ExternalAddresses memory ext,
+    DeployTypes.MasterCopyAddresses memory m,
+    DeployTypes.InfraAddresses memory i
+  ) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_full_system';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeAddress(k, 'hats', ext.hats);
+    vm.serializeAddress(k, 'safeProxyFactory', ext.safeProxyFactory);
+    vm.serializeAddress(k, 'safeSingleton', ext.safeSingleton);
+    vm.serializeAddress(k, 'masterQuartermaster', m.quartermaster);
+    vm.serializeAddress(k, 'masterMutinyModule', m.mutinyModule);
+    vm.serializeAddress(k, 'masterTreasuryAuthority', m.treasuryAuthority);
+    vm.serializeAddress(k, 'masterSquadAdminImpl', m.squadAdminImpl);
+    vm.serializeAddress(k, 'roleHatClonesFactory', i.clonesFactory);
+    vm.serializeAddress(k, 'navePirataRegistry', i.registry);
+    vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
+    string memory json = vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
+    vm.writeJson(json, _deploymentJsonPath('full-system.json'));
+  }
+
+  function _writeSquadDeploymentJson(
+    uint256 topHatId,
+    address safe,
+    address quartermaster,
+    address mutinyModule,
+    address treasuryAuthority,
+    address squadAdminProxy,
+    uint256 saltNonce
+  ) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_squad';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeUint(k, 'topHatId', topHatId);
+    vm.serializeUint(k, 'saltNonce', saltNonce);
+    vm.serializeAddress(k, 'safe', safe);
+    vm.serializeAddress(k, 'quartermaster', quartermaster);
+    vm.serializeAddress(k, 'mutinyModule', mutinyModule);
+    vm.serializeAddress(k, 'treasuryAuthority', treasuryAuthority);
+    string memory json = vm.serializeAddress(k, 'squadAdminProxy', squadAdminProxy);
+    vm.writeJson(json, _deploymentJsonPath(string.concat('squad-', vm.toString(saltNonce), '.json')));
+  }
+}

@@ -8,7 +8,8 @@ import {IQuiescent} from 'interfaces/IQuiescent.sol';
  * @title ITreasuryAuthority
  * @author Pacto
  * @notice Two-body Safe control: crew must pass the vote (snapshot majority or quorum-of-cast), captain must
- *         approve, then execute. Sole module+owner on the Safe; param changes go through this role hat. `IAssetRescuer`
+ *         approve (`captainVote(true)`), then execute. Captain may `captainVote(false)` to veto
+ *         before expiry. Sole module+owner on the Safe; param changes go through this role hat. `IAssetRescuer`
  *         sweeps stray balance to the Safe
  */
 interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
@@ -38,7 +39,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   /**
    * @notice Parameters required to initialize a TreasuryAuthority clone.
    * @param safe Squad Safe address. Set as both Zodiac `avatar` and `target`.
-   * @param captainHatId Captain hat id used to gate `captainApprove` and the propose surface.
+   * @param captainHatId Captain hat id used to gate `captainVote` and the propose surface.
    * @param crewHatId Crew hat id used to gate `crewVote` and the propose surface.
    * @param treasuryAuthorityRoleHatId Role hat worn by this live clone; gates parameter setters.
    * @param proposalExpiry Seconds from creation until a proposal expires.
@@ -61,6 +62,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    * @param deadline Unix timestamp after which the proposal cannot execute. (slot 0: +8 bytes)
    * @param op Operation type (CALL / DELEGATECALL). (slot 0: +1 byte)
    * @param captainApproved Whether the captain has approved. (slot 0: +1 byte)
+   * @param captainDefeated Whether the captain vetoed the proposal (cannot execute). (slot 0: +1 byte)
    * @param executed Whether the proposal has been finalized. (slot 0: +1 byte)
    * @param to Target address for the Safe call. (slot 1: 20 bytes)
    * @param snapshot Crew snapshot at creation time. (slot 1: +8 bytes)
@@ -74,6 +76,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
     uint64 deadline;
     Operation op;
     bool captainApproved;
+    bool captainDefeated;
     bool executed;
     address to;
     uint64 snapshot;
@@ -117,11 +120,12 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   event CrewVoted(uint256 indexed _proposalId, address indexed _voter, bool _yea);
 
   /**
-   * @notice Captain approved (no rejection event; missing approval + deadline ends the proposal)
-   * @param _proposalId Proposal id
-   * @param _captain Approver
+   * @notice The captain cast their single vote on this proposal (approve or veto).
+   * @param _proposalId Proposal identifier.
+   * @param _captain Captain hat wearer.
+   * @param _support True if approving, false if vetoing.
    */
-  event CaptainApproved(uint256 indexed _proposalId, address indexed _captain);
+  event CaptainVoted(uint256 indexed _proposalId, address indexed _captain, bool _support);
 
   /**
    * @notice The proposal was executed against the Safe via the Zodiac module surface.
@@ -191,14 +195,21 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    */
   error TreasuryAuthority_AlreadyVoted(address _voter);
 
-  /// @notice The captain has already approved this proposal.
-  error TreasuryAuthority_CaptainAlreadyApproved();
+  /**
+   * @notice The captain may only vote once per proposal.
+   * @param _captain Captain that attempted a second vote.
+   */
+  error TreasuryAuthority_CaptainAlreadyVoted(address _captain);
+
+  /**
+   * @notice The proposal cannot be executed yet (captain vetoed, crew threshold not met, or captain has not
+   *         approved), or crew cannot vote because the captain vetoed. Inspect `proposal(_id)` on-chain for why.
+   * @param _proposalId The proposal that cannot be executed or voted on by crew.
+   */
+  error TreasuryAuthority_NotExecutable(uint256 _proposalId);
+
   /// @notice The proposal has already been executed.
   error TreasuryAuthority_AlreadyExecuted();
-  /// @notice Crew vote has not passed under the current mode.
-  error TreasuryAuthority_CrewVoteNotPassed();
-  /// @notice Captain has not approved the proposal.
-  error TreasuryAuthority_CaptainNotApproved();
   /// @notice The underlying Safe execution failed.
   error TreasuryAuthority_SafeExecutionFailed();
   /// @notice `block.timestamp + proposalExpiry` exceeds `type(uint64).max` (proposal `deadline` storage width).
@@ -240,22 +251,23 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
 
   /**
    * @notice Cast one crew vote on a proposal. Crew-hat-gated and snapshot-constrained.
+   * @dev Reverts `NotExecutable` if the captain vetoed this proposal.
    * @param _proposalId Proposal identifier.
-   * @param _yea True to support.
+   * @param _support True to vote in favor; false to vote against.
    */
-  function crewVote(uint256 _proposalId, bool _yea) external;
+  function crewVote(uint256 _proposalId, bool _support) external;
 
   /**
-   * @notice Record the captain's approval. Captain-hat-gated.
-   * @dev There is no counterpart `captainReject`: a proposal the captain does not approve
-   *      simply expires at its `deadline`. Silence is veto.
+   * @notice Captain casts their single vote: `true` approves; `false` vetoes (defeats the proposal,
+   *         clears the proposer's open slot, blocks execution). Cannot be called twice on the same proposal.
    * @param _proposalId Proposal identifier.
+   * @param _support True to approve; false to veto.
    */
-  function captainApprove(uint256 _proposalId) external;
+  function captainVote(uint256 _proposalId, bool _support) external;
 
   /**
-   * @notice Execute a proposal once the crew vote has passed and the captain has approved.
-   * @dev Permissionless; uses Zodiac `Module.exec*` to act on the Safe.
+   * @notice Execute a proposal once the crew vote has passed, the captain has approved, and the proposal was not vetoed.
+   * @dev Permissionless; uses Zodiac `Module.exec*` to act on the Safe. Reverts `NotExecutable` if any precondition fails.
    * @param _proposalId Proposal identifier.
    */
   function execute(uint256 _proposalId) external;
@@ -321,7 +333,8 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    * @return _snapshot Snapshot size of eligible crew at creation time.
    * @return _yeas Yea vote count.
    * @return _nays Nay vote count.
-   * @return _captainApproved Whether the captain has approved (silence = veto).
+   * @return _captainApproved Whether the captain has approved.
+   * @return _captainDefeated Whether the captain vetoed (`captainVote` with false).
    * @return _executed Whether the proposal has been executed.
    */
   function proposal(uint256 _id)
@@ -338,6 +351,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
       uint64 _yeas,
       uint64 _nays,
       bool _captainApproved,
+      bool _captainDefeated,
       bool _executed
     );
 
