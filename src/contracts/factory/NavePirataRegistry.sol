@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 

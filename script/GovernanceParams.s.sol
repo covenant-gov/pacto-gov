@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {CREW_CHANGE_DELAY, DEFAULT_CREW_VOTE_MODE, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
 /**

@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
-import {IQuiescent} from 'interfaces/IQuiescent.sol';
-import {ISquadAdmin} from 'interfaces/ISquadAdmin.sol';
+import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
+import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {UUPSUpgradeable} from '@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol';

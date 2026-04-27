@@ -2,11 +2,11 @@
 pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
-import {SquadAdmin} from 'contracts/SquadAdmin.sol';
-import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
+import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
+import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
-import {ISquadAdmin} from 'interfaces/ISquadAdmin.sol';
+import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 /**
  * @title UnitSquadAdminBase

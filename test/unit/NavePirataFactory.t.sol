@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {NavePirataFactory} from 'contracts/NavePirataFactory.sol';
-import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
+import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
+import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
 import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
-import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
-import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
-import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
+import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 import {ISafe, ISafeProxyFactory} from 'interfaces/external/ISafeExternal.sol';
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
 /**
  * @title UnitNavePirataFactoryBase

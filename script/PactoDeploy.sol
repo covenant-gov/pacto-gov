@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {MutinyModule} from 'contracts/MutinyModule.sol';
-import {NavePirataFactory} from 'contracts/NavePirataFactory.sol';
-import {NavePirataRegistry} from 'contracts/NavePirataRegistry.sol';
-import {Quartermaster} from 'contracts/Quartermaster.sol';
-import {RoleHatClonesFactory} from 'contracts/RoleHatClonesFactory.sol';
-import {RoleHatUpgrader} from 'contracts/RoleHatUpgrader.sol';
-import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
-import {TreasuryAuthority} from 'contracts/TreasuryAuthority.sol';
+import {MutinyModule} from 'contracts/core/MutinyModule.sol';
+import {Quartermaster} from 'contracts/core/Quartermaster.sol';
+import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
+import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
+import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
+import {RoleHatClonesFactory} from 'contracts/factory/RoleHatClonesFactory.sol';
+import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
+import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
-import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
-import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
 import {
   CHAIN_ID_ANVIL,

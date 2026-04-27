@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
+import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 
 /// @dev Default `Quartermaster.crewChangeDelay` / `INavePirataFactory.SquadParams.crewChangeDelay` for scripted deploys.
 uint256 constant CREW_CHANGE_DELAY = 7 days;
