@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Quartermaster} from 'contracts/Quartermaster.sol';
-import {RoleHatClonesFactory} from 'contracts/RoleHatClonesFactory.sol';
+import {Quartermaster} from 'contracts/core/Quartermaster.sol';
+import {RoleHatClonesFactory} from 'contracts/factory/RoleHatClonesFactory.sol';
 
 import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
 

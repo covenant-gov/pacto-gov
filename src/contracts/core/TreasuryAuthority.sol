@@ -73,7 +73,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /*///////////////////////////////////////////////////////////////
-                            GOVERNANCE: PROPOSE
+                            GOVERNANCE LOGIC: PROPOSE
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
@@ -118,7 +118,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /*///////////////////////////////////////////////////////////////
-                            GOVERNANCE: VOTE
+                            GOVERNANCE LOGIC: VOTE
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
@@ -141,7 +141,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /*///////////////////////////////////////////////////////////////
-                            GOVERNANCE: EXECUTE
+                            GOVERNANCE LOGIC: EXECUTE
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority

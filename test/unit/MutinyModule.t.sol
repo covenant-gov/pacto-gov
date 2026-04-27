@@ -3,8 +3,8 @@ pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
-import {MutinyModule} from 'contracts/MutinyModule.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {MutinyModule} from 'contracts/core/MutinyModule.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IMutinyModule} from 'interfaces/IMutinyModule.sol';

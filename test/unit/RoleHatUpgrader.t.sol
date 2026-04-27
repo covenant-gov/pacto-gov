@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {RoleHatUpgrader} from 'contracts/RoleHatUpgrader.sol';
+import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IHatsIdUtilities} from 'hats-core/Interfaces/IHatsIdUtilities.sol';

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {NavePirataFactory} from 'contracts/NavePirataFactory.sol';
-import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
+import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
+import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
 import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 

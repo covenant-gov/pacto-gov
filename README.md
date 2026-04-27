@@ -14,7 +14,7 @@ For a non-technical overview of the main modules, see the **[docs guidebook](./d
 
 ## Nave Pirata contracts
 
-The system is built around **Hats-Pointer Upgradeability**: authority is a Hats Protocol hat, and upgrading a role contract is a `transferHat` call rather than a proxy migration. Implementation detail lives in `src/contracts/` and tests; governance behavior is summarized in the **Docs** list below.
+The system is built around **Hats-Pointer Upgradeability**: authority is a Hats Protocol hat, and upgrading a role contract is a `transferHat` call rather than a proxy migration. Implementation detail lives under `src/contracts/` (`core/`, `squad/`, `factory/`, `abstracts/`) and in tests; governance behavior is summarized in the **Docs** list below.
 
 **Docs** (governance contracts — plain language):
 - **[Guidebook](./docs/README.md)** — how Mutiny, Quartermaster, and Treasury Authority fit together.

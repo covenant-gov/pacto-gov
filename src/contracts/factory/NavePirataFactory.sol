@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {MutinyModule} from 'contracts/MutinyModule.sol';
-import {Quartermaster} from 'contracts/Quartermaster.sol';
-import {SquadAdmin} from 'contracts/SquadAdmin.sol';
-import {SquadAdminImpl} from 'contracts/SquadAdminImpl.sol';
-import {TreasuryAuthority} from 'contracts/TreasuryAuthority.sol';
+import {MutinyModule} from 'contracts/core/MutinyModule.sol';
+import {Quartermaster} from 'contracts/core/Quartermaster.sol';
+import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
+import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
+import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
 import {IMutinyModule} from 'interfaces/IMutinyModule.sol';
 import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';

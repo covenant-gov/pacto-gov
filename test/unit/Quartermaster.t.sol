@@ -3,9 +3,9 @@ pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
-import {Quartermaster} from 'contracts/Quartermaster.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
+import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 
 import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
 
