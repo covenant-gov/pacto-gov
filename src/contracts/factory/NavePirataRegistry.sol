@@ -17,9 +17,9 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataRegistry
-  address public override factory;
+  address public factory;
   /// @inheritdoc INavePirataRegistry
-  address public override upgrader;
+  address public upgrader;
 
   /// @notice Enumerable list of registered tophat ids.
   uint256[] internal _topHats;

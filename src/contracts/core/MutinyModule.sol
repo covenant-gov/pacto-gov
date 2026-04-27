@@ -22,19 +22,19 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IMutinyModule
-  uint256 public override captainHatId;
+  uint256 public captainHatId;
   /// @inheritdoc IMutinyModule
-  uint256 public override crewHatId;
+  uint256 public crewHatId;
   /// @inheritdoc IMutinyModule
-  uint256 public override mutinyRoleHatId;
+  uint256 public mutinyRoleHatId;
   /// @inheritdoc IMutinyModule
-  uint256 public override quartermasterRoleHatId;
+  uint256 public quartermasterRoleHatId;
   /// @inheritdoc IMutinyModule
-  address public override captain;
+  address public captain;
   /// @inheritdoc IMutinyModule
-  address public override quartermaster;
+  address public quartermaster;
   /// @inheritdoc IMutinyModule
-  uint256 public override activeMutinyId;
+  uint256 public activeMutinyId;
 
   /// @notice Monotonic round id counter; first issued is `1`, `0` means no active mutiny
   uint256 internal _nextMutinyId;
