@@ -22,24 +22,24 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IQuartermaster
-  uint256 public override captainHatId;
+  uint256 public captainHatId;
   /// @inheritdoc IQuartermaster
-  uint256 public override crewHatId;
+  uint256 public crewHatId;
   /// @inheritdoc IQuartermaster
-  uint256 public override mutinyRoleHatId;
+  uint256 public mutinyRoleHatId;
   /// @inheritdoc IQuartermaster
-  uint256 public override quartermasterRoleHatId;
+  uint256 public quartermasterRoleHatId;
   /// @inheritdoc IQuartermaster
-  uint256 public override treasuryAuthorityRoleHatId;
+  uint256 public treasuryAuthorityRoleHatId;
   /// @inheritdoc IQuartermaster
-  uint256 public override crewChangeDelay;
+  uint256 public crewChangeDelay;
   /// @inheritdoc IQuartermaster
-  bool public override mutinyActive;
+  bool public mutinyActive;
 
   /// @inheritdoc IQuartermaster
-  mapping(address _candidate => uint256 _executableAt) public override pendingCrewAddAt;
+  mapping(address _candidate => uint256 _executableAt) public pendingCrewAddAt;
   /// @inheritdoc IQuartermaster
-  mapping(address _crew => uint256 _executableAt) public override pendingCrewRemoveAt;
+  mapping(address _crew => uint256 _executableAt) public pendingCrewRemoveAt;
 
   /**
    * @notice Eligibility map backing `IHatsEligibility.getWearerStatus` for the crew hat.

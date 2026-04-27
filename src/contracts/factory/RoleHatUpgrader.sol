@@ -32,7 +32,7 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IRoleHatUpgrader
-  bool public override allowListEnabled;
+  bool public allowListEnabled;
 
   /// @notice Per-kind master-copy allow-list map.
   mapping(RoleKind _kind => mapping(address _masterCopy => bool _allowed)) internal _allowedMasterCopies;

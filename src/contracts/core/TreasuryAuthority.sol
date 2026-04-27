@@ -24,20 +24,20 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override captainHatId;
+  uint256 public captainHatId;
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override crewHatId;
+  uint256 public crewHatId;
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override treasuryAuthorityRoleHatId;
+  uint256 public treasuryAuthorityRoleHatId;
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override proposalExpiry;
+  uint256 public proposalExpiry;
   /// @inheritdoc ITreasuryAuthority
-  CrewVoteMode public override crewVoteMode;
+  CrewVoteMode public crewVoteMode;
   /// @inheritdoc ITreasuryAuthority
-  uint256 public override quorumBps;
+  uint256 public quorumBps;
 
   /// @inheritdoc ITreasuryAuthority
-  mapping(address _proposer => uint256 _openProposalId) public override openProposalOf;
+  mapping(address _proposer => uint256 _openProposalId) public openProposalOf;
   /// @notice Proposal store indexed by id. Id `0` is reserved as the sentinel "no proposal".
   mapping(uint256 _proposalId => Proposal _proposal) internal _proposals;
   /// @notice Per-proposal vote registry; `true` iff `_voter` has cast a vote on `_proposalId`.
