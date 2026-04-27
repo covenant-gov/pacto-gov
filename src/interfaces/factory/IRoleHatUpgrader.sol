@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
-import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
 /**
  * @title IRoleHatUpgrader

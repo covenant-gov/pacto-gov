@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 

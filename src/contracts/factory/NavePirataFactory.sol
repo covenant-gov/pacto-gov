@@ -7,14 +7,14 @@ import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
-import {IMutinyModule} from 'interfaces/IMutinyModule.sol';
-import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
-import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
-import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
-import {ISquadAdmin} from 'interfaces/ISquadAdmin.sol';
-import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
+import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
+import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
+import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 import {ISafe, ISafeProxyFactory} from 'interfaces/external/ISafeExternal.sol';
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
+import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 

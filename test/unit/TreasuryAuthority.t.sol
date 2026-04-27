@@ -17,8 +17,8 @@ import {PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
-import {IAssetRescuer} from 'interfaces/IAssetRescuer.sol';
-import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
+import {IAssetRescuer} from 'interfaces/abstracts/IAssetRescuer.sol';
+import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 
 /**
  * @title UnitTreasuryAuthorityBase

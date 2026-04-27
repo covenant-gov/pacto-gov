@@ -4,8 +4,8 @@ pragma solidity 0.8.30;
 import {AssetRescuer} from 'contracts/abstracts/AssetRescuer.sol';
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
-import {IQuiescent} from 'interfaces/IQuiescent.sol';
-import {ITreasuryAuthority} from 'interfaces/ITreasuryAuthority.sol';
+import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
+import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 
 import {Module} from '@gnosis-guild/zodiac/contracts/core/Module.sol';
 import {FactoryFriendly} from '@gnosis-guild/zodiac/contracts/factory/FactoryFriendly.sol';

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IAssetRescuer} from 'interfaces/IAssetRescuer.sol';
-import {IQuiescent} from 'interfaces/IQuiescent.sol';
+import {IAssetRescuer} from 'interfaces/abstracts/IAssetRescuer.sol';
+import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
 
 /**
  * @title ITreasuryAuthority

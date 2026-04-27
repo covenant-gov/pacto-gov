@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 import {Test} from 'forge-std/Test.sol';
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 

@@ -10,9 +10,9 @@ import {RoleHatClonesFactory} from 'contracts/factory/RoleHatClonesFactory.sol';
 import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
 import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
-import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
-import {INavePirataRegistry} from 'interfaces/INavePirataRegistry.sol';
-import {IRoleHatClonesFactory} from 'interfaces/IRoleHatClonesFactory.sol';
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
+import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
 import {
   CHAIN_ID_ANVIL,

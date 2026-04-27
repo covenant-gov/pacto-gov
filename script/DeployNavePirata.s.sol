@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {INavePirataFactory} from 'interfaces/INavePirataFactory.sol';
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 
 import {
   DEPLOY_NAV_PIRATA_SALT_NONCE,

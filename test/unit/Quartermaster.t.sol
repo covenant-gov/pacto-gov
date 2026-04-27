@@ -11,7 +11,7 @@ import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
-import {IQuartermaster} from 'interfaces/IQuartermaster.sol';
+import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 
 /**
  * @title UnitQuartermasterBase
