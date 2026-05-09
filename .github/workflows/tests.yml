@@ -24,16 +24,13 @@ jobs:
         shell: bash
         run: pnpm test:unit
 
-  integration-tests:
-    name: Run Integration Tests
+  e2e-tests:
+    name: Run E2E tests
     runs-on: ubuntu-latest
-    # `environment:` MUST match the slug under Settings → Environments where MAINNET_RPC lives.
-    environment: integration
+    environment: e2e
     env:
-      _GHA_MAINNET_RPC_SECRET: ${{ secrets.MAINNET_RPC }}
-      _GHA_MAINNET_RPC_VAR: ${{ vars.MAINNET_RPC }}
-      _GHA_SEPOLIA_RPC_SECRET: ${{ secrets.SEPOLIA_RPC }}
-      _GHA_SEPOLIA_RPC_VAR: ${{ vars.SEPOLIA_RPC }}
+      MAINNET_RPC: ${{ secrets.MAINNET_RPC || vars.MAINNET_RPC }}
+      SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC || vars.SEPOLIA_RPC }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
