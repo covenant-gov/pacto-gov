@@ -18,13 +18,13 @@ contract DeployInfra is PactoDeploy {
     DeployTypes.ExternalAddresses memory _ext = _externalAddressesForCurrentChain();
     vm.startBroadcast();
     _deployInfra(_ext, msg.sender);
-    _wireRegistry(infra.registry, infra.navePirataFactory, infra.upgrader, msg.sender);
+    _wireRegistry(_infra.registry, _infra.navePirataFactory, _infra.upgrader, msg.sender);
     vm.stopBroadcast();
     _writeExternalAddressesJson(_ext);
-    _writeInfraJson(infra);
-    console.log('RoleHatClonesFactory:', infra.clonesFactory);
-    console.log('NavePirataRegistry:', infra.registry);
-    console.log('RoleHatUpgrader:', infra.upgrader);
-    console.log('NavePirataFactory:', infra.navePirataFactory);
+    _writeInfraJson(_infra);
+    console.log('RoleHatClonesFactory:', _infra.clonesFactory);
+    console.log('NavePirataRegistry:', _infra.registry);
+    console.log('RoleHatUpgrader:', _infra.upgrader);
+    console.log('NavePirataFactory:', _infra.navePirataFactory);
   }
 }

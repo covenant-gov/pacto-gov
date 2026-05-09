@@ -42,8 +42,8 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   /// @notice No `ExternalAddresses` entry for `block.chainid` (extend `_initExternalByChain` after adding `Constants`).
   error UnsupportedChain(uint256 chainId);
 
-  DeployTypes.MasterCopyAddresses internal masters;
-  DeployTypes.InfraAddresses internal infra;
+  DeployTypes.MasterCopyAddresses internal _masters;
+  DeployTypes.InfraAddresses internal _infra;
 
   mapping(uint256 chainId => DeployTypes.ExternalAddresses ext) internal _externalByChain;
 
@@ -66,7 +66,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
 
   /// @notice Squad params for `deployNavePirata` call sites; same on all chains (use `vm.warp` in tests).
   function _squadParams() internal view virtual returns (INavePirataFactory.SquadParams memory) {
-    return squadParamsProduction();
+    return _squadParamsProduction();
   }
 
   function _externalAddressesForCurrentChain() internal view returns (DeployTypes.ExternalAddresses memory _ext) {
@@ -79,7 +79,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     _m.mutinyModule = address(new MutinyModule(_hats));
     _m.treasuryAuthority = address(new TreasuryAuthority(_hats));
     _m.squadAdminImpl = address(new SquadAdminImpl(_hats));
-    masters = _m;
+    _masters = _m;
   }
 
   function _deployInfra(
@@ -98,7 +98,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
         _ext.hats, address(_ext.safeProxyFactory), _ext.safeSingleton, _i.clonesFactory, _i.registry, _i.upgrader
       )
     );
-    infra = _i;
+    _infra = _i;
   }
 
   function _wireRegistry(address _registry, address _factory, address _upgrader, address _admin) internal virtual {
@@ -112,17 +112,17 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   function _deployFullSystem(DeployTypes.ExternalAddresses memory _ext, address _admin) internal virtual {
     _deployMasterCopies(IHats(_ext.hats));
     _deployInfra(_ext, _admin);
-    _wireRegistry(infra.registry, infra.navePirataFactory, infra.upgrader, _admin);
+    _wireRegistry(_infra.registry, _infra.navePirataFactory, _infra.upgrader, _admin);
   }
 
   function _logDeployment() internal view virtual {
-    console.log('Master Quartermaster:', masters.quartermaster);
-    console.log('Master MutinyModule:', masters.mutinyModule);
-    console.log('Master TreasuryAuthority:', masters.treasuryAuthority);
-    console.log('Master SquadAdminImpl:', masters.squadAdminImpl);
-    console.log('RoleHatClonesFactory:', infra.clonesFactory);
-    console.log('NavePirataRegistry:', infra.registry);
-    console.log('RoleHatUpgrader:', infra.upgrader);
-    console.log('NavePirataFactory:', infra.navePirataFactory);
+    console.log('Master Quartermaster:', _masters.quartermaster);
+    console.log('Master MutinyModule:', _masters.mutinyModule);
+    console.log('Master TreasuryAuthority:', _masters.treasuryAuthority);
+    console.log('Master SquadAdminImpl:', _masters.squadAdminImpl);
+    console.log('RoleHatClonesFactory:', _infra.clonesFactory);
+    console.log('NavePirataRegistry:', _infra.registry);
+    console.log('RoleHatUpgrader:', _infra.upgrader);
+    console.log('NavePirataFactory:', _infra.navePirataFactory);
   }
 }

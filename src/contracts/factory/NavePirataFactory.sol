@@ -10,13 +10,17 @@ import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
-import {ISafe, ISafeProxyFactory} from 'interfaces/external/ISafeExternal.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
+
+import {ModuleManager} from '@safe-global/safe-contracts/contracts/base/ModuleManager.sol';
+import {OwnerManager} from '@safe-global/safe-contracts/contracts/base/OwnerManager.sol';
+import {Enum} from '@safe-global/safe-contracts/contracts/common/Enum.sol';
+import {ISafe, ISafeProxyFactory} from 'interfaces/safe/ISafe141.sol';
 
 /**
  * @title NavePirataFactory
@@ -34,8 +38,6 @@ contract NavePirataFactory is INavePirataFactory {
   uint32 internal constant _MAX_CREW_SUPPLY = type(uint32).max;
   /// @notice Linked-list sentinel used by Safe's owner list (Safe's `SENTINEL_OWNERS`).
   address internal constant _SENTINEL_OWNERS = address(0x1);
-  /// @notice Safe `Enum.Operation.Call` selector (0 = Call, 1 = DelegateCall).
-  uint8 internal constant _OP_CALL = 0;
   /// @notice Quartermaster clone-kind tag (ASCII `"QM"` left-padded), mixed into the CREATE2 salt.
   bytes32 internal constant _KIND_QM = 0x514d000000000000000000000000000000000000000000000000000000000000;
   /// @notice MutinyModule clone-kind tag (ASCII `"MM"` left-padded).
@@ -215,8 +217,9 @@ contract NavePirataFactory is INavePirataFactory {
     address[] memory _owners = new address[](1);
     _owners[0] = address(this);
 
-    bytes memory _setupData =
-      abi.encodeCall(ISafe.setup, (_owners, 1, address(0), '', address(0), address(0), 0, payable(address(0))));
+    bytes memory _setupData = abi.encodeCall(
+      ISafe.setup, (_owners, 1, address(0), new bytes(0), address(0), address(0), 0, payable(address(0)))
+    );
 
     uint256 _namespacedNonce = uint256(keccak256(abi.encode(msg.sender, _saltNonce)));
 
@@ -302,12 +305,12 @@ contract NavePirataFactory is INavePirataFactory {
   function _bootstrapSafe(address _safe, address _treasuryAuthority) internal {
     bytes memory _sig = abi.encodePacked(bytes32(uint256(uint160(address(this)))), bytes32(uint256(0)), uint8(1));
 
-    bool _okEnable = ISafe(_safe)
+    bool _okEnable = ISafe(payable(_safe))
       .execTransaction(
         _safe,
         0,
-        abi.encodeCall(ISafe.enableModule, (_treasuryAuthority)),
-        _OP_CALL,
+        abi.encodeCall(ModuleManager.enableModule, (_treasuryAuthority)),
+        Enum.Operation.Call,
         0,
         0,
         0,
@@ -317,12 +320,12 @@ contract NavePirataFactory is INavePirataFactory {
       );
     if (!_okEnable) revert NavePirataFactory_BootstrapTeardownFailed();
 
-    bool _okSwap = ISafe(_safe)
+    bool _okSwap = ISafe(payable(_safe))
       .execTransaction(
         _safe,
         0,
-        abi.encodeCall(ISafe.swapOwner, (_SENTINEL_OWNERS, address(this), _treasuryAuthority)),
-        _OP_CALL,
+        abi.encodeCall(OwnerManager.swapOwner, (_SENTINEL_OWNERS, address(this), _treasuryAuthority)),
+        Enum.Operation.Call,
         0,
         0,
         0,

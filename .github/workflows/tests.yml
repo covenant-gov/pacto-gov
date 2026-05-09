@@ -7,8 +7,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAINNET_RPC: ${{ secrets.MAINNET_RPC }}
-  SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   unit-tests:
@@ -16,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: install-tools
         uses: ./.github/workflows/install-tools
@@ -25,18 +24,22 @@ jobs:
         shell: bash
         run: pnpm test:unit
 
-  integration-tests:
-    name: Run Integration Tests
+  e2e-tests:
+    name: Run E2E tests
     runs-on: ubuntu-latest
+    environment: e2e
+    env:
+      MAINNET_RPC: ${{ secrets.MAINNET_RPC || vars.MAINNET_RPC }}
+      SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC || vars.SEPOLIA_RPC }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: install-tools
         uses: ./.github/workflows/install-tools
 
-      - name: Run tests
-        run: pnpm test:integration
+      - name: Run E2E tests
+        run: pnpm test:integration:ci
 
   lint:
     name: Static Analysis
@@ -44,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 

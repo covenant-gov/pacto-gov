@@ -1,8 +1,9 @@
 name: Natspec Check
 
 on:
-  push:
   pull_request:
+  push:
+    branches: [main]
 
 jobs:
   natspec:
@@ -11,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: install-tools
         uses: ./.github/workflows/install-tools

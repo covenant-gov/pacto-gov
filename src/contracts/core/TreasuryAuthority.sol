@@ -288,6 +288,23 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /**
+   * @notice Captain votes once per proposal; veto clears `openProposalOf` for a new proposal from proposer.
+   * @param _proposalId Proposal id.
+   * @param _support True to approve, false to veto.
+   */
+  function _captainVote(uint256 _proposalId, bool _support) internal {
+    Proposal storage _p = _requireAlive(_proposalId);
+    if (_p.captainApproved || _p.captainDefeated) revert TreasuryAuthority_CaptainAlreadyVoted(msg.sender);
+    if (_support) {
+      _p.captainApproved = true;
+    } else {
+      _p.captainDefeated = true;
+      delete openProposalOf[_p.proposer];
+    }
+    emit CaptainVoted(_proposalId, msg.sender, _support);
+  }
+
+  /**
    * @notice Caller-gate that admits both the captain-hat wearer and any crew-hat wearer.
    * @param _caller Address to gate-check.
    */
@@ -308,23 +325,6 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     if (_p.proposer == address(0)) revert TreasuryAuthority_ProposalDoesNotExist(_proposalId);
     if (_p.executed) revert TreasuryAuthority_AlreadyExecuted();
     if (block.timestamp >= _p.deadline) revert TreasuryAuthority_ProposalExpired(_proposalId);
-  }
-
-  /**
-   * @notice Captain votes once per proposal; veto clears `openProposalOf` for a new proposal from proposer.
-   * @param _proposalId Proposal id.
-   * @param _support True to approve, false to veto.
-   */
-  function _captainVote(uint256 _proposalId, bool _support) internal {
-    Proposal storage _p = _requireAlive(_proposalId);
-    if (_p.captainApproved || _p.captainDefeated) revert TreasuryAuthority_CaptainAlreadyVoted(msg.sender);
-    if (_support) {
-      _p.captainApproved = true;
-    } else {
-      _p.captainDefeated = true;
-      delete openProposalOf[_p.proposer];
-    }
-    emit CaptainVoted(_proposalId, msg.sender, _support);
   }
 
   /**
