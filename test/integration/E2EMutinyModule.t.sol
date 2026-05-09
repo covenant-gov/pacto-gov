@@ -276,7 +276,14 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
                         captainResign
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_captainResign_reverts_whenCallerDoesNotWearCaptainHat() public withDeployedNavePirataSquad {}
+  function test_e2e_captainResign_reverts_whenCallerDoesNotWearCaptainHat() public withDeployedNavePirataSquad {
+    address _stranger = makeAddr('e2eCaptainResignStranger');
+    uint256 _captainHatId = _squadMutiny.captainHatId();
+
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _captainHatId, _stranger));
+    vm.prank(_stranger);
+    _squadMutiny.captainResign(_squadProposedCaptain);
+  }
 
   function test_e2e_captainResign_reverts_whenNewCaptainIsZero() public withDeployedNavePirataSquad {}
 
