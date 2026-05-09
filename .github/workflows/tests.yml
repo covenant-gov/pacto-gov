@@ -9,6 +9,7 @@ concurrency:
 env:
   MAINNET_RPC: ${{ secrets.MAINNET_RPC }}
   SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   unit-tests:
@@ -16,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: install-tools
         uses: ./.github/workflows/install-tools
@@ -30,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: install-tools
         uses: ./.github/workflows/install-tools
@@ -44,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
