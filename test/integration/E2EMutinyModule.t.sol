@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {MutinyModule} from 'contracts/core/MutinyModule.sol';
 import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 
+import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
 
 import {IntegrationBase} from './IntegrationBase.sol';
@@ -139,23 +142,28 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
  */
 contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   /*///////////////////////////////////////////////////////////////
-                        EXAMPLE (IMPLEMENT BODY)
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Template for a full mutiny success: threshold met, `executeMutiny`, captain hat moved, round closed.
-   * @dev After modifiers run, assert post-`executeMutiny` state (and events). The single assert below only
-   *      proves registry wiring on the forked harness.
-   */
-  function test_e2e_executeMutiny_succeeds_whenCrewYeasExceedHalfOfSnapshot() public withMutinyVotesAboveMajority {
-    assertEq(NavePirataRegistry(infra.registry).factory(), infra.navePirataFactory);
-  }
-
-  /*///////////////////////////////////////////////////////////////
                         initialize
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_initialize_reverts_whenCaptainIsZero() public withDeployedNavePirataSquad {}
+  function test_e2e_initialize_reverts_whenCaptainIsZero() public withDeployedNavePirataSquad {
+    bytes32 _salt =
+      keccak256(abi.encodePacked('test_e2e_initialize_reverts_whenCaptainIsZero', address(this), block.chainid));
+
+    address _clone = IRoleHatClonesFactory(infra.clonesFactory).createClone(masters.mutinyModule, new bytes(0), _salt);
+
+    vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
+    MutinyModule(_clone)
+      .initialize(
+        IMutinyModule.InitParams({
+          captainHatId: squadMutiny.captainHatId(),
+          crewHatId: squadMutiny.crewHatId(),
+          mutinyRoleHatId: squadMutiny.mutinyRoleHatId(),
+          quartermasterRoleHatId: squadMutiny.quartermasterRoleHatId(),
+          captain: address(0),
+          quartermaster: address(squadQuartermaster)
+        })
+      );
+  }
 
   function test_e2e_initialize_reverts_whenQuartermasterIsZero() public withDeployedNavePirataSquad {}
 
@@ -165,7 +173,13 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
                         startMutiny
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_startMutiny_reverts_whenCallerDoesNotWearCrewHat() public withDeployedNavePirataSquad {}
+  function test_e2e_startMutiny_reverts_whenCallerDoesNotWearCrewHat() public withDeployedNavePirataSquad {
+    address _stranger = makeAddr('e2eStartMutinyStranger');
+
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, squadCrewHatId, _stranger));
+    vm.prank(_stranger);
+    squadMutiny.startMutiny(squadProposedCaptain);
+  }
 
   function test_e2e_startMutiny_reverts_whenProposedCaptainIsZero() public withDeployedNavePirataSquad {}
 
@@ -187,7 +201,13 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     public
     withDeployedNavePirataSquad
     withOpenMutinyRound
-  {}
+  {
+    address _stranger = makeAddr('e2eCastVoteStranger');
+
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, squadCrewHatId, _stranger));
+    vm.prank(_stranger);
+    squadMutiny.castVote(squadActiveMutinyId);
+  }
 
   function test_e2e_castVote_reverts_whenMutinyIdIsZero() public withDeployedNavePirataSquad withOpenMutinyRound {}
 
@@ -205,7 +225,10 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
                         executeMutiny
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_executeMutiny_reverts_whenMutinyIdIsZero() public withDeployedNavePirataSquad {}
+  function test_e2e_executeMutiny_reverts_whenMutinyIdIsZero() public withDeployedNavePirataSquad {
+    vm.expectRevert(IMutinyModule.MutinyModule_NoActiveMutiny.selector);
+    squadMutiny.executeMutiny(0);
+  }
 
   function test_e2e_executeMutiny_reverts_whenMutinyIdNotActive() public withDeployedNavePirataSquad {}
 
