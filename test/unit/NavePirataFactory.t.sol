@@ -6,10 +6,14 @@ import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
 import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
+import {ModuleManager} from '@safe-global/safe-contracts/contracts/base/ModuleManager.sol';
+import {OwnerManager} from '@safe-global/safe-contracts/contracts/base/OwnerManager.sol';
+import {Enum} from '@safe-global/safe-contracts/contracts/common/Enum.sol';
+import {ISafe, ISafeProxyFactory} from 'interfaces/safe/ISafe141.sol';
+
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
-import {ISafe, ISafeProxyFactory} from 'interfaces/external/ISafeExternal.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
@@ -341,11 +345,12 @@ contract UnitNavePirataFactoryDeployFailureModes is UnitNavePirataFactoryBase {
     _primeHappyPath();
 
     // Make enableModule succeed but swapOwner fail via argument-specific mock.
-    bytes memory _swapOwnerCall = abi.encodeCall(ISafe.swapOwner, (address(0x1), address(_factory), _predTa));
+    bytes memory _swapOwnerCall = abi.encodeCall(OwnerManager.swapOwner, (address(0x1), address(_factory), _predTa));
     vm.mockCall(
       _safe,
       abi.encodeCall(
-        ISafe.execTransaction, (_safe, 0, _swapOwnerCall, 0, 0, 0, 0, address(0), payable(address(0)), _buildSig())
+        ISafe.execTransaction,
+        (_safe, 0, _swapOwnerCall, Enum.Operation.Call, 0, 0, 0, address(0), payable(address(0)), _buildSig())
       ),
       abi.encode(false)
     );
@@ -404,7 +409,8 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
         (
           _SAFE_SINGLETON,
           abi.encodeCall(
-            ISafe.setup, (_factorySelfOwners(), 1, address(0), '', address(0), address(0), 0, payable(address(0)))
+            ISafe.setup,
+            (_factorySelfOwners(), 1, address(0), new bytes(0), address(0), address(0), 0, payable(address(0)))
           ),
           _expectedNonce
         )
@@ -424,7 +430,18 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
       _safe,
       abi.encodeCall(
         ISafe.execTransaction,
-        (_safe, 0, abi.encodeCall(ISafe.enableModule, (_predTa)), 0, 0, 0, 0, address(0), payable(address(0)), _sig)
+        (
+          _safe,
+          0,
+          abi.encodeCall(ModuleManager.enableModule, (_predTa)),
+          Enum.Operation.Call,
+          0,
+          0,
+          0,
+          address(0),
+          payable(address(0)),
+          _sig
+        )
       )
     );
 
@@ -435,8 +452,8 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
         (
           _safe,
           0,
-          abi.encodeCall(ISafe.swapOwner, (address(0x1), address(_factory), _predTa)),
-          0,
+          abi.encodeCall(OwnerManager.swapOwner, (address(0x1), address(_factory), _predTa)),
+          Enum.Operation.Call,
           0,
           0,
           0,
