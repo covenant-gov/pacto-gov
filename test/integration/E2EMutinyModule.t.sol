@@ -151,18 +151,17 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     address _clone = IRoleHatClonesFactory(infra.clonesFactory).createClone(masters.mutinyModule, new bytes(0), _salt);
 
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
+      captainHatId: squadMutiny.captainHatId(),
+      crewHatId: squadMutiny.crewHatId(),
+      mutinyRoleHatId: squadMutiny.mutinyRoleHatId(),
+      quartermasterRoleHatId: squadMutiny.quartermasterRoleHatId(),
+      captain: address(0),
+      quartermaster: address(squadQuartermaster)
+    });
+
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
-    MutinyModule(_clone)
-      .initialize(
-        IMutinyModule.InitParams({
-          captainHatId: squadMutiny.captainHatId(),
-          crewHatId: squadMutiny.crewHatId(),
-          mutinyRoleHatId: squadMutiny.mutinyRoleHatId(),
-          quartermasterRoleHatId: squadMutiny.quartermasterRoleHatId(),
-          captain: address(0),
-          quartermaster: address(squadQuartermaster)
-        })
-      );
+    MutinyModule(_clone).initialize(_p);
   }
 
   function test_e2e_initialize_reverts_whenQuartermasterIsZero() public withDeployedNavePirataSquad {}
