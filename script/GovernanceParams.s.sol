@@ -13,7 +13,7 @@ import {CREW_CHANGE_DELAY, DEFAULT_CREW_VOTE_MODE, PROPOSAL_EXPIRY, SQUAD_QUORUM
  */
 abstract contract ScriptGovernanceParams {
   /// @notice Production-style delays; same mapping is used for Anvil and live chains.
-  function squadParamsProduction() internal pure returns (INavePirataFactory.SquadParams memory _p) {
+  function _squadParamsProduction() internal pure returns (INavePirataFactory.SquadParams memory _p) {
     _p = INavePirataFactory.SquadParams({
       crewChangeDelay: CREW_CHANGE_DELAY,
       proposalExpiry: PROPOSAL_EXPIRY,

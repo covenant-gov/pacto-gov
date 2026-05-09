@@ -13,8 +13,8 @@ import {IntegrationBase} from './IntegrationBase.sol';
  */
 contract E2EQuartermasterTest is IntegrationBase {
   function test_integration_registryUpgraderIsWiredAndQuartermasterMasterDeployed() public view {
-    assertEq(NavePirataRegistry(infra.registry).upgrader(), infra.upgrader);
-    Quartermaster _master = Quartermaster(masters.quartermaster);
+    assertEq(NavePirataRegistry(_infra.registry).upgrader(), _infra.upgrader);
+    Quartermaster _master = Quartermaster(_masters.quartermaster);
     assertGt(address(_master).code.length, 0);
   }
 }

@@ -23,7 +23,7 @@ import {Test} from 'forge-std/Test.sol';
 abstract contract IntegrationBase is PactoDeploy, Test {
   error IntegrationBase_NoMainnetFork();
 
-  bool internal integrationForkActive;
+  bool internal _integrationForkActive;
 
   function setUp() public virtual {
     _requireEthereumMainnetFork();
@@ -37,10 +37,10 @@ abstract contract IntegrationBase is PactoDeploy, Test {
     return _externalAddressesForCurrentChain();
   }
 
-  /// @dev Selects Forge CLI fork (`HATS` already has code) or `vm.createSelectFork` + `integrationForkActive`; otherwise reverts.
+  /// @dev Selects Forge CLI fork (`HATS` already has code) or `vm.createSelectFork` + `_integrationForkActive`; otherwise reverts.
   function _requireEthereumMainnetFork() internal virtual {
     if (HATS_PROTOCOL_V1.code.length > 0) {
-      integrationForkActive = true;
+      _integrationForkActive = true;
       return;
     }
     string memory _rpc = vm.envOr('MAINNET_RPC', string(''));
@@ -51,7 +51,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
     }
     if (bytes(_rpc).length == 0) revert IntegrationBase_NoMainnetFork();
     vm.createSelectFork(_rpc, DEFAULT_MAINNET_FORK_BLOCK);
-    integrationForkActive = true;
+    _integrationForkActive = true;
   }
 
   /// @dev Re-rolls the fork to `DEFAULT_MAINNET_FORK_BLOCK` when the pinned Safe singleton has no bytecode.

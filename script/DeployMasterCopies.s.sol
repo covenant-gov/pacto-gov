@@ -20,10 +20,10 @@ contract DeployMasterCopies is PactoDeploy {
     _deployMasterCopies(IHats(_ext.hats));
     vm.stopBroadcast();
     _writeExternalAddressesJson(_ext);
-    _writeMasterCopiesJson(masters);
-    console.log('Master Quartermaster:', masters.quartermaster);
-    console.log('Master MutinyModule:', masters.mutinyModule);
-    console.log('Master TreasuryAuthority:', masters.treasuryAuthority);
-    console.log('Master SquadAdminImpl:', masters.squadAdminImpl);
+    _writeMasterCopiesJson(_masters);
+    console.log('Master Quartermaster:', _masters.quartermaster);
+    console.log('Master MutinyModule:', _masters.mutinyModule);
+    console.log('Master TreasuryAuthority:', _masters.treasuryAuthority);
+    console.log('Master SquadAdminImpl:', _masters.squadAdminImpl);
   }
 }

@@ -28,7 +28,7 @@ contract DeployNavePirata is DeploymentArtifacts, ScriptGovernanceParams {
     INavePirataFactory.DeployParams memory _p = INavePirataFactory.DeployParams({
       captain: vm.envAddress('CAPTAIN'),
       metadataURI: vm.envString('SQUAD_METADATA_URI'),
-      squadParams: squadParamsProduction(),
+      squadParams: _squadParamsProduction(),
       quartermasterMasterCopy: MASTER_COPY_QUARTERMASTER,
       mutinyMasterCopy: MASTER_COPY_MUTINY_MODULE,
       treasuryAuthorityMasterCopy: MASTER_COPY_TREASURY_AUTHORITY,

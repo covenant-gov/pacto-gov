@@ -17,6 +17,6 @@ contract Deploy is PactoDeploy {
     _deployFullSystem(_ext, msg.sender);
     vm.stopBroadcast();
     _logDeployment();
-    _writeFullSystemJson(_ext, masters, infra);
+    _writeFullSystemJson(_ext, _masters, _infra);
   }
 }

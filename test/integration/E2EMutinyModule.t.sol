@@ -23,15 +23,15 @@ import {IntegrationBase} from './IntegrationBase.sol';
  *         then advance mutiny state on the mainnet fork from `IntegrationBase`.
  */
 abstract contract E2EMutinyModuleBase is IntegrationBase {
-  MutinyModule internal squadMutiny;
-  Quartermaster internal squadQuartermaster;
-  address internal squadSafe;
-  uint256 internal squadTopHatId;
-  uint256 internal squadCrewHatId;
-  address internal squadCaptain;
-  address internal squadProposedCaptain;
-  address[] internal squadCrew;
-  uint256 internal squadActiveMutinyId;
+  MutinyModule internal _squadMutiny;
+  Quartermaster internal _squadQuartermaster;
+  address internal _squadSafe;
+  uint256 internal _squadTopHatId;
+  uint256 internal _squadCrewHatId;
+  address internal _squadCaptain;
+  address internal _squadProposedCaptain;
+  address[] internal _squadCrew;
+  uint256 internal _squadActiveMutinyId;
 
   bool internal _fixtureHasSquad;
   bool internal _fixtureHasOpenRound;
@@ -55,66 +55,66 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
     _;
   }
 
-  /// @dev Idempotent squad bootstrap: registry factory deploy, onboard five crew via timelock, expose `squad*` storage.
+  /// @dev Idempotent squad bootstrap: registry factory deploy, onboard five crew via timelock, exposes `_squad*` storage.
   function _ensureSquad() internal {
     if (_fixtureHasSquad) return;
 
-    squadCaptain = makeAddr('e2eSquadCaptain');
-    squadProposedCaptain = makeAddr('e2eProposedCaptain');
-    _fund(squadCaptain, 50 ether);
-    _fund(squadProposedCaptain, 1 ether);
+    _squadCaptain = makeAddr('e2eSquadCaptain');
+    _squadProposedCaptain = makeAddr('e2eProposedCaptain');
+    _fund(_squadCaptain, 50 ether);
+    _fund(_squadProposedCaptain, 1 ether);
 
-    squadCrew.push(makeAddr('e2eCrew0'));
-    squadCrew.push(makeAddr('e2eCrew1'));
-    squadCrew.push(makeAddr('e2eCrew2'));
-    squadCrew.push(makeAddr('e2eCrew3'));
-    squadCrew.push(makeAddr('e2eCrew4'));
-    for (uint256 _i = 0; _i < squadCrew.length; _i++) {
-      _fund(squadCrew[_i], 50 ether);
+    _squadCrew.push(makeAddr('e2eCrew0'));
+    _squadCrew.push(makeAddr('e2eCrew1'));
+    _squadCrew.push(makeAddr('e2eCrew2'));
+    _squadCrew.push(makeAddr('e2eCrew3'));
+    _squadCrew.push(makeAddr('e2eCrew4'));
+    for (uint256 _i = 0; _i < _squadCrew.length; _i++) {
+      _fund(_squadCrew[_i], 50 ether);
     }
 
     INavePirataFactory.DeployParams memory _p = INavePirataFactory.DeployParams({
-      captain: squadCaptain,
+      captain: _squadCaptain,
       metadataURI: 'ipfs://e2e-mutiny-squad',
-      squadParams: squadParamsProduction(),
-      quartermasterMasterCopy: masters.quartermaster,
-      mutinyMasterCopy: masters.mutinyModule,
-      treasuryAuthorityMasterCopy: masters.treasuryAuthority,
-      squadAdminImplementation: masters.squadAdminImpl,
+      squadParams: _squadParamsProduction(),
+      quartermasterMasterCopy: _masters.quartermaster,
+      mutinyMasterCopy: _masters.mutinyModule,
+      treasuryAuthorityMasterCopy: _masters.treasuryAuthority,
+      squadAdminImplementation: _masters.squadAdminImpl,
       saltNonce: _freshSquadSalt()
     });
 
     _fund(address(this), 200 ether);
-    (uint256 _topHat,, address _qm, address _mm,,) = NavePirataFactory(infra.navePirataFactory).deployNavePirata(_p);
+    (uint256 _topHat,, address _qm, address _mm,,) = NavePirataFactory(_infra.navePirataFactory).deployNavePirata(_p);
 
-    squadTopHatId = _topHat;
-    squadQuartermaster = Quartermaster(_qm);
-    squadMutiny = MutinyModule(_mm);
+    _squadTopHatId = _topHat;
+    _squadQuartermaster = Quartermaster(_qm);
+    _squadMutiny = MutinyModule(_mm);
 
-    INavePirataRegistry.Deployment memory _d = NavePirataRegistry(infra.registry).deployment(_topHat);
-    squadSafe = _d.safe;
-    squadCrewHatId = _d.crewHatId;
+    INavePirataRegistry.Deployment memory _d = NavePirataRegistry(_infra.registry).deployment(_topHat);
+    _squadSafe = _d.safe;
+    _squadCrewHatId = _d.crewHatId;
 
-    vm.startPrank(squadCaptain);
-    for (uint256 _j = 0; _j < squadCrew.length; _j++) {
-      IQuartermaster(address(squadQuartermaster)).requestAddCrew(squadCrew[_j]);
+    vm.startPrank(_squadCaptain);
+    for (uint256 _j = 0; _j < _squadCrew.length; _j++) {
+      IQuartermaster(address(_squadQuartermaster)).requestAddCrew(_squadCrew[_j]);
     }
     vm.stopPrank();
     vm.warp(block.timestamp + CREW_CHANGE_DELAY + 1);
-    for (uint256 _k = 0; _k < squadCrew.length; _k++) {
-      IQuartermaster(address(squadQuartermaster)).executeAddCrew(squadCrew[_k]);
+    for (uint256 _k = 0; _k < _squadCrew.length; _k++) {
+      IQuartermaster(address(_squadQuartermaster)).executeAddCrew(_squadCrew[_k]);
     }
 
     _fixtureHasSquad = true;
   }
 
-  /// @dev Opens one mutiny from `squadCrew[0]` if not already running.
+  /// @dev Opens one mutiny from `_squadCrew[0]` if not already running.
   function _ensureOpenRound() internal {
     if (_fixtureHasOpenRound) return;
 
-    vm.prank(squadCrew[0]);
-    squadMutiny.startMutiny(squadProposedCaptain);
-    squadActiveMutinyId = squadMutiny.activeMutinyId();
+    vm.prank(_squadCrew[0]);
+    _squadMutiny.startMutiny(_squadProposedCaptain);
+    _squadActiveMutinyId = _squadMutiny.activeMutinyId();
     _fixtureHasOpenRound = true;
   }
 
@@ -122,12 +122,12 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
   function _ensureVotesAboveMajority() internal {
     if (_fixtureHasVoteMajority) return;
 
-    (,, uint64 _snapshot,,) = squadMutiny.mutiny(squadActiveMutinyId);
+    (,, uint64 _snapshot,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
 
     for (uint256 _i = 0; _i < _minYeas; _i++) {
-      vm.prank(squadCrew[_i]);
-      squadMutiny.castVote(squadActiveMutinyId);
+      vm.prank(_squadCrew[_i]);
+      _squadMutiny.castVote(_squadActiveMutinyId);
     }
 
     _fixtureHasVoteMajority = true;
@@ -149,15 +149,15 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     bytes32 _salt =
       keccak256(abi.encodePacked('test_e2e_initialize_reverts_whenCaptainIsZero', address(this), block.chainid));
 
-    address _clone = IRoleHatClonesFactory(infra.clonesFactory).createClone(masters.mutinyModule, new bytes(0), _salt);
+    address _clone = IRoleHatClonesFactory(_infra.clonesFactory).createClone(_masters.mutinyModule, new bytes(0), _salt);
 
     IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: squadMutiny.captainHatId(),
-      crewHatId: squadMutiny.crewHatId(),
-      mutinyRoleHatId: squadMutiny.mutinyRoleHatId(),
-      quartermasterRoleHatId: squadMutiny.quartermasterRoleHatId(),
+      captainHatId: _squadMutiny.captainHatId(),
+      crewHatId: _squadMutiny.crewHatId(),
+      mutinyRoleHatId: _squadMutiny.mutinyRoleHatId(),
+      quartermasterRoleHatId: _squadMutiny.quartermasterRoleHatId(),
       captain: address(0),
-      quartermaster: address(squadQuartermaster)
+      quartermaster: address(_squadQuartermaster)
     });
 
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
@@ -175,9 +175,9 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_startMutiny_reverts_whenCallerDoesNotWearCrewHat() public withDeployedNavePirataSquad {
     address _stranger = makeAddr('e2eStartMutinyStranger');
 
-    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, squadCrewHatId, _stranger));
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadCrewHatId, _stranger));
     vm.prank(_stranger);
-    squadMutiny.startMutiny(squadProposedCaptain);
+    _squadMutiny.startMutiny(_squadProposedCaptain);
   }
 
   function test_e2e_startMutiny_reverts_whenProposedCaptainIsZero() public withDeployedNavePirataSquad {}
@@ -203,9 +203,9 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   {
     address _stranger = makeAddr('e2eCastVoteStranger');
 
-    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, squadCrewHatId, _stranger));
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadCrewHatId, _stranger));
     vm.prank(_stranger);
-    squadMutiny.castVote(squadActiveMutinyId);
+    _squadMutiny.castVote(_squadActiveMutinyId);
   }
 
   function test_e2e_castVote_reverts_whenMutinyIdIsZero() public withDeployedNavePirataSquad withOpenMutinyRound {}
@@ -226,7 +226,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
   function test_e2e_executeMutiny_reverts_whenMutinyIdIsZero() public withDeployedNavePirataSquad {
     vm.expectRevert(IMutinyModule.MutinyModule_NoActiveMutiny.selector);
-    squadMutiny.executeMutiny(0);
+    _squadMutiny.executeMutiny(0);
   }
 
   function test_e2e_executeMutiny_reverts_whenMutinyIdNotActive() public withDeployedNavePirataSquad {}
@@ -315,8 +315,8 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   //////////////////////////////////////////////////////////////*/
 
   function test_integration_registryFactoryIsWiredAndMutinyMasterDeployed() public view {
-    assertEq(NavePirataRegistry(infra.registry).factory(), infra.navePirataFactory);
-    MutinyModule _master = MutinyModule(masters.mutinyModule);
+    assertEq(NavePirataRegistry(_infra.registry).factory(), _infra.navePirataFactory);
+    MutinyModule _master = MutinyModule(_masters.mutinyModule);
     assertGt(address(_master).code.length, 0);
   }
 }

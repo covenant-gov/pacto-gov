@@ -12,8 +12,8 @@ import {IntegrationBase} from './IntegrationBase.sol';
  */
 contract E2ETreasuryAuthorityTest is IntegrationBase {
   function test_integration_treasuryAuthorityMasterDeployedAndFactoryLive() public view {
-    TreasuryAuthority _master = TreasuryAuthority(payable(masters.treasuryAuthority));
+    TreasuryAuthority _master = TreasuryAuthority(payable(_masters.treasuryAuthority));
     assertGt(address(_master).code.length, 0);
-    assertGt(infra.navePirataFactory.code.length, 0);
+    assertGt(_infra.navePirataFactory.code.length, 0);
   }
 }
