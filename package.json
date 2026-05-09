@@ -25,6 +25,7 @@
     "test:bulloak:fix": "bulloak check --fix ./**/*.tree",
     "test:bulloak:scaffold": "bulloak scaffold -wS ./**/*.tree",
     "test:integration": "forge test --match-contract E2E -vvv",
+    "test:integration:ci": "bash scripts/ci/run-e2e-tests.sh",
     "test:unit": "forge test --match-contract Unit -vvv",
     "test:unit:deep": "FOUNDRY_FUZZ_RUNS=5000 pnpm test:unit"
   },

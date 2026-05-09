@@ -7,8 +7,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAINNET_RPC: ${{ secrets.MAINNET_RPC }}
-  SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
@@ -29,6 +27,13 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-latest
+    # Expose secrets saved under Repo Settings → Environments → `<name>` (not repository secrets alone).
+    # Set this to YOUR environment slug (same page header where MAINNET_RPC is listed).
+    environment: integration
+    env:
+      # Secret wins when set; otherwise repository Variable (use only for RPC URLs without embedded keys).
+      MAINNET_RPC: ${{ secrets.MAINNET_RPC || vars.MAINNET_RPC }}
+      SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC || vars.SEPOLIA_RPC }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -36,8 +41,8 @@ jobs:
       - name: install-tools
         uses: ./.github/workflows/install-tools
 
-      - name: Run tests
-        run: pnpm test:integration
+      - name: Run E2E tests
+        run: pnpm test:integration:ci
 
   lint:
     name: Static Analysis
