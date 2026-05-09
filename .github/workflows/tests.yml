@@ -27,13 +27,13 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-latest
-    # Expose secrets saved under Repo Settings → Environments → `<name>` (not repository secrets alone).
-    # Set this to YOUR environment slug (same page header where MAINNET_RPC is listed).
+    # `environment:` MUST match the slug under Settings → Environments where MAINNET_RPC lives.
     environment: integration
     env:
-      # Secret wins when set; otherwise repository Variable (use only for RPC URLs without embedded keys).
-      MAINNET_RPC: ${{ secrets.MAINNET_RPC || vars.MAINNET_RPC }}
-      SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC || vars.SEPOLIA_RPC }}
+      _GHA_MAINNET_RPC_SECRET: ${{ secrets.MAINNET_RPC }}
+      _GHA_MAINNET_RPC_VAR: ${{ vars.MAINNET_RPC }}
+      _GHA_SEPOLIA_RPC_SECRET: ${{ secrets.SEPOLIA_RPC }}
+      _GHA_SEPOLIA_RPC_VAR: ${{ vars.SEPOLIA_RPC }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
