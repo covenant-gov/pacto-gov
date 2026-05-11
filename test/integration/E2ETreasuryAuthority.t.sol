@@ -904,3 +904,143 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
     });
   }
 }
+
+/**
+ * Fork fuzzing focused on brittle numeric / time predicates in `TreasuryAuthority` (`_crewVotePassed`, deadline
+ * comparisons, one-open-per-proposer). Bounded inputs + `assume` reject cases that warp past `uint64` deadlines.
+ *
+ * forge-config: default.fuzz.runs = 128
+ */
+contract E2ETreasuryAuthorityForkFuzz is E2ETreasuryAuthorityBase {
+  function testFuzz_e2e_majorityThreshold_executeMatches2YeasGtSnapshot(uint8 nYeas)
+    public
+    withDeployedNavePirataSquad
+  {
+    vm.assume(uint256(nYeas) <= _squadCrew.length);
+    vm.assume(uint256(nYeas) * 2 <= type(uint64).max);
+
+    vm.deal(_squadSafe, 50 ether);
+    address _beneficiary = makeAddr('e2eFuzzExecBen');
+
+    vm.prank(_squadCaptain);
+    uint256 _id = _squadTreasury.propose(_beneficiary, 1 wei, hex'', ITreasuryAuthority.Operation.CALL);
+
+    (,,,,,, uint64 _snapshot,,,,,) = _squadTreasury.proposal(_id);
+    uint256 _snap = uint256(_snapshot);
+    vm.assume(_snap > 0);
+
+    for (uint256 _i = 0; _i < nYeas; _i++) {
+      vm.prank(_squadCrew[_i]);
+      _squadTreasury.crewVote(_id, true);
+    }
+
+    vm.prank(_squadCaptain);
+    _squadTreasury.captainVote(_id, true);
+
+    bool _passes = uint256(nYeas) * 2 > _snap;
+
+    if (_passes) {
+      uint256 _balBefore = _beneficiary.balance;
+      _squadTreasury.execute(_id);
+      assertEq(_beneficiary.balance, _balBefore + 1 wei);
+    } else {
+      vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
+      _squadTreasury.execute(_id);
+    }
+  }
+
+  function testFuzz_e2e_repeatProposerSecondCall_dependsOnWarpVersusExpiry(uint128 dtRaw)
+    public
+    withDeployedNavePirataSquad
+  {
+    uint256 _exp = _squadTreasury.proposalExpiry();
+    uint256 dt = uint256(dtRaw);
+    vm.assume(dt <= 2 * _exp + 365 days);
+
+    vm.prank(_squadCaptain);
+    uint256 _first = _squadTreasury.propose(_squadSafe, 0, hex'', ITreasuryAuthority.Operation.CALL);
+
+    uint256 _t0 = block.timestamp;
+    vm.warp(_t0 + dt);
+
+    if (dt < _exp) {
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          ITreasuryAuthority.TreasuryAuthority_ProposerHasOpenProposal.selector, _squadCaptain, _first
+        )
+      );
+      vm.prank(_squadCaptain);
+      _squadTreasury.propose(_squadSafe, 2 wei, hex'', ITreasuryAuthority.Operation.CALL);
+    } else {
+      vm.prank(_squadCaptain);
+      uint256 _second = _squadTreasury.propose(_squadSafe, 0, hex'ab', ITreasuryAuthority.Operation.CALL);
+      assertEq(_second, _first + 1);
+      assertEq(_squadTreasury.openProposalOf(_squadCaptain), _second);
+    }
+  }
+
+  function testFuzz_e2e_crewVoteRevertsExactlyAtOrAfterDeadline(uint64 delta) public withDeployedNavePirataSquad {
+    uint256 _exp = _squadTreasury.proposalExpiry();
+    vm.assume(uint256(_exp) + uint256(delta) <= type(uint64).max - 1);
+
+    vm.prank(_squadCaptain);
+    uint256 _id = _squadTreasury.propose(_squadSafe, 0, hex'', ITreasuryAuthority.Operation.CALL);
+
+    uint256 _deadline256 = block.timestamp + _squadTreasury.proposalExpiry();
+    assertLe(_deadline256, type(uint64).max);
+    // forge-lint: disable-next-line(unsafe-typecast)
+    uint64 _deadline = uint64(_deadline256);
+
+    vm.warp(uint256(_deadline) + uint256(delta));
+
+    vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_ProposalExpired.selector, _id));
+    vm.prank(_squadCrew[0]);
+    _squadTreasury.crewVote(_id, true);
+  }
+
+  /// @dev Flips TA to quorum-of-cast on the deployed clone, then fuzzes disjoint yea/nay tallies vs execute.
+  function testFuzz_e2e_quorumCast_executeMatchesFormula(
+    uint8 yeaVotes,
+    uint8 nayVotes
+  ) public withDeployedNavePirataSquad {
+    uint256 _nC = _squadCrew.length;
+    vm.assume(uint256(yeaVotes) + uint256(nayVotes) <= _nC);
+
+    vm.prank(address(_squadTreasury));
+    _squadTreasury.setCrewVoteMode(ITreasuryAuthority.CrewVoteMode.QUORUM_OF_CAST);
+
+    vm.deal(_squadSafe, 50 ether);
+    address _beneficiary = makeAddr('e2eFuzzQcBen');
+
+    vm.prank(_squadCaptain);
+    uint256 _id = _squadTreasury.propose(_beneficiary, 1 wei, hex'', ITreasuryAuthority.Operation.CALL);
+
+    (,,,,,, uint64 _snapshot,,,,,) = _squadTreasury.proposal(_id);
+    uint256 _snap = uint256(_snapshot);
+    uint256 _bps = _squadTreasury.quorumBps();
+
+    for (uint256 _i = 0; _i < uint256(yeaVotes); _i++) {
+      vm.prank(_squadCrew[_i]);
+      _squadTreasury.crewVote(_id, true);
+    }
+    for (uint256 _j = 0; _j < uint256(nayVotes); _j++) {
+      vm.prank(_squadCrew[uint256(yeaVotes) + _j]);
+      _squadTreasury.crewVote(_id, false);
+    }
+
+    vm.prank(_squadCaptain);
+    _squadTreasury.captainVote(_id, true);
+
+    uint256 _cast = uint256(yeaVotes) + uint256(nayVotes);
+    bool _passes = _cast * 10_000 >= _snap * _bps && uint256(yeaVotes) > uint256(nayVotes);
+
+    if (_passes) {
+      uint256 _before = _beneficiary.balance;
+      _squadTreasury.execute(_id);
+      assertEq(_beneficiary.balance, _before + 1 wei);
+    } else {
+      vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
+      _squadTreasury.execute(_id);
+    }
+  }
+}
