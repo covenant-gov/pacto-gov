@@ -7,7 +7,7 @@ if ! command -v lintspec >/dev/null 2>&1; then
   exit 0
 fi
 if [ "$#" -eq 0 ]; then
-  exec lintspec src script test
+  exec lintspec
 else
   exec lintspec "$@"
 fi
