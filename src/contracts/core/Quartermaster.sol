@@ -13,7 +13,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title Quartermaster
  * @author Pacto
- * @notice Timelocked crew add/remove; crew-hat `IHatsEligibility`; `QuartermasterRole` admin. Revokes via local flags + Hats re-checks
+ * @notice Timelocked crew add/remove (bootstrap without delay); crew-hat `IHatsEligibility`; `QuartermasterRole` admin. Revokes via local flags + Hats re-checks
  * @dev EIP-1167 master; `initialize` for clones. Access = hats only
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValidator, Initializable {
@@ -84,15 +84,34 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuartermaster
   function requestAddCrew(address _candidate) external override onlyHatWearer(captainHatId) {
     if (mutinyActive) revert Quartermaster_MutinyActive();
-    if (_candidate == address(0)) revert Quartermaster_ZeroAddress();
-    if (_HATS.isWearerOfHat(_candidate, captainHatId)) revert Quartermaster_CandidateIsCaptain(_candidate);
-    if (_HATS.isWearerOfHat(_candidate, crewHatId)) revert Quartermaster_AlreadyCrew(_candidate);
+    _validateAddCandidate(_candidate);
+    if (pendingCrewAddAt[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    if (pendingCrewAddAt[_candidate] == 0) _pendingAddCount++;
-    uint256 _eta = block.timestamp + crewChangeDelay;
+    _pendingAddCount++;
+    uint256 _eta = block.timestamp + _crewAddDelay();
     pendingCrewAddAt[_candidate] = _eta;
     emit CrewAddRequested(_candidate, _eta);
+  }
+
+  /// @inheritdoc IQuartermaster
+  function bootstrapCrew(address[] calldata _candidates) external override onlyHatWearer(captainHatId) {
+    if (mutinyActive) revert Quartermaster_MutinyActive();
+    if (_HATS.hatSupply(crewHatId) != 0) revert Quartermaster_BootstrapRequiresEmptyCrew();
+
+    uint256 _n = _candidates.length;
+    if (_n == 0) revert Quartermaster_BootstrapEmpty();
+
+    uint256 _max = uint256(_HATS.getHatMaxSupply(crewHatId));
+    if (_n > _max) revert Quartermaster_CrewFull();
+
+    for (uint256 _i = 0; _i < _n; _i++) {
+      address _c = _candidates[_i];
+      _validateAddCandidate(_c);
+      _crewEligible[_c] = true;
+      _HATS.mintHat(crewHatId, _c);
+      emit CrewAddExecuted(_c);
+    }
   }
 
   /// @inheritdoc IQuartermaster
@@ -222,5 +241,27 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuiescent
   function isQuiet() external view override returns (bool _quiet) {
     _quiet = _pendingAddCount == 0 && _pendingRemoveCount == 0 && !mutinyActive;
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                        INTERNAL LOGIC
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Timelock for a captain-scheduled crew add (`0` when no crew wearer yet; else `crewChangeDelay`).
+   * @return _delay Seconds added to `block.timestamp` when recording `pendingCrewAddAt`.
+   */
+  function _crewAddDelay() internal view returns (uint256 _delay) {
+    _delay = _HATS.hatSupply(crewHatId) == 0 ? 0 : crewChangeDelay;
+  }
+
+  /**
+   * @notice Reverts unless `candidate` is a valid onboarding target before mint.
+   * @param _candidate Proposed wearer of the crew hat.
+   */
+  function _validateAddCandidate(address _candidate) internal view {
+    if (_candidate == address(0)) revert Quartermaster_ZeroAddress();
+    if (_HATS.isWearerOfHat(_candidate, captainHatId)) revert Quartermaster_CandidateIsCaptain(_candidate);
+    if (_HATS.isWearerOfHat(_candidate, crewHatId)) revert Quartermaster_AlreadyCrew(_candidate);
   }
 }

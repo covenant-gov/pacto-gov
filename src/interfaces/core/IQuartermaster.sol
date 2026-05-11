@@ -6,7 +6,7 @@ import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
 /**
  * @title IQuartermaster
  * @author Pacto
- * @notice Timelocked crew add/remove; implements `IHatsEligibility` for the crew hat. Captain requests; anyone
+ * @notice Timelocked crew add/remove (bootstrap without delay); implements `IHatsEligibility` for the crew hat. Captain requests; anyone
  *         executes after `crewChangeDelay`. When `mutinyActive`, only mutiny hooks change crew. Delay changes: TA role + two-body
  */
 interface IQuartermaster is IQuiescent {
@@ -132,12 +132,22 @@ interface IQuartermaster is IQuiescent {
    */
   error Quartermaster_NotCrew(address _target);
 
+  /**
+   * @notice Second `requestAddCrew` for `_address` while the first scheduled add is still pending.
+   * @param _address The duplicate candidate key.
+   */
+  error Quartermaster_DuplicateCrewAdd(address _address);
+
   /// @notice Crew onboarding is blocked while a mutiny is active.
   error Quartermaster_MutinyActive();
   /// @notice The crew hat has reached its max supply cap.
   error Quartermaster_CrewFull();
   /// @notice A required address argument was zero.
   error Quartermaster_ZeroAddress();
+  /// @notice `bootstrapCrew` only runs before any crew wearer exists.
+  error Quartermaster_BootstrapRequiresEmptyCrew();
+  /// @notice `bootstrapCrew` was called with an empty candidates array.
+  error Quartermaster_BootstrapEmpty();
 
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER
@@ -152,8 +162,8 @@ interface IQuartermaster is IQuiescent {
                             LOGIC
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Schedule minting the crew hat to `_candidate` after `crewChangeDelay`. Captain-gated.
-   * @dev Reverts if a mutiny is active or the candidate already wears crew / is the captain.
+   * @notice Schedule minting the crew hat to `_candidate`; delay is zero while no crew wearer yet else `crewChangeDelay`. Captain-gated.
+   * @dev Reverts if mutiny active, `_candidate` is invalid captain/crew, crew full, or there is already a pending add for `_candidate`.
    * @param _candidate Address to receive the crew hat.
    */
   function requestAddCrew(address _candidate) external;
@@ -169,6 +179,13 @@ interface IQuartermaster is IQuiescent {
    * @param _candidate Address to receive the crew hat.
    */
   function executeAddCrew(address _candidate) external;
+
+  /**
+   * @notice Mint the crew hat to every address in `_candidates` immediately; only valid while no crew wearer exists yet.
+   * @dev Captain-gated. One-shot bootstrap; afterward use `requestAddCrew` / `executeAddCrew` with delay.
+   * @param _candidates Addresses to onboard as crew together.
+   */
+  function bootstrapCrew(address[] calldata _candidates) external;
 
   /**
    * @notice Schedule burning the crew hat from `_crew` after `crewChangeDelay`. Captain-gated.

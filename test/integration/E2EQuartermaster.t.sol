@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 
-import {IntegrationBase} from './IntegrationBase.sol';
+import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
 /**
  * @title E2EQuartermasterTest
