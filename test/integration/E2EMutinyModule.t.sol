@@ -3,16 +3,10 @@ pragma solidity 0.8.30;
 
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {MutinyModule} from 'contracts/core/MutinyModule.sol';
-import {Quartermaster} from 'contracts/core/Quartermaster.sol';
-import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
-import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
-import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
-import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
-import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
 
 import {IntegrationBase} from './IntegrationBase.sol';
 
@@ -23,24 +17,10 @@ import {IntegrationBase} from './IntegrationBase.sol';
  *         then advance mutiny state on the mainnet fork from `IntegrationBase`.
  */
 abstract contract E2EMutinyModuleBase is IntegrationBase {
-  MutinyModule internal _squadMutiny;
-  Quartermaster internal _squadQuartermaster;
-  address internal _squadSafe;
-  uint256 internal _squadTopHatId;
-  uint256 internal _squadCrewHatId;
-  address internal _squadCaptain;
-  address internal _squadProposedCaptain;
-  address[] internal _squadCrew;
   uint256 internal _squadActiveMutinyId;
 
-  bool internal _fixtureHasSquad;
   bool internal _fixtureHasOpenRound;
   bool internal _fixtureHasVoteMajority;
-
-  modifier withDeployedNavePirataSquad() {
-    _ensureSquad();
-    _;
-  }
 
   modifier withOpenMutinyRound() {
     _ensureSquad();
@@ -53,59 +33,6 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
     _ensureOpenRound();
     _ensureVotesAboveMajority();
     _;
-  }
-
-  /// @dev Idempotent squad bootstrap: registry factory deploy, onboard five crew via timelock, exposes `_squad*` storage.
-  function _ensureSquad() internal {
-    if (_fixtureHasSquad) return;
-
-    _squadCaptain = makeAddr('e2eSquadCaptain');
-    _squadProposedCaptain = makeAddr('e2eProposedCaptain');
-    _fund(_squadCaptain, 50 ether);
-    _fund(_squadProposedCaptain, 1 ether);
-
-    _squadCrew.push(makeAddr('e2eCrew0'));
-    _squadCrew.push(makeAddr('e2eCrew1'));
-    _squadCrew.push(makeAddr('e2eCrew2'));
-    _squadCrew.push(makeAddr('e2eCrew3'));
-    _squadCrew.push(makeAddr('e2eCrew4'));
-    for (uint256 _i = 0; _i < _squadCrew.length; _i++) {
-      _fund(_squadCrew[_i], 50 ether);
-    }
-
-    INavePirataFactory.DeployParams memory _p = INavePirataFactory.DeployParams({
-      captain: _squadCaptain,
-      metadataURI: 'ipfs://e2e-mutiny-squad',
-      squadParams: _squadParamsProduction(),
-      quartermasterMasterCopy: _masters.quartermaster,
-      mutinyMasterCopy: _masters.mutinyModule,
-      treasuryAuthorityMasterCopy: _masters.treasuryAuthority,
-      squadAdminImplementation: _masters.squadAdminImpl,
-      saltNonce: _freshSquadSalt()
-    });
-
-    _fund(address(this), 200 ether);
-    (uint256 _topHat,, address _qm, address _mm,,) = NavePirataFactory(_infra.navePirataFactory).deployNavePirata(_p);
-
-    _squadTopHatId = _topHat;
-    _squadQuartermaster = Quartermaster(_qm);
-    _squadMutiny = MutinyModule(_mm);
-
-    INavePirataRegistry.Deployment memory _d = NavePirataRegistry(_infra.registry).deployment(_topHat);
-    _squadSafe = _d.safe;
-    _squadCrewHatId = _d.crewHatId;
-
-    vm.startPrank(_squadCaptain);
-    for (uint256 _j = 0; _j < _squadCrew.length; _j++) {
-      IQuartermaster(address(_squadQuartermaster)).requestAddCrew(_squadCrew[_j]);
-    }
-    vm.stopPrank();
-    vm.warp(block.timestamp + CREW_CHANGE_DELAY + 1);
-    for (uint256 _k = 0; _k < _squadCrew.length; _k++) {
-      IQuartermaster(address(_squadQuartermaster)).executeAddCrew(_squadCrew[_k]);
-    }
-
-    _fixtureHasSquad = true;
   }
 
   /// @dev Opens one mutiny from `_squadCrew[0]` if not already running.

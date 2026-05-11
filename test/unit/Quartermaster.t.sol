@@ -178,7 +178,7 @@ contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
     _mockWearer(_alice, _CREW_HAT, false);
     _mockCrewCapacity(0, _CREW_MAX);
 
-    uint256 _expectedEta = block.timestamp + CREW_CHANGE_DELAY;
+    uint256 _expectedEta = block.timestamp;
     vm.expectEmit(true, false, false, true, address(_qm));
     emit IQuartermaster.CrewAddRequested(_alice, _expectedEta);
 
@@ -241,7 +241,7 @@ contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
     _qm.requestAddCrew(_alice);
   }
 
-  function test_RequestAddCrew_RerequestExtendsDelayButKeepsCount() external {
+  function test_RequestAddCrew_RevertsIfDuplicatePendingAdd() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CAPTAIN_HAT, false);
     _mockWearer(_alice, _CREW_HAT, false);
@@ -249,15 +249,30 @@ contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
 
     vm.prank(_captain);
     _qm.requestAddCrew(_alice);
-    uint256 _firstEta = _qm.pendingCrewAddAt(_alice);
 
-    vm.warp(block.timestamp + 1 days);
     vm.prank(_captain);
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_DuplicateCrewAdd.selector, _alice));
     _qm.requestAddCrew(_alice);
-    uint256 _secondEta = _qm.pendingCrewAddAt(_alice);
+  }
 
-    assertGt(_secondEta, _firstEta);
-    assertFalse(_qm.isQuiet());
+  function test_RequestAddSecondCrew_UsesFullDelay_whenCrewExists() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CAPTAIN_HAT, false);
+    _mockWearer(_alice, _CREW_HAT, false);
+    _mockCrewCapacity(0, _CREW_MAX);
+    _mockMintHat(_CREW_HAT, _alice, true);
+    address[] memory _bootstrap = new address[](1);
+    _bootstrap[0] = _alice;
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_bootstrap);
+
+    _mockWearer(_bob, _CAPTAIN_HAT, false);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockCrewCapacity(1, _CREW_MAX);
+
+    vm.prank(_captain);
+    _qm.requestAddCrew(_bob);
+    assertEq(_qm.pendingCrewAddAt(_bob), block.timestamp + CREW_CHANGE_DELAY);
   }
 }
 
@@ -304,7 +319,6 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestAddCrew(_alice);
 
-    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_alice, _CREW_HAT, false);
     _mockMintHat(_CREW_HAT, _alice, true);
 
@@ -327,16 +341,18 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
   }
 
   function test_ExecuteAddCrew_RevertsIfStillLocked() external {
-    _mockWearer(_captain, _CAPTAIN_HAT, true);
-    _mockWearer(_alice, _CAPTAIN_HAT, false);
-    _mockWearer(_alice, _CREW_HAT, false);
-    _mockCrewCapacity(0, _CREW_MAX);
-    vm.prank(_captain);
-    _qm.requestAddCrew(_alice);
-    uint256 _eta = _qm.pendingCrewAddAt(_alice);
+    _seedCrew(_alice);
 
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_StillLocked.selector, _alice, _eta));
-    _qm.executeAddCrew(_alice);
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_bob, _CAPTAIN_HAT, false);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockCrewCapacity(1, _CREW_MAX);
+    vm.prank(_captain);
+    _qm.requestAddCrew(_bob);
+    uint256 _eta = _qm.pendingCrewAddAt(_bob);
+
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_StillLocked.selector, _bob, _eta));
+    _qm.executeAddCrew(_bob);
   }
 
   function test_ExecuteAddCrew_RevertsIfMutinyActive() external {
@@ -351,7 +367,6 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
     vm.prank(_mutinyClone);
     _qm.setMutinyActive(true);
 
-    vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
     _qm.executeAddCrew(_alice);
   }
@@ -610,6 +625,119 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
     vm.prank(_stranger);
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _MUTINY_ROLE_HAT, _stranger));
     _qm.setMutinyActive(true);
+  }
+}
+
+contract UnitQuartermasterBootstrap is UnitQuartermasterBase {
+  function test_BootstrapCrew_HappyPath_mintsMultipleAndEligible() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CAPTAIN_HAT, false);
+    _mockWearer(_alice, _CREW_HAT, false);
+    _mockWearer(_bob, _CAPTAIN_HAT, false);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockCrewCapacity(0, _CREW_MAX);
+    _mockMintHat(_CREW_HAT, _alice, true);
+    _mockMintHat(_CREW_HAT, _bob, true);
+
+    address[] memory _c = new address[](2);
+    _c[0] = _alice;
+    _c[1] = _bob;
+
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewAddExecuted(_alice);
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewAddExecuted(_bob);
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_c);
+
+    (bool _aOk,) = _qm.getWearerStatus(_alice, _CREW_HAT);
+    (bool _bOk,) = _qm.getWearerStatus(_bob, _CREW_HAT);
+    assertTrue(_aOk);
+    assertTrue(_bOk);
+    assertTrue(_qm.isQuiet());
+  }
+
+  function test_BootstrapCrew_RevertsIfNotCaptain() external {
+    _mockWearer(_stranger, _CAPTAIN_HAT, false);
+    address[] memory _c = new address[](1);
+    _c[0] = _alice;
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
+    vm.prank(_stranger);
+    _qm.bootstrapCrew(_c);
+  }
+
+  function test_BootstrapCrew_RevertsIfMutinyActive() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
+    vm.prank(_mutinyClone);
+    _qm.setMutinyActive(true);
+
+    address[] memory _c = new address[](1);
+    _c[0] = _alice;
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_MutinyActive.selector));
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_c);
+  }
+
+  function test_BootstrapCrew_RevertsIfBootstrapRequiresEmptyCrew() external {
+    _seedCrew(_alice);
+    _mockCrewCapacity(1, _CREW_MAX);
+
+    address[] memory _c = new address[](1);
+    _c[0] = _bob;
+
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_BootstrapRequiresEmptyCrew.selector));
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_c);
+  }
+
+  function test_BootstrapCrew_RevertsIfEmptyCandidates() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockCrewCapacity(0, _CREW_MAX);
+    address[] memory _c = new address[](0);
+
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_BootstrapEmpty.selector));
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_c);
+  }
+
+  function test_BootstrapCrew_RevertsIfDuplicateCandidates() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CAPTAIN_HAT, false);
+    _mockWearer(_alice, _CREW_HAT, false);
+    _mockCrewCapacity(0, _CREW_MAX);
+
+    address[] memory _c = new address[](2);
+    _c[0] = _alice;
+    _c[1] = _alice;
+
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_DuplicateCrewAdd.selector, _alice));
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_c);
+  }
+
+  function test_BootstrapCrew_RevertsIfMoreCandidatesThanMaxSupply() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockCrewCapacity(0, 3);
+
+    address[] memory _c = new address[](4);
+    _c[0] = makeAddr('b0');
+    _c[1] = makeAddr('b1');
+    _c[2] = makeAddr('b2');
+    _c[3] = makeAddr('b3');
+    _mockWearer(_c[0], _CAPTAIN_HAT, false);
+    _mockWearer(_c[1], _CAPTAIN_HAT, false);
+    _mockWearer(_c[2], _CAPTAIN_HAT, false);
+    _mockWearer(_c[3], _CAPTAIN_HAT, false);
+    _mockWearer(_c[0], _CREW_HAT, false);
+    _mockWearer(_c[1], _CREW_HAT, false);
+    _mockWearer(_c[2], _CREW_HAT, false);
+    _mockWearer(_c[3], _CREW_HAT, false);
+
+    vm.expectRevert(IQuartermaster.Quartermaster_CrewFull.selector);
+    vm.prank(_captain);
+    _qm.bootstrapCrew(_c);
   }
 }
 
