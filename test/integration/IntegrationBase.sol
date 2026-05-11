@@ -20,6 +20,12 @@ import {
 import {DeployTypes} from 'script/DeployTypes.sol';
 import {PactoDeploy} from 'script/PactoDeploy.sol';
 
+import {ERC1155} from '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
+import {IERC1155Receiver} from '@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol';
+import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import {ERC721} from '@openzeppelin/contracts/token/ERC721/ERC721.sol';
+
+import {StdStorage, stdStorage} from 'forge-std/StdStorage.sol';
 import {Test} from 'forge-std/Test.sol';
 
 /**
@@ -29,9 +35,13 @@ import {Test} from 'forge-std/Test.sol';
  * @dev Requires an Ethereum mainnet fork: `forge test --fork-url …`, env `MAINNET_RPC`, or `foundry.toml` `rpc_endpoints.mainnet`.
  *      Pin matches `DEFAULT_MAINNET_FORK_BLOCK` in `Constants.sol`. Use `_fund()`, `_freshSquadSalt()` in subclasses.
  *      Squad helpers (`withDeployedNavePirataSquad`, `_ensureSquad`) run on that fork via `deployNavePirata`.
+ *      Subclasses may use `_stdstoreOzErc20Balance` / `_stdstoreOzErc1155Balance` to credit vanilla OZ getters where `stdstore` can staticcall the target.
+ *      `_mockSquadSafeErc1155Receive` stubs IERC1155 acceptance on the forked Safe when its runtime return data is incomplete.
  *      Override `_loadExternalAddresses` only if you deliberately target different chain infra.
  */
 abstract contract IntegrationBase is PactoDeploy, Test {
+  using stdStorage for StdStorage;
+
   error IntegrationBase_NoMainnetFork();
 
   bool internal _integrationForkActive;
@@ -150,4 +160,42 @@ abstract contract IntegrationBase is PactoDeploy, Test {
 
     _fixtureHasSquad = true;
   }
+
+  /// @dev OpenZeppelin `balanceOf` getters; `ERC721.ownerOf` reverts when unset so it is not used here.
+  function _stdstoreOzErc20Balance(address token, address holder, uint256 amount) internal {
+    stdstore.target(token).sig('balanceOf(address)').with_key(holder).checked_write(amount);
+  }
+
+  function _stdstoreOzErc1155Balance(address token, address holder, uint256 id, uint256 amount) internal {
+    stdstore.target(token).sig('balanceOf(address,uint256)').with_key(holder).with_key(id).checked_write(amount);
+  }
+
+  /// @dev IERC1155 inbound check on `_squadSafe` for the rescue path (operator and `from` are `treasuryAuthority`).
+  function _mockSquadSafeErc1155Receive(address treasuryAuthority, uint256 id, uint256 amount) internal virtual {
+    vm.mockCall(
+      _squadSafe,
+      abi.encodeCall(IERC1155Receiver.onERC1155Received, (treasuryAuthority, treasuryAuthority, id, amount, bytes(''))),
+      abi.encode(IERC1155Receiver.onERC1155Received.selector)
+    );
+  }
+}
+
+/// @dev E2E test contracts for asset rescues; OZ `_mint` to `TreasuryAuthority` invokes `onERC1155Received` (rejected here).
+contract E2ERescueERC20 is ERC20 {
+  constructor() ERC20('E2ERescue20', 'E2R20') {}
+}
+
+/// @dev E2E test contracts for asset rescues; OZ `_mint` to `TreasuryAuthority` invokes `onERC1155Received` (rejected here).
+contract E2ERescueERC721 is ERC721 {
+  constructor() ERC721('E2ERescue721', 'E2R721') {}
+
+  /// @dev OZ `ownerOf` reverts for unset ids, so forge `stdstore` cannot seed ownership through that getter.
+  function mint(address to, uint256 tokenId) external {
+    _mint(to, tokenId);
+  }
+}
+
+/// @dev OZ `_mint` to `TreasuryAuthority` invokes `onERC1155Received` (rejected here). Crediting balances via `_stdstoreOzErc1155Balance`.
+contract E2ERescueERC1155 is ERC1155 {
+  constructor() ERC1155('') {}
 }

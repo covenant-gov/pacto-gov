@@ -8,7 +8,7 @@ import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
-import {IntegrationBase} from './IntegrationBase.sol';
+import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
 /**
  * @title E2EMutinyModuleBase

@@ -17,42 +17,9 @@ import {HATS_PROTOCOL_V1, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Consta
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
-import {ERC1155} from '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
-import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import {ERC721} from '@openzeppelin/contracts/token/ERC721/ERC721.sol';
+import {IERC1155} from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 
-import {IntegrationBase} from './IntegrationBase.sol';
-
-contract E2ERescueERC20 is ERC20 {
-  constructor() ERC20('E2ERescue20', 'E2R20') {}
-
-  function mint(address to, uint256 amount) external {
-    _mint(to, amount);
-  }
-}
-
-contract E2ERescueERC721 is ERC721 {
-  constructor() ERC721('E2ERescue721', 'E2R721') {}
-
-  function mint(address to, uint256 tokenId) external {
-    _mint(to, tokenId);
-  }
-}
-
-contract E2ERescueERC1155 is ERC1155 {
-  constructor() ERC1155('') {}
-
-  function mint(address to, uint256 id, uint256 amount) external {
-    _mint(to, id, amount, '');
-  }
-}
-
-/**
- * @title E2ETreasuryAuthorityBase
- * @author Pacto
- * @notice Fork fixtures specific to `TreasuryAuthority` scenarios; shared squad wiring lives on `IntegrationBase`.
- */
-abstract contract E2ETreasuryAuthorityBase is IntegrationBase {}
+import {E2ERescueERC1155, E2ERescueERC20, E2ERescueERC721, IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
 /**
  * @title E2ETreasuryAuthorityTest
@@ -60,7 +27,7 @@ abstract contract E2ETreasuryAuthorityBase is IntegrationBase {}
  * @notice End-to-end scenarios for `TreasuryAuthority`; function names follow branching in `TreasuryAuthority`
  *         / `ITreasuryAuthority`; empty bodies are intentional for a follow-up pass.
  */
-contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
+contract E2ETreasuryAuthorityTest is IntegrationBase {
   /*///////////////////////////////////////////////////////////////
                         initialize / setUp
   //////////////////////////////////////////////////////////////*/
@@ -829,7 +796,7 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
   function test_e2e_rescueERC20_succeeds_sweepsToSafe() public withDeployedNavePirataSquad {
     E2ERescueERC20 _token = new E2ERescueERC20();
     uint256 _amount = 1000 ether;
-    _token.mint(address(_squadTreasury), _amount);
+    _stdstoreOzErc20Balance(address(_token), address(_squadTreasury), _amount);
 
     uint256 _safeBefore = _token.balanceOf(_squadSafe);
 
@@ -860,9 +827,14 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
     E2ERescueERC1155 _multi = new E2ERescueERC1155();
     uint256 _id = 7;
     uint256 _amount = 100;
-    _multi.mint(address(_squadTreasury), _id, _amount);
+    _stdstoreOzErc1155Balance(address(_multi), address(_squadTreasury), _id, _amount);
+
+    _mockSquadSafeErc1155Receive(address(_squadTreasury), _id, _amount);
 
     uint256 _safeBefore = _multi.balanceOf(_squadSafe, _id);
+
+    vm.expectEmit(true, true, true, true, address(_multi));
+    emit IERC1155.TransferSingle(address(_squadTreasury), address(_squadTreasury), _squadSafe, _id, _amount);
 
     vm.expectEmit(true, true, false, true, address(_squadTreasury));
     emit IAssetRescuer.AssetRescuedERC1155(address(_multi), _squadSafe, _id, _amount);
@@ -911,7 +883,7 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
  *
  * forge-config: default.fuzz.runs = 128
  */
-contract E2ETreasuryAuthorityForkFuzz is E2ETreasuryAuthorityBase {
+contract E2ETreasuryAuthorityForkFuzz is IntegrationBase {
   function testFuzz_e2e_majorityThreshold_executeMatches2YeasGtSnapshot(uint8 nYeas)
     public
     withDeployedNavePirataSquad
