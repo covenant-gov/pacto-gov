@@ -85,9 +85,10 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function requestAddCrew(address _candidate) external override onlyHatWearer(captainHatId) {
     if (mutinyActive) revert Quartermaster_MutinyActive();
     _validateAddCandidate(_candidate);
+    if (pendingCrewAddAt[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    if (pendingCrewAddAt[_candidate] == 0) _pendingAddCount++;
+    _pendingAddCount++;
     uint256 _eta = block.timestamp + _crewAddDelay();
     pendingCrewAddAt[_candidate] = _eta;
     emit CrewAddRequested(_candidate, _eta);
@@ -107,16 +108,9 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     for (uint256 _i = 0; _i < _n; _i++) {
       address _c = _candidates[_i];
       _validateAddCandidate(_c);
-      for (uint256 _j = _i + 1; _j < _n; _j++) {
-        if (_c == _candidates[_j]) revert Quartermaster_DuplicateCrewAdd(_c);
-      }
-    }
-
-    for (uint256 _i = 0; _i < _n; _i++) {
-      address _a = _candidates[_i];
-      _crewEligible[_a] = true;
-      _HATS.mintHat(crewHatId, _a);
-      emit CrewAddExecuted(_a);
+      _crewEligible[_c] = true;
+      _HATS.mintHat(crewHatId, _c);
+      emit CrewAddExecuted(_c);
     }
   }
 
@@ -253,10 +247,18 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
                         INTERNAL LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  /**
+   * @notice Timelock for a captain-scheduled crew add (`0` when no crew wearer yet; else `crewChangeDelay`).
+   * @return _delay Seconds added to `block.timestamp` when recording `pendingCrewAddAt`.
+   */
   function _crewAddDelay() internal view returns (uint256 _delay) {
     _delay = _HATS.hatSupply(crewHatId) == 0 ? 0 : crewChangeDelay;
   }
 
+  /**
+   * @notice Reverts unless `candidate` is a valid onboarding target before mint.
+   * @param _candidate Proposed wearer of the crew hat.
+   */
   function _validateAddCandidate(address _candidate) internal view {
     if (_candidate == address(0)) revert Quartermaster_ZeroAddress();
     if (_HATS.isWearerOfHat(_candidate, captainHatId)) revert Quartermaster_CandidateIsCaptain(_candidate);

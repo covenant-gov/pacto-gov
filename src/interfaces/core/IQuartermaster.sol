@@ -133,8 +133,8 @@ interface IQuartermaster is IQuiescent {
   error Quartermaster_NotCrew(address _target);
 
   /**
-   * @notice Duplicated onboarding target before execution
-   * @param _address The duplicate candidate.
+   * @notice Second `requestAddCrew` for `_address` while the first scheduled add is still pending.
+   * @param _address The duplicate candidate key.
    */
   error Quartermaster_DuplicateCrewAdd(address _address);
 
@@ -162,8 +162,8 @@ interface IQuartermaster is IQuiescent {
                             LOGIC
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Schedule minting the crew hat to `_candidate` after `crewChangeDelay`. Captain-gated.
-   * @dev Reverts if a mutiny is active or the candidate already wears crew / is the captain.
+   * @notice Schedule minting the crew hat to `_candidate`; delay is zero while no crew wearer yet else `crewChangeDelay`. Captain-gated.
+   * @dev Reverts if mutiny active, `_candidate` is invalid captain/crew, crew full, or there is already a pending add for `_candidate`.
    * @param _candidate Address to receive the crew hat.
    */
   function requestAddCrew(address _candidate) external;
