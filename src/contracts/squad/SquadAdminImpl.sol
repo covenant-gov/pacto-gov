@@ -12,33 +12,19 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title SquadAdminImpl
  * @author Pacto
- * @notice v1: captain-gated `enable`/`disable` executor and `isExecutor` for app gating. More surface later via UUPS
+ * @notice v1: captain-gated per-role executors, `bytes32("FULL")`, and `bytes32("PAUSE")` kill-switch. More surface later via UUPS
  * @dev ERC-7201 `pacto.squadadmin.v1` layout; UUPS is captain-only (not two-body)
  */
 contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable {
   /*///////////////////////////////////////////////////////////////
-                            TYPES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice ERC-7201 namespaced storage layout for SquadAdmin v1.
-   * @dev New fields may be appended in later implementation versions; never reordered or
-   *      removed, so existing proxies upgrade-in-place without state migration. Kept on the
-   *      implementation because Solidity interface structs cannot contain mappings.
-   * @param captainHatId Captain hat id used for gate checks.
-   * @param squadAdminHatId Squad-admin hat id worn by this proxy.
-   * @param executors Mapping of address → enabled-flag for v1's single predicate.
-   * @custom:storage-location erc7201:pacto.squadadmin.v1
-   */
-  struct SquadAdminStorageV1 {
-    uint256 captainHatId;
-    uint256 squadAdminHatId;
-    mapping(address _executor => bool _enabled) executors;
-  }
-
-  /*///////////////////////////////////////////////////////////////
                             CONSTANTS
   //////////////////////////////////////////////////////////////*/
+
+  /// @notice Full permission role.
+  bytes32 internal constant _FULL_PERMISSION = bytes32('FULL');
+
+  /// @notice When enabled for an executor, `hasExecutorRole` is false for every `_role` until cleared.
+  bytes32 internal constant _PAUSE_PERMISSION = bytes32('PAUSE');
 
   /**
    * @notice ERC-7201 slot for `SquadAdminStorageV1`.
@@ -72,22 +58,22 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ISquadAdmin
-  function enableExecutor(address _executor) external override {
+  function enableExecutor(address _executor, bytes32 _role) external override {
     _requireCaptain();
     if (_executor == address(0)) revert SquadAdmin_ZeroAddress();
     SquadAdminStorageV1 storage _s = _getStorage();
-    if (_s.executors[_executor]) revert SquadAdmin_AlreadyExecutor();
-    _s.executors[_executor] = true;
-    emit ExecutorEnabled(_executor);
+    if (_s.executors[_executor][_role]) revert SquadAdmin_AlreadyExecutor();
+    _s.executors[_executor][_role] = true;
+    emit ExecutorEnabled(_executor, _role);
   }
 
   /// @inheritdoc ISquadAdmin
-  function disableExecutor(address _executor) external override {
+  function disableExecutor(address _executor, bytes32 _role) external override {
     _requireCaptain();
     SquadAdminStorageV1 storage _s = _getStorage();
-    if (!_s.executors[_executor]) revert SquadAdmin_NotExecutor();
-    _s.executors[_executor] = false;
-    emit ExecutorDisabled(_executor);
+    if (!_s.executors[_executor][_role]) revert SquadAdmin_NotExecutor();
+    _s.executors[_executor][_role] = false;
+    emit ExecutorDisabled(_executor, _role);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -95,8 +81,20 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ISquadAdmin
-  function isExecutor(address _executor) external view override returns (bool _enabled) {
-    _enabled = _getStorage().executors[_executor];
+  function hasExecutorRole(address _executor, bytes32 _role) external view override returns (bool _enabled) {
+    SquadAdminStorageV1 storage _s = _getStorage();
+    if (_isExecutorPaused(_executor)) _enabled = false;
+    else _enabled = _isExecutorFullPermission(_executor) || _s.executors[_executor][_role];
+  }
+
+  /// @inheritdoc ISquadAdmin
+  function isExecutorFullPermission(address _executor) external view override returns (bool _fullPermission) {
+    _fullPermission = _isExecutorFullPermission(_executor);
+  }
+
+  /// @inheritdoc ISquadAdmin
+  function isExecutorPaused(address _executor) external view override returns (bool _paused) {
+    _paused = _isExecutorPaused(_executor);
   }
 
   /// @inheritdoc ISquadAdmin
@@ -149,6 +147,24 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   function _requireCaptain() internal view {
     uint256 _captainHatId = _getStorage().captainHatId;
     if (!_HATS.isWearerOfHat(msg.sender, _captainHatId)) revert SquadAdmin_NotCaptain();
+  }
+
+  /**
+   * @notice Reads the pause sentinel for `_executor`.
+   * @param _executor Account queried.
+   * @return _paused Whether `_PAUSE_PERMISSION` is enabled in storage.
+   */
+  function _isExecutorPaused(address _executor) internal view returns (bool _paused) {
+    _paused = _getStorage().executors[_executor][_PAUSE_PERMISSION];
+  }
+
+  /**
+   * @notice Reads the full-permission sentinel for `_executor`.
+   * @param _executor Account queried.
+   * @return _fullPermission Whether `_FULL_PERMISSION` is enabled in storage.
+   */
+  function _isExecutorFullPermission(address _executor) internal view returns (bool _fullPermission) {
+    _fullPermission = _getStorage().executors[_executor][_FULL_PERMISSION];
   }
 
   /**
