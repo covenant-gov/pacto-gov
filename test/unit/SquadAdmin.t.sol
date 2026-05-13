@@ -120,14 +120,13 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.enableExecutor(address(0), _ROLE_APP);
   }
 
-  function test_EnableExecutor_RevertsIfAlreadyEnabled() external {
+  function test_EnableExecutor_AllowsRepeatEnable_SameRole() external {
     _mockCaptain(_captain, true);
     vm.prank(_captain);
     _admin.enableExecutor(_alice, _ROLE_APP);
-
     vm.prank(_captain);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_AlreadyExecutor.selector);
     _admin.enableExecutor(_alice, _ROLE_APP);
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
   }
 
   function test_EnableExecutor_SecondRoleSameAddress() external {
@@ -162,11 +161,13 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.disableExecutor(_alice, _ROLE_APP);
   }
 
-  function test_DisableExecutor_RevertsIfNotEnabled() external {
+  function test_DisableExecutor_AllowsWhenRoleWasNeverEnabled() external {
     _mockCaptain(_captain, true);
+    vm.expectEmit(true, true, false, false, address(_admin));
+    emit ISquadAdmin.ExecutorDisabled(_alice, _ROLE_APP);
     vm.prank(_captain);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_NotExecutor.selector);
     _admin.disableExecutor(_alice, _ROLE_APP);
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
   }
 
   function test_EnableThenDisable_IsolatesPerExecutorAndRole() external {
@@ -183,22 +184,45 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     assertTrue(_admin.hasExecutorRole(_bob, _ROLE_APP));
   }
 
-  function test_EnableFull_HasEveryRoleUntilPaused() external {
+  function test_EnableFullPermission_EmitsAndGrantsEveryRole() external {
     _mockCaptain(_captain, true);
+    vm.expectEmit(true, false, false, true, address(_admin));
+    emit ISquadAdmin.FullPermissionEnabled(_alice, true);
     vm.prank(_captain);
-    _admin.enableExecutor(_alice, _ROLE_FULL);
+    _admin.enableFullPermission(_alice, true);
 
     assertTrue(_admin.isExecutorFullPermission(_alice));
     assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
     assertTrue(_admin.hasExecutorRole(_alice, _ROLE_OTHER));
   }
 
-  function test_Pause_BlocksHasExecutorRole_KeepsFullFlagInStorage() external {
+  function test_EnableFullPermission_False_ClearsFullSlot() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.enableFullPermission(_alice, true);
+    vm.prank(_captain);
+    _admin.enableFullPermission(_alice, false);
+
+    assertFalse(_admin.isExecutorFullPermission(_alice));
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_EnableExecutor_WithFullRoleKey_MatchesFullPermissionSlot() external {
     _mockCaptain(_captain, true);
     vm.prank(_captain);
     _admin.enableExecutor(_alice, _ROLE_FULL);
+    assertTrue(_admin.isExecutorFullPermission(_alice));
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_PauseExecutorBlocksHasExecutorRole_KeepsFullFlagInStorage() external {
+    _mockCaptain(_captain, true);
     vm.prank(_captain);
-    _admin.enableExecutor(_alice, _ROLE_PAUSE);
+    _admin.enableFullPermission(_alice, true);
+    vm.expectEmit(true, false, false, true, address(_admin));
+    emit ISquadAdmin.ExecutorPaused(_alice, true);
+    vm.prank(_captain);
+    _admin.pauseExecutor(_alice, true);
 
     assertTrue(_admin.isExecutorPaused(_alice));
     assertTrue(_admin.isExecutorFullPermission(_alice));
@@ -206,21 +230,33 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_FULL));
   }
 
-  function test_DisablePause_RestoresRoles() external {
+  function test_PauseExecutorFalse_RestoresRoles() external {
     _mockCaptain(_captain, true);
     vm.prank(_captain);
     _admin.enableExecutor(_alice, _ROLE_APP);
     vm.prank(_captain);
-    _admin.enableExecutor(_alice, _ROLE_PAUSE);
+    _admin.pauseExecutor(_alice, true);
 
     assertTrue(_admin.isExecutorPaused(_alice));
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
 
     vm.prank(_captain);
-    _admin.disableExecutor(_alice, _ROLE_PAUSE);
+    _admin.pauseExecutor(_alice, false);
 
     assertFalse(_admin.isExecutorPaused(_alice));
     assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_DisableExecutor_OnPauseSlot_ClearsPause() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.pauseExecutor(_alice, true);
+    assertTrue(_admin.isExecutorPaused(_alice));
+
+    vm.prank(_captain);
+    _admin.disableExecutor(_alice, _ROLE_PAUSE);
+
+    assertFalse(_admin.isExecutorPaused(_alice));
   }
 }
 

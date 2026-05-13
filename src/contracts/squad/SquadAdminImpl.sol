@@ -33,6 +33,15 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   bytes32 private constant _SQUAD_ADMIN_STORAGE_V1 = 0xbc98e12076e749742801736ca484b4a7be0cea42f395e3487d1ecb57f6c45400;
 
   /*///////////////////////////////////////////////////////////////
+                            MODIFIERS
+  //////////////////////////////////////////////////////////////*/
+  /// @notice Runs the body only if `msg.sender` wears the captain hat.
+  modifier isCaptain() {
+    _requireCaptain();
+    _;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
 
@@ -58,22 +67,32 @@ contract SquadAdminImpl is ISquadAdmin, HatGated, Initializable, UUPSUpgradeable
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ISquadAdmin
-  function enableExecutor(address _executor, bytes32 _role) external override {
-    _requireCaptain();
+  function enableExecutor(address _executor, bytes32 _role) external override isCaptain {
     if (_executor == address(0)) revert SquadAdmin_ZeroAddress();
     SquadAdminStorageV1 storage _s = _getStorage();
-    if (_s.executors[_executor][_role]) revert SquadAdmin_AlreadyExecutor();
     _s.executors[_executor][_role] = true;
     emit ExecutorEnabled(_executor, _role);
   }
 
   /// @inheritdoc ISquadAdmin
-  function disableExecutor(address _executor, bytes32 _role) external override {
-    _requireCaptain();
+  function enableFullPermission(address _executor, bool _enable) external override isCaptain {
     SquadAdminStorageV1 storage _s = _getStorage();
-    if (!_s.executors[_executor][_role]) revert SquadAdmin_NotExecutor();
+    _s.executors[_executor][_FULL_PERMISSION] = _enable;
+    emit FullPermissionEnabled(_executor, _enable);
+  }
+
+  /// @inheritdoc ISquadAdmin
+  function disableExecutor(address _executor, bytes32 _role) external override isCaptain {
+    SquadAdminStorageV1 storage _s = _getStorage();
     _s.executors[_executor][_role] = false;
     emit ExecutorDisabled(_executor, _role);
+  }
+
+  /// @inheritdoc ISquadAdmin
+  function pauseExecutor(address _executor, bool _pause) external override isCaptain {
+    SquadAdminStorageV1 storage _s = _getStorage();
+    _s.executors[_executor][_PAUSE_PERMISSION] = _pause;
+    emit ExecutorPaused(_executor, _pause);
   }
 
   /*///////////////////////////////////////////////////////////////

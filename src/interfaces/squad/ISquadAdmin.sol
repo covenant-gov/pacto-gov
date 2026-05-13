@@ -52,11 +52,25 @@ interface ISquadAdmin is IQuiescent {
   event ExecutorEnabled(address indexed _executor, bytes32 indexed _role);
 
   /**
+   * @notice An executor was granted full permission.
+   * @param _executor Address that was granted full permission.
+   * @param _enable Whether the executor was granted full permission.
+   */
+  event FullPermissionEnabled(address indexed _executor, bool _enable);
+
+  /**
    * @notice An executor lost an application-level role.
    * @param _executor Address that lost this `_role`.
    * @param _role App-defined role id that was cleared.
    */
   event ExecutorDisabled(address indexed _executor, bytes32 indexed _role);
+
+  /**
+   * @notice An executor was paused.
+   * @param _executor Address that was paused.
+   * @param _pause Whether the executor was paused.
+   */
+  event ExecutorPaused(address indexed _executor, bool _pause);
 
   /**
    * @notice The UUPS implementation was upgraded.
@@ -70,10 +84,6 @@ interface ISquadAdmin is IQuiescent {
 
   /// @notice Caller is not the current captain.
   error SquadAdmin_NotCaptain();
-  /// @notice The executor does not have this role enabled.
-  error SquadAdmin_NotExecutor();
-  /// @notice The executor already has this role enabled.
-  error SquadAdmin_AlreadyExecutor();
   /// @notice A required address argument was zero.
   error SquadAdmin_ZeroAddress();
 
@@ -97,11 +107,25 @@ interface ISquadAdmin is IQuiescent {
   function enableExecutor(address _executor, bytes32 _role) external;
 
   /**
+   * @notice Enable full permission for an executor. Captain-hat-gated.
+   * @param _executor Address to enable.
+   * @param _enable Whether to enable full permission.
+   */
+  function enableFullPermission(address _executor, bool _enable) external;
+
+  /**
    * @notice Disable an executor for a specific app role. Captain-hat-gated.
    * @param _executor Address to update.
    * @param _role Role to revoke (including `bytes32("PAUSE")` to lift a global freeze).
    */
   function disableExecutor(address _executor, bytes32 _role) external;
+
+  /**
+   * @notice Pause an executor. Captain-hat-gated.
+   * @param _executor Address to pause.
+   * @param _pause Whether to pause the executor.
+   */
+  function pauseExecutor(address _executor, bool _pause) external;
 
   /**
    * @notice UUPS `upgradeToAndCall`; captain-only. `_data` optional post-upgrade call
