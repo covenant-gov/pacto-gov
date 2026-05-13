@@ -138,6 +138,23 @@ contract UnitSquadAdminInit is UnitSquadAdminBase {
     assertFalse(_admin.isExecutorFullPermission(_alice));
     assertFalse(_admin.isExecutorPaused(_alice));
   }
+
+  function test_PostInitialize_UpdatesHatIds() external {
+    _mockCaptain(_captain, true);
+    uint256 _newCap = 777;
+    uint256 _newSquad = 888;
+    vm.prank(_captain);
+    _admin.postInitialize(ISquadAdmin.InitParams({captainHatId: _newCap, squadAdminHatId: _newSquad}));
+    assertEq(_admin.captainHatId(), _newCap);
+    assertEq(_admin.squadAdminHatId(), _newSquad);
+  }
+
+  function test_PostInitialize_RevertsIfNotCaptain() external {
+    _mockCaptain(_stranger, false);
+    vm.prank(_stranger);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
+    _admin.postInitialize(ISquadAdmin.InitParams({captainHatId: 1, squadAdminHatId: 2}));
+  }
 }
 
 contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
@@ -160,6 +177,20 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     vm.prank(_stranger);
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
     _admin.enableExecutor(_alice, _ROLE_APP);
+  }
+
+  function test_EnableFullPermission_RevertsIfNotCaptain() external {
+    _mockCaptain(_stranger, false);
+    vm.prank(_stranger);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
+    _admin.enableFullPermission(_alice, true);
+  }
+
+  function test_PauseExecutor_RevertsIfNotCaptain() external {
+    _mockCaptain(_stranger, false);
+    vm.prank(_stranger);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
+    _admin.pauseExecutor(_alice, true);
   }
 
   function test_EnableExecutor_RevertsOnZeroAddress() external {
@@ -317,6 +348,8 @@ contract UnitSquadAdminExt is Test {
   SquadAdminExt internal _admin;
   address internal _moloch = makeAddr('moloch');
   address internal _alice = makeAddr('alice');
+  address internal _captain = makeAddr('extCaptain');
+  address internal _stranger = makeAddr('stranger');
 
   function setUp() external {
     vm.etch(_HATS_ADDRESS, hex'00');
@@ -353,9 +386,54 @@ contract UnitSquadAdminExt is Test {
   }
 
   function test_Ext_NotOwner_Reverts() external {
-    address _stranger = makeAddr('stranger');
     vm.prank(_stranger);
     vm.expectRevert(ISquadAdminExt.SquadAdminExt_NotAllowed.selector);
     _admin.enableExecutor(_alice, _ROLE_APP);
+  }
+
+  function test_Ext_PostInitialize_ClearsOwnerAndSetsHats() external {
+    uint256 _cap = 555;
+    uint256 _squad = 666;
+    vm.prank(_moloch);
+    _admin.postInitialize(ISquadAdmin.InitParams({captainHatId: _cap, squadAdminHatId: _squad}));
+    assertEq(_admin.owner(), address(0));
+    assertEq(_admin.captainHatId(), _cap);
+    assertEq(_admin.squadAdminHatId(), _squad);
+  }
+
+  function test_Ext_PostInitialize_RevertsIfNotOwner() external {
+    vm.prank(_stranger);
+    vm.expectRevert(ISquadAdminExt.SquadAdminExt_NotAllowed.selector);
+    _admin.postInitialize(ISquadAdmin.InitParams({captainHatId: 1, squadAdminHatId: 2}));
+  }
+
+  function test_Ext_AfterPostInitialize_CaptainHatGateApplies() external {
+    uint256 _cap = 555;
+    vm.prank(_moloch);
+    _admin.postInitialize(ISquadAdmin.InitParams({captainHatId: _cap, squadAdminHatId: 666}));
+    vm.mockCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _captain, _cap), abi.encode(true));
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_APP);
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_Ext_AfterPostInitialize_MolochCannotManageRosterWithoutHat() external {
+    uint256 _cap = 555;
+    vm.prank(_moloch);
+    _admin.postInitialize(ISquadAdmin.InitParams({captainHatId: _cap, squadAdminHatId: 666}));
+    vm.mockCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _moloch, _cap), abi.encode(false));
+    vm.prank(_moloch);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _cap, _moloch));
+    _admin.enableExecutor(_alice, _ROLE_APP);
+  }
+
+  function test_Ext_SecondInitParamsInitializer_RevertsAfterAddressInit() external {
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    _admin.initialize(ISquadAdmin.InitParams({captainHatId: 1, squadAdminHatId: 2}));
+  }
+
+  function test_Ext_SecondInitializeUint_RevertsAfterAddressInit() external {
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    _admin.initialize(uint256(1));
   }
 }
