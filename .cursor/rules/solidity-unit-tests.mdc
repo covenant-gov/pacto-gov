@@ -33,23 +33,14 @@ vm.etch(_HATS, hex'00');
 vm.mockCall(_HATS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _user, _hatId), abi.encode(true));
 ```
 
-## Proxy / upgrade targets
+## Proxy / delegatecall targets
 
-UUPS / ERC-1967 upgrades need real bytecode at the target address (delegatecall cannot be mocked). Deploy an **independent instance of the same production contract** — never a test-only subclass. Verify upgrade effects with `vm.load` against the ERC-1967 implementation slot (`0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`), not via a mock `version()` getter.
+**EIP-1167 clones** and anything that `delegatecall`s a real implementation need **real bytecode** at the implementation address (the EVM will not let you mock delegatecall targets the way you mock `interface` calls). Deploy **production master copies** — never test-only subclasses — when the test exercises clone init or logic running behind a clone.
 
-```solidity
-// GOOD — use a second production impl as the upgrade target
-SquadAdminImpl _nextImpl = new SquadAdminImpl(_hats);
-vm.prank(_captain);
-_admin.upgradeToAndCall(address(_nextImpl), '');
-assertEq(
-  address(uint160(uint256(vm.load(address(_proxy), _ERC1967_IMPLEMENTATION_SLOT)))),
-  address(_nextImpl)
-);
-```
+Where a fixture still uses an **upgradeable proxy** elsewhere in the codebase, swapping implementation needs a real contract at the new implementation address; you may assert ERC-1967 slots with `vm.load` if applicable.
 
 ## Accepted exceptions
 
-- **Production contracts** (including their abstracts) deployed as the contract under test or as upgrade targets.
+- **Production contracts** (including their abstracts) deployed as the contract under test, clone masters, or upgrade targets when upgrades exist.
 - **`forge-std/Test.sol`** primitives (`Test`, `Vm`, `StdUtils`, etc.).
 - **Integration tests** (`test/integration/**`) — these live outside this rule's scope and may spin up real peer contracts by design.

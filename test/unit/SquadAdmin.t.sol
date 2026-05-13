@@ -2,20 +2,18 @@
 pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
-import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
+import {ISquadAdminBase} from 'interfaces/squad/ISquadAdminBase.sol';
 
 /**
  * @title UnitSquadAdminBase
  * @author Pacto
- * @notice Shared fixture for SquadAdmin tests. Deploys a fresh `SquadAdminImpl` master and an
- *         `ERC1967Proxy` (SquadAdmin) wired to it. All Hats calls are stubbed via `vm.mockCall`.
- *         The UUPS upgrade path is exercised against a *second, independently-deployed*
- *         `SquadAdminImpl` — the real production contract — so no mock helper contracts are
- *         required (see `.cursor/rules/solidity-unit-tests.mdc`).
+ * @notice Shared fixture: `SquadAdmin` master plus an EIP-1167 clone (`Clones.clone`). Clone receives
+ *         `initialize` in `setUp`; hat ids live on `SquadAdmin`, executor mapping on `SquadAdminBase`.
  */
 abstract contract UnitSquadAdminBase is Test {
   address internal constant _HATS_ADDRESS = address(uint160(uint256(keccak256('pacto.squadadmin.HATS'))));
@@ -25,12 +23,14 @@ abstract contract UnitSquadAdminBase is Test {
 
   bytes32 internal constant _ROLE_APP = keccak256('pacto.squadadmin.role.app');
   bytes32 internal constant _ROLE_OTHER = keccak256('pacto.squadadmin.role.other');
+  // forge-lint: disable-next-line(unsafe-typecast) — ASCII labels fit in `bytes32` (Solidity left-padding).
   bytes32 internal constant _ROLE_FULL = bytes32('FULL');
+  // forge-lint: disable-next-line(unsafe-typecast) — ASCII labels fit in `bytes32` (Solidity left-padding).
   bytes32 internal constant _ROLE_PAUSE = bytes32('PAUSE');
 
-  SquadAdminImpl internal _impl;
-  SquadAdmin internal _proxy;
-  SquadAdminImpl internal _admin; // impl-typed handle against the proxy address
+  SquadAdmin internal _impl;
+  address internal _clone;
+  SquadAdmin internal _admin;
 
   address internal _captain = makeAddr('captain');
   address internal _alice = makeAddr('alice');
@@ -39,14 +39,13 @@ abstract contract UnitSquadAdminBase is Test {
 
   function setUp() public virtual {
     vm.etch(_HATS_ADDRESS, hex'00');
-    _impl = new SquadAdminImpl(IHats(_HATS_ADDRESS));
+    _impl = new SquadAdmin(IHats(_HATS_ADDRESS));
 
     ISquadAdmin.InitParams memory _p =
       ISquadAdmin.InitParams({captainHatId: _CAPTAIN_HAT, squadAdminHatId: _SQUAD_ADMIN_HAT});
-    bytes memory _initData = abi.encodeCall(SquadAdminImpl.initialize, (_p));
-
-    _proxy = new SquadAdmin(address(_impl), _initData);
-    _admin = SquadAdminImpl(payable(address(_proxy)));
+    _clone = Clones.clone(address(_impl));
+    SquadAdmin(payable(_clone)).initialize(_p);
+    _admin = SquadAdmin(payable(_clone));
   }
 
   function _mockCaptain(address _account, bool _wearsCaptain) internal {
@@ -66,10 +65,16 @@ contract UnitSquadAdminInit is UnitSquadAdminBase {
     _impl.initialize(_p);
   }
 
-  function test_Initialize_SeedsStorageBehindProxy() external view {
+  function test_Initialize_SeedsHatIdsOnClone() external view {
     assertEq(_admin.captainHatId(), _CAPTAIN_HAT);
     assertEq(_admin.squadAdminHatId(), _SQUAD_ADMIN_HAT);
-    assertTrue(_admin.isQuiet());
+  }
+
+  function test_Clone_BeforeInitialize_HatIdsZero() external {
+    address _rawClone = Clones.clone(address(_impl));
+    SquadAdmin _fresh = SquadAdmin(payable(_rawClone));
+    assertEq(_fresh.captainHatId(), 0);
+    assertEq(_fresh.squadAdminHatId(), 0);
   }
 
   function test_Initialize_RevertsOnDoubleInit() external {
@@ -78,16 +83,29 @@ contract UnitSquadAdminInit is UnitSquadAdminBase {
     _admin.initialize(_p);
   }
 
+  function test_CaptainGate_UsesHatIdFromInitialize() external {
+    uint256 _customCaptainHat = 333;
+    uint256 _customSquadHat = 444;
+    address _rawClone = Clones.clone(address(_impl));
+    SquadAdmin _g = SquadAdmin(payable(_rawClone));
+    _g.initialize(ISquadAdmin.InitParams({captainHatId: _customCaptainHat, squadAdminHatId: _customSquadHat}));
+
+    assertEq(_g.captainHatId(), _customCaptainHat);
+    assertEq(_g.squadAdminHatId(), _customSquadHat);
+
+    vm.mockCall(
+      _HATS_ADDRESS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _captain, _customCaptainHat), abi.encode(true)
+    );
+
+    vm.prank(_captain);
+    _g.enableExecutor(_alice, _ROLE_APP);
+    assertTrue(_g.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
   function test_HasExecutorRole_FalseForUnknown() external view {
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
     assertFalse(_admin.isExecutorFullPermission(_alice));
     assertFalse(_admin.isExecutorPaused(_alice));
-  }
-
-  function test_ErcNamespacedSlot_MatchesSpec() external view {
-    bytes32 _expected = keccak256(abi.encode(uint256(keccak256('pacto.squadadmin.v1')) - 1)) & ~bytes32(uint256(0xff));
-    uint256 _storedCaptain = uint256(vm.load(address(_proxy), _expected));
-    assertEq(_storedCaptain, _CAPTAIN_HAT);
   }
 }
 
@@ -96,7 +114,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _mockCaptain(_captain, true);
 
     vm.expectEmit(true, true, false, false, address(_admin));
-    emit ISquadAdmin.ExecutorEnabled(_alice, _ROLE_APP);
+    emit ISquadAdminBase.ExecutorEnabled(_alice, _ROLE_APP);
 
     vm.prank(_captain);
     _admin.enableExecutor(_alice, _ROLE_APP);
@@ -109,14 +127,14 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
   function test_EnableExecutor_RevertsIfNotCaptain() external {
     _mockCaptain(_stranger, false);
     vm.prank(_stranger);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_NotCaptain.selector);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_NotAllowed.selector);
     _admin.enableExecutor(_alice, _ROLE_APP);
   }
 
   function test_EnableExecutor_RevertsOnZeroAddress() external {
     _mockCaptain(_captain, true);
     vm.prank(_captain);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_ZeroAddress.selector);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_ZeroAddress.selector);
     _admin.enableExecutor(address(0), _ROLE_APP);
   }
 
@@ -146,7 +164,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.enableExecutor(_alice, _ROLE_APP);
 
     vm.expectEmit(true, true, false, false, address(_admin));
-    emit ISquadAdmin.ExecutorDisabled(_alice, _ROLE_APP);
+    emit ISquadAdminBase.ExecutorDisabled(_alice, _ROLE_APP);
 
     vm.prank(_captain);
     _admin.disableExecutor(_alice, _ROLE_APP);
@@ -157,14 +175,14 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
   function test_DisableExecutor_RevertsIfNotCaptain() external {
     _mockCaptain(_stranger, false);
     vm.prank(_stranger);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_NotCaptain.selector);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_NotAllowed.selector);
     _admin.disableExecutor(_alice, _ROLE_APP);
   }
 
   function test_DisableExecutor_AllowsWhenRoleWasNeverEnabled() external {
     _mockCaptain(_captain, true);
     vm.expectEmit(true, true, false, false, address(_admin));
-    emit ISquadAdmin.ExecutorDisabled(_alice, _ROLE_APP);
+    emit ISquadAdminBase.ExecutorDisabled(_alice, _ROLE_APP);
     vm.prank(_captain);
     _admin.disableExecutor(_alice, _ROLE_APP);
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
@@ -187,7 +205,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
   function test_EnableFullPermission_EmitsAndGrantsEveryRole() external {
     _mockCaptain(_captain, true);
     vm.expectEmit(true, false, false, true, address(_admin));
-    emit ISquadAdmin.FullPermissionEnabled(_alice, true);
+    emit ISquadAdminBase.FullPermissionEnabled(_alice, true);
     vm.prank(_captain);
     _admin.enableFullPermission(_alice, true);
 
@@ -220,7 +238,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     vm.prank(_captain);
     _admin.enableFullPermission(_alice, true);
     vm.expectEmit(true, false, false, true, address(_admin));
-    emit ISquadAdmin.ExecutorPaused(_alice, true);
+    emit ISquadAdminBase.ExecutorPaused(_alice, true);
     vm.prank(_captain);
     _admin.pauseExecutor(_alice, true);
 
@@ -257,53 +275,5 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.disableExecutor(_alice, _ROLE_PAUSE);
 
     assertFalse(_admin.isExecutorPaused(_alice));
-  }
-}
-
-contract UnitSquadAdminUpgrade is UnitSquadAdminBase {
-  /// @notice ERC-1967 implementation-slot constant (per EIP-1967).
-  bytes32 internal constant _ERC1967_IMPLEMENTATION_SLOT =
-    0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-
-  /// @notice Independently-deployed production `SquadAdminImpl` used as the upgrade target.
-  SquadAdminImpl internal _nextImpl;
-
-  function setUp() public override {
-    super.setUp();
-    _nextImpl = new SquadAdminImpl(IHats(_HATS_ADDRESS));
-  }
-
-  function test_UpgradeToAndCall_HappyPath_SwapsImplementationSlot_AndPreservesStorage() external {
-    _mockCaptain(_captain, true);
-    vm.prank(_captain);
-    _admin.enableExecutor(_alice, _ROLE_APP);
-
-    assertEq(_readImplementationSlot(), address(_impl));
-
-    vm.prank(_captain);
-    _admin.upgradeToAndCall(address(_nextImpl), '');
-
-    assertEq(_readImplementationSlot(), address(_nextImpl));
-    assertEq(_admin.captainHatId(), _CAPTAIN_HAT);
-    assertEq(_admin.squadAdminHatId(), _SQUAD_ADMIN_HAT);
-    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
-  }
-
-  function test_UpgradeToAndCall_RevertsIfNotCaptain() external {
-    _mockCaptain(_stranger, false);
-    vm.prank(_stranger);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_NotCaptain.selector);
-    _admin.upgradeToAndCall(address(_nextImpl), '');
-  }
-
-  function test_UpgradeToAndCall_RevertsOnZeroImplementation() external {
-    _mockCaptain(_captain, true);
-    vm.prank(_captain);
-    vm.expectRevert(ISquadAdmin.SquadAdmin_ZeroAddress.selector);
-    _admin.upgradeToAndCall(address(0), '');
-  }
-
-  function _readImplementationSlot() internal view returns (address _implementation) {
-    _implementation = address(uint160(uint256(vm.load(address(_proxy), _ERC1967_IMPLEMENTATION_SLOT))));
   }
 }

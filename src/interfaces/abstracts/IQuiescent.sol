@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 /**
  * @title IQuiescent
  * @author Pacto
- * @notice `isQuiet` gate for `RoleHatUpgrader` hat transfers. Implemented on QM, MM, TA, SquadAdmin
+ * @notice `isQuiet` gate for `RoleHatUpgrader` hat transfers. Implemented on QM, MM, TA.
  */
 interface IQuiescent {
   /**

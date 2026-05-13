@@ -13,7 +13,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  * @title RoleHatUpgrader
  * @author Pacto
  * @notice Hats admin + `isQuiet` → new clone + `transferHat` + registry. Optional allow-list. See `IRoleHatUpgrader`
- * @dev `salt` mixes with `roleHatId` for CREATE2. UUPS `SquadAdmin` is out of scope here
+ * @dev `salt` mixes with `roleHatId` for CREATE2. Squad-admin clones are out of scope here
  */
 contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   /*///////////////////////////////////////////////////////////////
