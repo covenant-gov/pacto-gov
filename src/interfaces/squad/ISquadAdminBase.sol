@@ -82,7 +82,6 @@ interface ISquadAdminBase {
   /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Whether `_executor` may act under `_role` for app gating.
    * @dev False while `isExecutorPaused` is true. Otherwise true if `isExecutorFullPermission` is true or

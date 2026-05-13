@@ -129,7 +129,7 @@ interface IRoleHatUpgrader {
   function setMasterCopyAllowed(RoleKind _kind, address _masterCopy, bool _allowed) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Whether the master-copy allow-list is enforced.

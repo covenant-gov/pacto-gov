@@ -15,7 +15,7 @@ interface ISquadAdmin is ISquadAdminBase {
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Parameters required to initialize a squad-admin clone.
-   * @param captainHatId Captain hat id that gates executor management (in v1 PactoGov).
+   * @param captainHatId Captain hat id that gates executor management.
    * @param squadAdminHatId Squad-admin hat id minted to this clone; stored for discovery (`squadAdminHatId()` without registry reads).
    */
   struct InitParams {
@@ -32,10 +32,15 @@ interface ISquadAdmin is ISquadAdminBase {
    */
   function initialize(InitParams calldata _p) external;
 
-  /*///////////////////////////////////////////////////////////////
-                            VARIABLES
-  //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice One-shot initializer for a clone; seeds the captain hat id only.
+   * @param _ownerHatId Owner hat id (same as `captainHatId`).
+   */
+  function initialize(uint256 _ownerHatId) external;
 
+  /*///////////////////////////////////////////////////////////////
+                            VIEWS
+  //////////////////////////////////////////////////////////////*/
   /**
    * @notice Captain hat id used for gate checks in v1.
    * @return _captainHatId Hat id

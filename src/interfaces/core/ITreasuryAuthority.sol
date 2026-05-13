@@ -294,7 +294,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   function setQuorumBps(uint256 _newValue) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Current proposal expiry in seconds.

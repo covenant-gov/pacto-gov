@@ -130,7 +130,7 @@ interface INavePirataFactory {
     );
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Hats Protocol singleton.

@@ -142,7 +142,7 @@ interface INavePirataRegistry {
   function recordUpgrade(uint256 _topHatId, UpgradeRecord calldata _record) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice The factory authorised to register deployments.

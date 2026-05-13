@@ -38,18 +38,14 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   }
 
   /// @inheritdoc ISquadAdmin
-  function initialize(InitParams calldata _p) external override initializer {
-    __SquadAdmin_init(_p);
-  }
-
-  /**
-   * @notice Hat ids for this clone; only callable while `initializer` is running (`onlyInitializing`).
-   * @param _p Bootstrap parameters.
-   */
-  // forge-lint: disable-next-line(mixed-case-function)
-  function __SquadAdmin_init(InitParams calldata _p) internal onlyInitializing {
+  function initialize(InitParams calldata _p) external virtual override initializer {
     captainHatId = _p.captainHatId;
     squadAdminHatId = _p.squadAdminHatId;
+  }
+
+  /// @inheritdoc ISquadAdmin
+  function initialize(uint256 _ownerHatId) external virtual override initializer {
+    captainHatId = _ownerHatId;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -57,7 +53,7 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   //////////////////////////////////////////////////////////////*/
 
   /// @notice Requires `msg.sender` to wear the captain hat; otherwise `SquadAdminBase_NotAllowed`.
-  function _requireAllowed() internal view override {
+  function _requireAllowed() internal view virtual override {
     if (!_HATS.isWearerOfHat(msg.sender, captainHatId)) revert SquadAdminBase_NotAllowed();
   }
 }
