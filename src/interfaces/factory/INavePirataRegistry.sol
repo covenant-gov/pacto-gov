@@ -17,7 +17,7 @@ interface INavePirataRegistry {
    * @param quartermaster Quartermaster clone address.
    * @param mutinyModule MutinyModule clone address.
    * @param treasuryAuthority TreasuryAuthority clone address.
-   * @param squadAdminProxy SquadAdmin UUPS proxy address.
+   * @param squadAdminProxy Squad-admin EIP-1167 clone address.
    * @param topHatId Tophat id worn by the squad Safe.
    * @param captainHatId Captain hat id.
    * @param crewHatId Crew hat id.
@@ -142,7 +142,7 @@ interface INavePirataRegistry {
   function recordUpgrade(uint256 _topHatId, UpgradeRecord calldata _record) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice The factory authorised to register deployments.

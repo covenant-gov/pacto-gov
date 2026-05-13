@@ -174,7 +174,7 @@ interface IMutinyModule is IQuiescent {
   function captainResign(address _newCaptain) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Id of the currently active mutiny, or zero if none.

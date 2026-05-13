@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
-import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
+import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 
 import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
@@ -24,8 +24,8 @@ import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.so
  * @notice Shared fixture for `NavePirataFactory` unit tests. Every external contract (Hats,
  *         `RoleHatClonesFactory`, `NavePirataRegistry`, `SafeProxyFactory`, and deployed Safes)
  *         is stubbed with `vm.mockCall` per the project's no-mock-contract rule. The only real
- *         production code deployed is `SquadAdminImpl`, which backs the ERC-1967 proxy the
- *         factory creates on the fly (delegatecall init cannot be mocked).
+ *         production code deployed is `SquadAdmin`, which backs the EIP-1167 clone the
+ *         factory creates on the fly (`initialize` on the clone cannot be mocked meaningfully without bytecode).
  */
 abstract contract UnitNavePirataFactoryBase is Test {
   address internal constant _HATS_ADDRESS = address(uint160(uint256(keccak256('pacto.factory.HATS'))));
@@ -45,7 +45,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
   uint256 internal constant _SQUAD_ADMIN_HAT_ID = 0xff07;
 
   NavePirataFactory internal _factory;
-  SquadAdminImpl internal _squadAdminImpl;
+  SquadAdmin internal _squadAdminImpl;
 
   address internal _captain = makeAddr('captain');
   address internal _caller = makeAddr('caller');
@@ -67,7 +67,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
     vm.etch(_UPGRADER_ADDRESS, hex'00');
     vm.etch(_safe, hex'00');
 
-    _squadAdminImpl = new SquadAdminImpl(IHats(_HATS_ADDRESS));
+    _squadAdminImpl = new SquadAdmin(IHats(_HATS_ADDRESS));
 
     _factory = new NavePirataFactory(
       _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, _CLONES_ADDRESS, _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
@@ -156,7 +156,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
     vm.mockCall(
       _HATS_ADDRESS,
       abi.encodeCall(
-        IHats.createHat, (_CAPTAIN_HAT_ID, 'SquadAdmin', 1, _UPGRADER_ADDRESS, _UPGRADER_ADDRESS, false, '')
+        IHats.createHat, (_CAPTAIN_HAT_ID, 'SquadAdminProxy', 1, _UPGRADER_ADDRESS, _UPGRADER_ADDRESS, false, '')
       ),
       abi.encode(_SQUAD_ADMIN_HAT_ID)
     );
@@ -524,10 +524,7 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
     _owners[0] = address(_factory);
   }
 
-  /// @notice Predicts the SquadAdmin proxy address the factory will deploy under `_caller` with
-  ///         the default params, by advancing `vm.getNonce(factory)` to account for the exact
-  ///         `new SquadAdmin(...)` create-nonce. Called before the actual deployment so we can
-  ///         match against it in event assertions.
+  /// @notice Predicts the squad-admin clone: next factory `CREATE` (`Clones.clone` uses one nonce step).
   function _expectedSquadAdminProxy() internal view returns (address _proxy) {
     _proxy = vm.computeCreateAddress(address(_factory), vm.getNonce(address(_factory)));
   }

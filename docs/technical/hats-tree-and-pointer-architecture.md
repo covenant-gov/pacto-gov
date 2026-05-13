@@ -28,7 +28,7 @@ In a classic **proxy** story, the **address** stays fixed and **implementation**
 
 The **hat** is the pointer to “the live logic.” The old clone keeps existing bytecode but **loses the hat**, so hat-gated entrypoints **revert**. No proxy migration on the same address is required for those roles.
 
-**SquadAdmin** is different: it uses an **upgradeable proxy** with **`upgradeTo`** so **long-lived app state** can stay at one address while logic evolves.
+**SquadAdmin** matches the same **EIP-1167 clone** pattern: cheap per-squad bytecode, fixed logic behind each clone address. Product evolution prefers **executor roles** inside the contract over swapping implementations in place; changing the master + minting a **new** clone (and moving the squad-admin hat) is the heavy-duty path if bytecode must change.
 
 Together with **CREATE2 / EIP-1167** clones per squad, you get **cheap deploys**, **decoupling of authority from contract identity**, and **auditable** upgrades (new address + hat transfer + registry events).
 
@@ -54,7 +54,7 @@ Together with **CREATE2 / EIP-1167** clones per squad, you get **cheap deploys**
 Tophat (Safe — acts on-chain via TreasuryAuthority)
 ├── MutinyRole hat              (maxSupply 1 → MutinyModule clone)
 │   └── Captain hat             (maxSupply 1 → current captain)
-│         └── Squad-admin hat   (maxSupply 1 → SquadAdmin proxy)
+│         └── Squad-admin hat   (maxSupply 1 → SquadAdmin clone)
 ├── QuartermasterRole hat       (maxSupply 1 → Quartermaster clone)
 │   └── Crew hat                (maxSupply 10_000)
 └── TreasuryAuthorityRole hat   (maxSupply 1 → TreasuryAuthority clone)
@@ -140,8 +140,7 @@ Captain approval in code is **`captainVote(proposalId, true)`**; explicit veto i
 | Crew roster | Captain proposes → Quartermaster | Timelocked add/remove; mutiny hooks hat-gated |
 | Params (delays, quorum, vote mode) | Two-body Treasury | Proposals targeting role contracts’ setters |
 | Quartermaster / Mutiny / Treasury **logic** | Two-body Treasury | Role-Hat Upgrader on respective role hat |
-| SquadAdmin **logic** | Captain | `upgradeTo` on proxy; hat-transfer “nuclear” path possible |
-
+| SquadAdmin **logic** | Captain | New clone + squad-admin `transferHat` if bytecode changes; in-contract policy via executor roles |
 ---
 
 ## References

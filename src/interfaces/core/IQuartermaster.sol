@@ -236,7 +236,7 @@ interface IQuartermaster is IQuiescent {
   function setCrewChangeDelay(uint256 _newValue) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Seconds between scheduling and executing a crew add / remove.

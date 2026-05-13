@@ -26,7 +26,7 @@ The system is built around **Hats-Pointer Upgradeability**: authority is a Hats 
 - `Quartermaster` — timelocked crew roster, admin of the crew hat.
 - `MutinyModule` — 51%-of-snapshot captain accountability, admin of the captain hat; also supports voluntary captain resignation.
 - `TreasuryAuthority` — two-body democracy (crew majority + captain approval) over the squad's Safe. Both the Safe's sole owner *and* its sole Zodiac module. Inherits `AssetRescuer`.
-- `SquadAdmin` — UUPS proxy for application-level admin predicates; captain-upgradeable.
+- `SquadAdmin` — EIP-1167 clone of application-level executor predicates; evolves via roles and new clones, not upgrades.
 - `NavePirataFactory` — one-shot bootstrap that atomically deploys the Safe, creates the hat tree, deploys clones, wires the Safe, and registers the deployment.
 - `NavePirataRegistry`, `RoleHatClonesFactory`, `RoleHatUpgrader` — infra for discovery and upgrade ceremonies.
 - `AssetRescuer` (abstract) — shared primitive; permissionless sweep of accidentally-received ETH / ERC-20 / ERC-721 / ERC-1155 to a fixed destination.

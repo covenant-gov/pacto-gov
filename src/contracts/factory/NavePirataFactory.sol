@@ -5,7 +5,6 @@ import {MutinyModule} from 'contracts/core/MutinyModule.sol';
 import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
-import {SquadAdminImpl} from 'contracts/squad/SquadAdminImpl.sol';
 
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
@@ -17,6 +16,7 @@ import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
+import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 import {ModuleManager} from '@safe-global/safe-contracts/contracts/base/ModuleManager.sol';
 import {OwnerManager} from '@safe-global/safe-contracts/contracts/base/OwnerManager.sol';
 import {Enum} from '@safe-global/safe-contracts/contracts/common/Enum.sol';
@@ -25,7 +25,7 @@ import {ISafe, ISafeProxyFactory} from 'interfaces/safe/ISafe141.sol';
 /**
  * @title NavePirataFactory
  * @author Pacto
- * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, SquadAdmin, TA wiring, registry (see `INavePirataFactory`)
+ * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, squad-admin EIP-1167 clone, TA wiring, registry (see `INavePirataFactory`)
  * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts = `(msg.sender, saltNonce, kind)`. Placeholder
  *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `RangeValidator` base
  */
@@ -263,7 +263,8 @@ contract NavePirataFactory is INavePirataFactory {
     _hats.crewHatId = _HATS.createHat(
       _hats.quartermasterRoleHatId, 'Crew', _MAX_CREW_SUPPLY, _predQuartermaster, _placeholder, false, ''
     );
-    _hats.squadAdminHatId = _HATS.createHat(_hats.captainHatId, 'SquadAdmin', 1, _placeholder, _placeholder, false, '');
+    _hats.squadAdminHatId =
+      _HATS.createHat(_hats.captainHatId, 'SquadAdminProxy', 1, _placeholder, _placeholder, false, '');
   }
 
   /**
@@ -274,7 +275,7 @@ contract NavePirataFactory is INavePirataFactory {
    * @param _quartermaster Quartermaster clone.
    * @param _mutinyModule MutinyModule clone.
    * @param _treasuryAuthority TreasuryAuthority clone.
-   * @param _squadAdminProxy SquadAdmin UUPS proxy.
+   * @param _squadAdminProxy Squad-admin minimal proxy (clone of `SquadAdmin` master).
    * @param _captain Initial captain address.
    */
   function _mintRoleHats(
@@ -433,21 +434,15 @@ contract NavePirataFactory is INavePirataFactory {
   }
 
   /**
-   * @notice Deploys the SquadAdmin UUPS proxy with `_implementation` and initializes captain / squad-admin hat ids.
-   * @param _implementation SquadAdmin logic implementation.
+   * @notice EIP-1167 clones `_implementation`, then initializes captain / squad-admin hat ids on the clone.
+   * @param _implementation `SquadAdmin` master copy.
    * @param _hats Hat tree from `_createHatTree`.
-   * @return _proxy Deployed SquadAdmin proxy address.
+   * @return _proxy Deployed clone address.
    */
   function _deploySquadAdminProxy(address _implementation, HatTree memory _hats) internal returns (address _proxy) {
-    _proxy = address(
-      new SquadAdmin(
-        _implementation,
-        abi.encodeCall(
-          SquadAdminImpl.initialize,
-          (ISquadAdmin.InitParams({captainHatId: _hats.captainHatId, squadAdminHatId: _hats.squadAdminHatId}))
-        )
-      )
-    );
+    _proxy = Clones.clone(_implementation);
+    SquadAdmin(_proxy)
+      .initialize(ISquadAdmin.InitParams({captainHatId: _hats.captainHatId, squadAdminHatId: _hats.squadAdminHatId}));
   }
 
   /**

@@ -26,7 +26,7 @@ contract HatGatedHarness is HatGated {
 
   /// @notice Exposes `_requireHatWearer` for direct testing.
   function requireHatWearerExposed(uint256 hatId, address account) external view {
-    _requireHatWearer(hatId, account);
+    _requireHatWearer(account, hatId);
   }
 
   /// @notice Exposes the immutable Hats singleton captured by the base constructor.

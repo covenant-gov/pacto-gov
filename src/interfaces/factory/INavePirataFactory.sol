@@ -6,7 +6,7 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 /**
  * @title INavePirataFactory
  * @author Pacto
- * @notice One transaction: deploy Safe, build hat tree, clone QM / Mutiny / TA + SquadAdmin proxy, mint hats,
+ * @notice One transaction: deploy Safe, build hat tree, clone QM / Mutiny / TA + squad-admin EIP-1167 clone, mint hats,
  *         wire `TreasuryAuthority` as sole Safe module+owner, `registerDeployment`, then move tophat to the Safe
  */
 interface INavePirataFactory {
@@ -35,7 +35,7 @@ interface INavePirataFactory {
    * @param quartermasterMasterCopy Approved Quartermaster master copy to clone.
    * @param mutinyMasterCopy Approved MutinyModule master copy to clone.
    * @param treasuryAuthorityMasterCopy Approved TreasuryAuthority master copy to clone.
-   * @param squadAdminImplementation SquadAdmin UUPS implementation to back the proxy.
+   * @param squadAdminImplementation `SquadAdmin` master copy to clone (EIP-1167).
    * @param saltNonce CREATE2 nonce for Safe + clone determinism.
    */
   struct DeployParams {
@@ -57,7 +57,7 @@ interface INavePirataFactory {
    * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id (worn by the TreasuryAuthority clone).
    * @param captainHatId Captain hat id (worn by `DeployParams.captain`).
    * @param crewHatId Crew hat id (empty at bootstrap; filled by Quartermaster onboarding).
-   * @param squadAdminHatId Squad-admin hat id (worn by the SquadAdmin UUPS proxy).
+   * @param squadAdminHatId Squad-admin hat id (worn by the squad-admin clone).
    */
   struct HatTree {
     uint256 topHatId;
@@ -80,7 +80,7 @@ interface INavePirataFactory {
    * @param _quartermaster Quartermaster clone.
    * @param _mutinyModule MutinyModule clone.
    * @param _treasuryAuthority TreasuryAuthority clone.
-   * @param _squadAdminProxy SquadAdmin UUPS proxy.
+   * @param _squadAdminProxy Squad-admin minimal proxy (clone).
    */
   event NavePirataDeployed(
     uint256 indexed _topHatId,
@@ -116,7 +116,7 @@ interface INavePirataFactory {
    * @return _quartermaster Quartermaster clone.
    * @return _mutinyModule MutinyModule clone.
    * @return _treasuryAuthority TreasuryAuthority clone.
-   * @return _squadAdminProxy SquadAdmin UUPS proxy.
+   * @return _squadAdminProxy Squad-admin minimal proxy (clone).
    */
   function deployNavePirata(DeployParams calldata _params)
     external
@@ -130,7 +130,7 @@ interface INavePirataFactory {
     );
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Hats Protocol singleton.

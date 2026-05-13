@@ -13,10 +13,9 @@ This note explains **why Nave Pirata deploys the way it does**: cheap per-squad 
 Nave Pirata combines both worlds:
 
 - **Squad Safe** — still a proxy-backed deployment (standard Safe stack).
-- **Role contracts** (Quartermaster, MutinyModule, TreasuryAuthority) — **EIP-1167 minimal clones** of chain-wide master copies. **Upgrading** means: deploy a **new** clone, run the **Role-Hat Upgrader** ceremony, **`transferHat`** the role hat from old clone to new clone. The old address becomes inert (it no longer passes hat gates).
-- **SquadAdmin** — exception: **ERC-1967-style upgradeable proxy** with **`upgradeTo`**, because it holds **long-lived, accumulating app state** that should survive logic changes **in place**.
+- **Role contracts** (Quartermaster, MutinyModule, TreasuryAuthority, **SquadAdmin**) — **EIP-1167 minimal clones** of chain-wide master copies. **Changing role logic** uses the **Role-Hat Upgrader** path (new clone + `transferHat`) where applicable; SquadAdmin evolves via **fresh clones** when the master changes, relying on executor **roles** for in-contract policy without UUPS.
 
-So: **proxies where persistent identity and storage matter**; **clones + hat transfer where the protocol wants a clean audit boundary and reset-friendly role state**.
+So: **proxies where the stack requires it (e.g. Safe)**; **clones + hat transfer / new clone** where each role wants a cheap instance and an auditable upgrade boundary.
 
 ---
 
@@ -41,8 +40,7 @@ Many Hats **eligibility / toggle modules** are small, purpose-built contracts. T
 - **Role contracts wear `maxSupply = 1` role hats** — “is this the live implementation?” collapses to “does `msg.sender` wear the role hat?”
 - **Peer discovery** uses **Authority Lookup** — call into Hats to see who currently wears a role hat, rather than storing mutable peer addresses that would need updating on every upgrade.
 
-That is **more Hats-native** than grafting OpenZeppelin UUPS onto every role: upgrades are **visible on-chain** as a hat movement plus an optional registry append, not a silent implementation slot change (except for SquadAdmin, where that is intentional).
-
+That is **more Hats-native** than grafting OpenZeppelin UUPS onto every role: upgrades are **visible on-chain** as a hat movement plus an optional registry append, not a silent implementation slot change.
 ---
 
 ## Data layout: intentional, not accidental duplication

@@ -8,15 +8,15 @@ import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.so
 /**
  * @title IRoleHatUpgrader
  * @author Pacto
- * @notice Role-hat upgrade: `isQuiet`, new clone, `transferHat`, `recordUpgrade`. Infra roles use Safe/tophat admin path; SquadAdmin
- *         is UUPS-only here. Optional allow-list
+ * @notice Role-hat upgrade: `isQuiet`, new clone, `transferHat`, `recordUpgrade`. Infra roles use Safe/tophat admin path; squad-admin
+ *         uses factory-deployed EIP-1167 clones outside this upgrader. Optional allow-list
  */
 interface IRoleHatUpgrader {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Clonable role kinds (SquadAdmin is UUPS, not in this set)
+   * @notice Clonable role kinds (squad-admin uses a separate factory path, not in this set)
    * @param QUARTERMASTER Quartermaster clone
    * @param MUTINY_MODULE MutinyModule clone
    * @param TREASURY_AUTHORITY TreasuryAuthority clone
@@ -129,7 +129,7 @@ interface IRoleHatUpgrader {
   function setMasterCopyAllowed(RoleKind _kind, address _masterCopy, bool _allowed) external;
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
+                            VIEWS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Whether the master-copy allow-list is enforced.
