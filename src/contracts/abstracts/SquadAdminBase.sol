@@ -85,7 +85,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Hook for access control on `isAllowed`; implementations revert with `SquadAdminBase_NotAllowed` when denied.
+  /// @notice Hook for access control on `isAllowed`; implementations revert when denied (e.g. `HatGated_NotHatWearer` or `SquadAdminExt_NotAllowed`).
   function _requireAllowed() internal view virtual;
 
   /**

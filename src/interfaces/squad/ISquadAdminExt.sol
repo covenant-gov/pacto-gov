@@ -13,6 +13,8 @@ interface ISquadAdminExt is ISquadAdmin {
                             ERRORS
   //////////////////////////////////////////////////////////////*/
 
+  /// @notice Caller failed the implementation-defined gate for privileged roster mutations.
+  error SquadAdminExt_NotAllowed();
   /// @notice Reverts if the `initialize` function is called with the wrong parameters.
   error SquadAdminExt_UseAddressInitializer();
 
@@ -28,7 +30,6 @@ interface ISquadAdminExt is ISquadAdmin {
   /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Controller address.
    * @return _owner Controller address.

@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
+import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
 import {Test} from 'forge-std/Test.sol';
@@ -157,7 +158,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
   function test_EnableExecutor_RevertsIfNotCaptain() external {
     _mockCaptain(_stranger, false);
     vm.prank(_stranger);
-    vm.expectRevert(ISquadAdminBase.SquadAdminBase_NotAllowed.selector);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
     _admin.enableExecutor(_alice, _ROLE_APP);
   }
 
@@ -205,7 +206,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
   function test_DisableExecutor_RevertsIfNotCaptain() external {
     _mockCaptain(_stranger, false);
     vm.prank(_stranger);
-    vm.expectRevert(ISquadAdminBase.SquadAdminBase_NotAllowed.selector);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CAPTAIN_HAT, _stranger));
     _admin.disableExecutor(_alice, _ROLE_APP);
   }
 
@@ -354,7 +355,7 @@ contract UnitSquadAdminExt is Test {
   function test_Ext_NotOwner_Reverts() external {
     address _stranger = makeAddr('stranger');
     vm.prank(_stranger);
-    vm.expectRevert(ISquadAdminBase.SquadAdminBase_NotAllowed.selector);
+    vm.expectRevert(ISquadAdminExt.SquadAdminExt_NotAllowed.selector);
     _admin.enableExecutor(_alice, _ROLE_APP);
   }
 }

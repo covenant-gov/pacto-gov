@@ -14,6 +14,7 @@ evm_version = 'prague'
 libs = ['node_modules']
 optimizer_runs = 10_000
 via_ir = true
+ignored_warnings_from = ["node_modules/@openzeppelin/contracts/proxy/utils/Initializable.sol"]
 
 [profile.optimized]
 via_ir = true

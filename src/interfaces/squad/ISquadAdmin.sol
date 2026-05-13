@@ -39,6 +39,15 @@ interface ISquadAdmin is ISquadAdminBase {
   function initialize(uint256 _ownerHatId) external;
 
   /*///////////////////////////////////////////////////////////////
+                            LOGIC
+  //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Access-gated hook to persist full hat bootstrap params (e.g. governance migration).
+   * @param _p Hat ids to store.
+   */
+  function postInitialize(InitParams calldata _p) external;
+
+  /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
   /**

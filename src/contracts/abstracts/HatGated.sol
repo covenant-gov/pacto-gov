@@ -26,7 +26,7 @@ abstract contract HatGated {
    * @param hatId The hat id the caller must wear.
    */
   modifier onlyHatWearer(uint256 hatId) {
-    _requireHatWearer(hatId, msg.sender);
+    _requireHatWearer(msg.sender, hatId);
     _;
   }
 
@@ -42,10 +42,10 @@ abstract contract HatGated {
    * @notice Internal gate helper. Reverts unless `account` wears `hatId`.
    * @dev Factored out of the modifier to keep modifier bytecode small; composable
    *      from other internal helpers when multiple hat checks compose.
-   * @param hatId The hat id the account must wear.
    * @param account The address to gate-check.
+   * @param hatId The hat id the account must wear.
    */
-  function _requireHatWearer(uint256 hatId, address account) internal view {
+  function _requireHatWearer(address account, uint256 hatId) internal view {
     if (!_HATS.isWearerOfHat(account, hatId)) revert HatGated_NotHatWearer(hatId, account);
   }
 }

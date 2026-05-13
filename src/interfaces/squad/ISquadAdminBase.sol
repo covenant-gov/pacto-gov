@@ -42,9 +42,6 @@ interface ISquadAdminBase {
                             ERRORS
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Caller failed the implementation-defined gate for privileged roster mutations.
-  error SquadAdminBase_NotAllowed();
-
   /// @notice A required address argument was zero.
   error SquadAdminBase_ZeroAddress();
 

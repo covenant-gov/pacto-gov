@@ -11,6 +11,10 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   /// @inheritdoc ISquadAdminExt
   address public owner;
 
+  /*///////////////////////////////////////////////////////////////
+                            CONSTRUCTOR / INITIALIZER
+  //////////////////////////////////////////////////////////////*/
+
   /**
    * @notice Constructor.
    * @param hats_ Hats protocol address.
@@ -24,17 +28,39 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   }
 
   /// @inheritdoc ISquadAdmin
-  function initialize(ISquadAdmin.InitParams calldata) external pure override(ISquadAdmin, SquadAdmin) {
+  function initialize(ISquadAdmin.InitParams calldata) external override(ISquadAdmin, SquadAdmin) initializer {
     revert SquadAdminExt_UseAddressInitializer();
   }
 
   /// @inheritdoc ISquadAdmin
-  function initialize(uint256) external pure override(ISquadAdmin, SquadAdmin) {
+  function initialize(uint256) external override(ISquadAdmin, SquadAdmin) initializer {
     revert SquadAdminExt_UseAddressInitializer();
   }
 
+  /*///////////////////////////////////////////////////////////////
+                            LOGIC
+  //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc ISquadAdmin
+  function postInitialize(InitParams calldata _p) external override(ISquadAdmin, SquadAdmin) isAllowed {
+    _squadAdminInit(_p);
+    owner = address(0);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+  //////////////////////////////////////////////////////////////*/
+
   /// @inheritdoc SquadAdmin
   function _requireAllowed() internal view override {
-    if (msg.sender != owner) revert SquadAdminBase_NotAllowed();
+    if (owner != address(0)) _requireOwner();
+    else super._requireAllowed();
+  }
+
+  /**
+   * @notice Reverts unless `msg.sender` is the owner.
+   */
+  function _requireOwner() internal view {
+    if (msg.sender != owner) revert SquadAdminExt_NotAllowed();
   }
 }

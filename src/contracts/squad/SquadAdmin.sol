@@ -39,8 +39,7 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
 
   /// @inheritdoc ISquadAdmin
   function initialize(InitParams calldata _p) external virtual override initializer {
-    captainHatId = _p.captainHatId;
-    squadAdminHatId = _p.squadAdminHatId;
+    _squadAdminInit(_p);
   }
 
   /// @inheritdoc ISquadAdmin
@@ -49,11 +48,28 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   }
 
   /*///////////////////////////////////////////////////////////////
-                            INTERNAL HELPERS
+                            LOGIC
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Requires `msg.sender` to wear the captain hat; otherwise `SquadAdminBase_NotAllowed`.
+  /// @inheritdoc ISquadAdmin
+  function postInitialize(InitParams calldata _p) external virtual override isAllowed {
+    _squadAdminInit(_p);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+  //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Initializes the squad admin.
+   * @param _p Bootstrap parameters.
+   */
+  function _squadAdminInit(InitParams calldata _p) internal virtual {
+    captainHatId = _p.captainHatId;
+    squadAdminHatId = _p.squadAdminHatId;
+  }
+
+  /// @notice Requires `msg.sender` to wear `captainHatId`; otherwise `HatGated_NotHatWearer`.
   function _requireAllowed() internal view virtual override {
-    if (!_HATS.isWearerOfHat(msg.sender, captainHatId)) revert SquadAdminBase_NotAllowed();
+    _requireHatWearer(msg.sender, captainHatId);
   }
 }
