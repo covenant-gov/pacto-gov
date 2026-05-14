@@ -85,7 +85,8 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
       mutinyRoleHatId: _squadMutiny.mutinyRoleHatId(),
       quartermasterRoleHatId: _squadMutiny.quartermasterRoleHatId(),
       captain: address(0),
-      quartermaster: address(_squadQuartermaster)
+      quartermaster: address(_squadQuartermaster),
+      safe: _squadSafe
     });
 
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);

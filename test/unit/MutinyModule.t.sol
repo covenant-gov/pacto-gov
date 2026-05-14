@@ -36,6 +36,7 @@ abstract contract UnitMutinyModuleBase is Test {
   address internal _carol = makeAddr('carol');
   address internal _stranger = makeAddr('stranger');
   address internal _newCaptainEoa = makeAddr('newCaptainEoa');
+  address internal _squadSafe = makeAddr('mutinySquadSafe');
 
   function setUp() public virtual {
     vm.etch(_HATS_ADDRESS, hex'00');
@@ -52,7 +53,8 @@ abstract contract UnitMutinyModuleBase is Test {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: _initialCaptain,
-      quartermaster: _qmPeer
+      quartermaster: _qmPeer,
+      safe: _squadSafe
     });
     _mm.initialize(_p);
   }
@@ -119,7 +121,8 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: _captain,
-      quartermaster: _quartermaster
+      quartermaster: _quartermaster,
+      safe: _squadSafe
     });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _master.initialize(_p);
@@ -132,6 +135,7 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
     assertEq(_mm.quartermasterRoleHatId(), _QM_ROLE_HAT);
     assertEq(_mm.captain(), _captain);
     assertEq(_mm.quartermaster(), _quartermaster);
+    assertEq(_mm.safe(), _squadSafe);
     assertEq(_mm.activeMutinyId(), 0);
     assertTrue(_mm.isQuiet());
   }
@@ -144,7 +148,8 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: address(0),
-      quartermaster: _quartermaster
+      quartermaster: _quartermaster,
+      safe: _squadSafe
     });
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     _fresh.initialize(_p);
@@ -158,7 +163,23 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: _captain,
-      quartermaster: address(0)
+      quartermaster: address(0),
+      safe: _squadSafe
+    });
+    vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
+    _fresh.initialize(_p);
+  }
+
+  function test_Initialize_RevertsOnZeroSafe() external {
+    MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
+    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
+      captainHatId: _CAPTAIN_HAT,
+      crewHatId: _CREW_HAT,
+      mutinyRoleHatId: _MUTINY_ROLE_HAT,
+      quartermasterRoleHatId: _QM_ROLE_HAT,
+      captain: _captain,
+      quartermaster: _quartermaster,
+      safe: address(0)
     });
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     _fresh.initialize(_p);
@@ -171,7 +192,8 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: _captain,
-      quartermaster: _quartermaster
+      quartermaster: _quartermaster,
+      safe: _squadSafe
     });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     _mm.initialize(_p);
@@ -265,6 +287,23 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     vm.prank(_alice);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleCaptain.selector, _captain));
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
+  }
+
+  function test_StartMutinyToPauseCaptain_OpensRoundTargetingSafe() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmMutinyActive(true);
+
+    vm.expectEmit(true, true, true, true, address(_mm));
+    emit IMutinyModule.MutinyStarted(1, _alice, _squadSafe, 5);
+
+    vm.prank(_alice);
+    _mm.startMutinyToPauseCaptain();
+
+    (address _proposed,,,,) = _mm.mutiny(1);
+    assertEq(_proposed, _squadSafe);
+    assertEq(_mm.safe(), _squadSafe);
   }
 }
 
@@ -397,7 +436,8 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: _contractCaptain,
-      quartermaster: _quartermaster
+      quartermaster: _quartermaster,
+      safe: _squadSafe
     });
     _mm2.initialize(_p);
 

@@ -599,8 +599,29 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     vm.prank(_crewA);
     _ta.crewVote(_id, true);
 
+    _mockWearer(_SAFE_ADDRESS, _CAPTAIN_HAT, false);
+
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
     _ta.execute(_id);
+  }
+
+  function test_Execute_SucceedsWithoutCaptainVoteWhenAvatarWearsCaptainHat() external {
+    _mockCaptainOrCrew(_captain, true, false);
+    _mockCrewSupply(1);
+    vm.prank(_captain);
+    uint256 _id = _ta.propose(_dest, 0, hex'', ITreasuryAuthority.Operation.CALL);
+
+    _mockWearer(_crewA, _CREW_HAT, true);
+    vm.prank(_crewA);
+    _ta.crewVote(_id, true);
+
+    _mockWearer(_captain, _CAPTAIN_HAT, false);
+    _mockWearer(_SAFE_ADDRESS, _CAPTAIN_HAT, true);
+
+    _mockSafeExec(true);
+    _ta.execute(_id);
+    (,,,,,,,,,,, bool _exec) = _ta.proposal(_id);
+    assertTrue(_exec);
   }
 
   function test_Execute_RevertsIfSafeExecutionFails() external {

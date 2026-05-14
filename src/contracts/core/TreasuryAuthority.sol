@@ -15,7 +15,9 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title TreasuryAuthority
  * @author Pacto
- * @notice Zodiac + Safe owner: crew threshold + captain `captainVote(true)`, then `execute` → `avatar`. Captain may `captainVote(false)` to veto early. `exec` from a wallet hits `AssetRescuer` (no ERC-1271)
+ * @notice Zodiac + Safe owner: crew threshold plus captain consent (`captainVote(true)`), then `execute` → `avatar`.
+ *         When `avatar` wears the captain hat, crew quorum alone suffices for `execute`. Captain may `captainVote(false)` to veto while a human wears the hat.
+ *         `exec` from a wallet hits `AssetRescuer` (no ERC-1271)
  * @dev EIP-1167 master; `initialize` / `setUp` then `renounceOwnership` on `Module` so `avatar`/`target` are fixed. Param setters: TA role hat (via a passing proposal with `to` here). Rescue → Safe
  */
 contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidator, AssetRescuer {
@@ -145,9 +147,8 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /// @inheritdoc ITreasuryAuthority
   function execute(uint256 _proposalId) external {
     Proposal storage _p = _requireAlive(_proposalId);
-    if (_p.captainDefeated || !_crewVotePassed(_p) || !_p.captainApproved) {
-      revert TreasuryAuthority_NotExecutable(_proposalId);
-    }
+    bool _captainOk = _p.captainApproved || _HATS.isWearerOfHat(avatar, captainHatId);
+    if (!_crewVotePassed(_p) || !_captainOk) revert TreasuryAuthority_NotExecutable(_proposalId);
 
     _p.executed = true;
     delete openProposalOf[_p.proposer];

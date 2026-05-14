@@ -34,6 +34,8 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /// @inheritdoc IMutinyModule
   address public quartermaster;
   /// @inheritdoc IMutinyModule
+  address public safe;
+  /// @inheritdoc IMutinyModule
   uint256 public activeMutinyId;
 
   /// @notice Monotonic round id counter; first issued is `1`, `0` means no active mutiny
@@ -78,13 +80,16 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
 
   /// @inheritdoc IMutinyModule
   function initialize(InitParams calldata _p) external initializer {
-    if (_p.captain == address(0) || _p.quartermaster == address(0)) revert MutinyModule_ZeroAddress();
+    if (_p.captain == address(0) || _p.quartermaster == address(0) || _p.safe == address(0)) {
+      revert MutinyModule_ZeroAddress();
+    }
     captainHatId = _p.captainHatId;
     crewHatId = _p.crewHatId;
     mutinyRoleHatId = _p.mutinyRoleHatId;
     quartermasterRoleHatId = _p.quartermasterRoleHatId;
     captain = _p.captain;
     quartermaster = _p.quartermaster;
+    safe = _p.safe;
     _nextMutinyId = 0;
   }
 
@@ -93,46 +98,35 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToCrewMember(address _proposedCrewMember)
-    external
-    onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedCrewMember)
-  {
+  function startMutinyToCrewMember(address _proposedCrewMember) external {
     _requireHatWearer(_proposedCrewMember, crewHatId);
     _startMutiny(_proposedCrewMember);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToCommittee(address _proposedMultisigCommittee)
-    external
-    onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedMultisigCommittee)
-  {
+  function startMutinyToCommittee(address _proposedMultisigCommittee) external {
     (bool ok, bytes memory data) = _proposedMultisigCommittee.staticcall(abi.encodeWithSignature('getThreshold()'));
     if (!ok || data.length != 32) revert MutinyModule_NotContract(_proposedMultisigCommittee);
     _startMutiny(_proposedMultisigCommittee);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa)
-    external
-    onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedArbitraryEoa)
-  {
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa) external {
     if (_isContract(_proposedArbitraryEoa)) revert MutinyModule_NotEOA(_proposedArbitraryEoa);
     _startMutiny(_proposedArbitraryEoa);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryContract(address _proposedArbitraryContract)
-    external
-    onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedArbitraryContract)
-  {
+  function startMutinyToArbitraryContract(address _proposedArbitraryContract) external {
     if (!_isContract(_proposedArbitraryContract)) {
       revert MutinyModule_NotContract(_proposedArbitraryContract);
     }
     _startMutiny(_proposedArbitraryContract);
+  }
+
+  /// @inheritdoc IMutinyModule
+  function startMutinyToPauseCaptain() external {
+    _startMutiny(safe);
   }
 
   /// @inheritdoc IMutinyModule
@@ -227,7 +221,11 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
    * @notice Starts a mutiny round.
    * @param _proposedNewCaptain The address of the proposed new captain.
    */
-  function _startMutiny(address _proposedNewCaptain) internal {
+  function _startMutiny(address _proposedNewCaptain)
+    internal
+    onlyHatWearer(crewHatId)
+    mutinyCheck(_proposedNewCaptain)
+  {
     uint256 _id = ++_nextMutinyId;
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
 

@@ -21,6 +21,7 @@ interface IMutinyModule is IQuiescent {
    * @param quartermasterRoleHatId QuartermasterRole hat id worn by the peer Quartermaster clone.
    * @param captain Initial captain-hat wearer (must be marked eligible before the factory mints the hat).
    * @param quartermaster Peer Quartermaster clone address (verified at every outbound call).
+   * @param safe Squad Safe (Zodiac `avatar` for TreasuryAuthority); successful `startMutinyToPauseCaptain` transfers the captain hat here.
    */
   struct InitParams {
     uint256 captainHatId;
@@ -29,6 +30,7 @@ interface IMutinyModule is IQuiescent {
     uint256 quartermasterRoleHatId;
     address captain;
     address quartermaster;
+    address safe;
   }
 
   /**
@@ -150,7 +152,7 @@ interface IMutinyModule is IQuiescent {
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice One-shot init: hat ids, `captain`, `quartermaster`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
+   * @notice One-shot init: hat ids, `captain`, `quartermaster`, `safe`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
    * @param _p Bootstrap parameters.
    */
   function initialize(InitParams calldata _p) external;
@@ -181,6 +183,13 @@ interface IMutinyModule is IQuiescent {
    * @param _proposedArbitraryContract Address that is a contract.
    */
   function startMutinyToArbitraryContract(address _proposedArbitraryContract) external;
+
+  /**
+   * @notice Open a mutiny that on success transfers the captain hat to the squad Safe (`safe`).
+   * @dev While the Safe wears the captain hat, `TreasuryAuthority` treats crew-passed proposals as executable without a
+   *         separate `captainVote(true)`. A later mutiny can move the hat to a new captain as usual.
+   */
+  function startMutinyToPauseCaptain() external;
 
   /**
    * @notice Cast a yea vote in the active mutiny. Crew-hat-gated and snapshot-constrained.
@@ -283,4 +292,10 @@ interface IMutinyModule is IQuiescent {
    * @return _quartermaster Quartermaster peer address.
    */
   function quartermaster() external view returns (address _quartermaster);
+
+  /**
+   * @notice Squad Safe (Zodiac `avatar`); `startMutinyToPauseCaptain` targets this address.
+   * @return _safe The Safe address captured at `initialize`.
+   */
+  function safe() external view returns (address _safe);
 }

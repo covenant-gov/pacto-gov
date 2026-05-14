@@ -266,7 +266,8 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
   function captainVote(uint256 _proposalId, bool _support) external;
 
   /**
-   * @notice Execute a proposal once the crew vote has passed, the captain has approved, and the proposal was not vetoed.
+   * @notice Execute a proposal once the crew vote has passed, the proposal was not vetoed, and either the captain
+   *         approved or the Safe (`avatar`) wears the captain hat (paused captain / crew-only path).
    * @dev Permissionless; uses Zodiac `Module.exec*` to act on the Safe. Reverts `NotExecutable` if any precondition fails.
    * @param _proposalId Proposal identifier.
    */
