@@ -5,6 +5,7 @@ import {MutinyModule} from 'contracts/core/MutinyModule.sol';
 import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
+import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
 
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
@@ -25,7 +26,8 @@ import {ISafe, ISafeProxyFactory} from 'interfaces/safe/ISafe141.sol';
 /**
  * @title NavePirataFactory
  * @author Pacto
- * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, squad-admin EIP-1167 clone, TA wiring, registry (see `INavePirataFactory`)
+ * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, squad-admin EIP-1167 clone, TA wiring, registry (see `INavePirataFactory`).
+ *         Standalone: `deploySquadAdminExtStandalone`, `deploySquadAdminStandaloneCaptainHat` (permissionless; no registry row).
  * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts = `(msg.sender, saltNonce, kind)`. Placeholder
  *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `RangeValidator` base
  */
@@ -163,6 +165,34 @@ contract NavePirataFactory is INavePirataFactory {
     emit NavePirataDeployed(
       _topHatId, _params.captain, _safe, _quartermaster, _mutinyModule, _treasuryAuthority, _squadAdminProxy
     );
+  }
+
+  /// @inheritdoc INavePirataFactory
+  function deploySquadAdminExtStandalone(
+    address _implementation,
+    address _owner
+  ) external override returns (address _clone) {
+    if (_implementation == address(0)) {
+      revert NavePirataFactory_ZeroAddress('squadAdminExtImplementation');
+    }
+    if (_owner == address(0)) revert NavePirataFactory_ZeroAddress('owner');
+    _clone = Clones.clone(_implementation);
+    SquadAdminExt(_clone).initialize(_owner);
+    emit SquadAdminExtStandaloneDeployed(_clone, _owner, _implementation);
+  }
+
+  /// @inheritdoc INavePirataFactory
+  function deploySquadAdminStandaloneCaptainHat(
+    address _implementation,
+    uint256 _captainHatId
+  ) external override returns (address _clone) {
+    if (_implementation == address(0)) {
+      revert NavePirataFactory_ZeroAddress('squadAdminImplementation');
+    }
+    if (_captainHatId == 0) revert NavePirataFactory_InvalidCaptainHat();
+    _clone = Clones.clone(_implementation);
+    SquadAdmin(_clone).initialize(_captainHatId);
+    emit SquadAdminStandaloneDeployed(_clone, _implementation, _captainHatId);
   }
 
   /*///////////////////////////////////////////////////////////////

@@ -29,12 +29,14 @@ address constant SAFE_PROXY_FACTORY_141 = 0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820
 /// @dev Safe v1.4.1 `Safe` singleton (canonical cross-chain deployment; matches `safe-global/safe-deployments` v1.4.1).
 address constant SAFE_SINGLETON_141 = 0x41675C099F32341bf84BFc5382aF534df5C7461a;
 
-/// @dev EIP-1167 master copies for `INavePirataFactory.deployNavePirata`. Replace with addresses from the same chain’s
-///      `deployNavePirata` bootstrap (`DeployMasterCopies` / `full-system.json`) before production; `address(0)` is unset.
+/// @dev EIP-1167 master copies for `INavePirataFactory.deployNavePirata` and standalone squad-admin helpers. Replace
+///      with addresses from the same chain’s bootstrap (`DeployMasterCopies` / `master-copies.json`) before production;
+///      `address(0)` is unset (standalone scripts may read implementation from env instead).
 address constant MASTER_COPY_QUARTERMASTER = address(0);
 address constant MASTER_COPY_MUTINY_MODULE = address(0);
 address constant MASTER_COPY_TREASURY_AUTHORITY = address(0);
 address constant MASTER_COPY_SQUAD_ADMIN_IMPL = address(0);
+address constant MASTER_COPY_SQUAD_ADMIN_EXT_IMPL = address(0);
 
 /// @dev Salt passed to `DeployParams.saltNonce` for Safe + clone determinism; increment per new squad if needed.
 uint256 constant DEPLOY_NAV_PIRATA_SALT_NONCE = 1;
