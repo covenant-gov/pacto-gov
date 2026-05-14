@@ -47,7 +47,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Master copy: sets immutable Hats; disables direct init on the implementation
    * @param hats_ Hats Protocol address
@@ -186,7 +185,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Transfers captain hat; updates `captain` before `transferHat` so `getWearerStatus` accepts the new wearer. EOA ex-captain: QM mint or crew handoff
    * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`

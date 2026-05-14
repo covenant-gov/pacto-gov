@@ -57,7 +57,6 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Master-copy constructor; bakes the Hats singleton into runtime code shared by all
    *         clones and disables direct initialization of the master copy itself.
@@ -113,7 +112,6 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
 
     openProposalOf[msg.sender] = _proposalId;
     if (_deadline > _maxDeadline) _maxDeadline = _deadline;
-
     emit ProposalCreated(_proposalId, msg.sender, _to, _value, _op, _data, _deadline, _snapshot);
   }
 
@@ -245,9 +243,11 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /*///////////////////////////////////////////////////////////////
                             ZODIAC FACTORY SHIM
   //////////////////////////////////////////////////////////////*/
-
-  /// @inheritdoc ITreasuryAuthority
-  /// @dev Also satisfies the Zodiac `Module` / `FactoryFriendly` `setUp` surface for `ModuleProxyFactory`.
+  /**
+   * @inheritdoc ITreasuryAuthority
+   * @dev Also satisfies the Zodiac `Module` / `FactoryFriendly` `setUp` surface for `ModuleProxyFactory`.
+   * @param _initializeParams ABI-encoded `InitParams`.
+   */
   function setUp(bytes memory _initializeParams) public override(ITreasuryAuthority, FactoryFriendly) initializer {
     _applyInit(abi.decode(_initializeParams, (InitParams)));
   }
@@ -255,7 +255,6 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Single initialization routine shared by both typed `initialize` and the Zodiac
    *         `setUp` shim. Validates params, seeds state, wires `avatar`/`target` to the Safe,

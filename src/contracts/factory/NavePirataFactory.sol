@@ -65,7 +65,6 @@ contract NavePirataFactory is INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Wires every external dependency for the factory. All fields are immutable.
    * @param _hats Hats Protocol singleton for this chain.
@@ -203,7 +202,6 @@ contract NavePirataFactory is INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Deploys a Safe proxy owned solely by this factory (threshold = 1). Safe setup is
    *         deliberately minimal: no setup-time delegatecall, no fallback handler, no refund.
