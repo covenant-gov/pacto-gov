@@ -43,7 +43,7 @@ Together with **CREATE2 / EIP-1167** clones per squad, you get **cheap deploys**
 | **Authority lookup** | Resolve peer contracts via **who wears** a role hat at call time, not a stored peer address. |
 | **Role-Hat Upgrader** | Ceremony contract: deploy new clone, **`isQuiet()`** check, `transferHat`, registry log. |
 | **Quiet-window invariant** | No role-hat transfer while the outgoing contract reports pending work (`isQuiet() == false`). |
-| **Two-body democracy** | Treasury: crew vote + captain approval; neither alone is enough. |
+| **Two-body democracy** | Default Treasury: crew vote + human captain approval; neither alone is enough. **Exception:** if the **Safe (avatar) wears the captain hat**, crew quorum alone can `execute` (pause-captain mutiny outcome). |
 | **Accountability mesh** | Each power has a defined counterparty (mutiny, timelocks, two-body Treasury). |
 
 ---
@@ -89,7 +89,7 @@ Each hat uses **admin**, **eligibility**, and **toggle** deliberately ([Hats: ad
 
 ## Foundational invariants (short list)
 
-These are enforced in contracts and tests; full prose lives in the [authoritative architecture draft](../../ai-docs/nave-pirata-hats-pointer-architecture.md).
+These are enforced in contracts and tests; this list is the committed summary (not an external draft).
 
 1. **Captain ∩ Crew = ∅** — no one wears both captain and crew hats.
 2. **Structural `maxSupply`** — captain and role hats **1**; crew **10_000**; squad-admin **1**.
@@ -104,23 +104,15 @@ These are enforced in contracts and tests; full prose lives in the [authoritativ
 
 ---
 
-## Governance parameters (Treasury-tunable)
-
-Timing and voting mode for Treasury and Quartermaster are **mutable** via **TreasuryAuthority** proposals (two-body vote), with **sanity bounds** on setters. **Mutiny** threshold is **not** in that bucket—it is fixed in code.
-
-Defaults and bounds are described in the [architecture draft](../../ai-docs/nave-pirata-hats-pointer-architecture.md#governance-parameters-per-squad-mutable-via-treasury-authority). On-chain names may use enums such as `CrewVoteMode` (`MAJORITY_SNAPSHOT`, `QUORUM_OF_CAST`) in `ITreasuryAuthority`.
+Governance parameters (Treasury-tunable delays, quorum, vote mode) are set per deployment via **Treasury Authority** proposals, within on-chain bounds. **Mutiny** threshold is **not** in that bucket — it is fixed in code. On-chain names may use enums such as `CrewVoteMode` (`MAJORITY_SNAPSHOT`, `QUORUM_OF_CAST`) in `ITreasuryAuthority`.
 
 ---
-
-## TreasuryAuthority and the Safe
 
 - **Sole module** on the Safe and **sole owner** (`threshold = 1`) — the two-body process *is* the Safe’s authority.
 - **Functional path** is **`execute` → `execTransactionFromModule`**; the contract does not implement ERC-1271 for owner signatures, so stray `execTransaction` owner flows are not the steady-state.
 - **Upgrading TreasuryAuthority** is a **ceremony**: Safe txs to swap module/owner, then **`transferHat`** on TreasuryAuthorityRole via Role-Hat Upgrader (with **`isQuiet()`** on the old clone).
 
-Captain approval in code is **`captainVote(proposalId, true)`**; explicit veto is **`captainVote(proposalId, false)`**. Silence until deadline means the proposal cannot execute.
-
----
+Captain approval in code is **`captainVote(proposalId, true)`** when a **human** (non-Safe) holds the captain hat; explicit veto is **`captainVote(proposalId, false)`**. If the **avatar** wears the captain hat, **`execute` does not require** `captainVote(true)`; silence is not “missing captain” in that mode. While `captainDefeated` is true (veto), `execute` does not consult Hats for avatar wearership — the proposal is not executable.
 
 ## Access control: no mutable peer pointers
 
@@ -141,6 +133,7 @@ Captain approval in code is **`captainVote(proposalId, true)`**; explicit veto i
 | Params (delays, quorum, vote mode) | Two-body Treasury | Proposals targeting role contracts’ setters |
 | Quartermaster / Mutiny / Treasury **logic** | Two-body Treasury | Role-Hat Upgrader on respective role hat |
 | SquadAdmin **logic** | Captain | New clone + squad-admin `transferHat` if bytecode changes; in-contract policy via executor roles |
+
 ---
 
 ## References
@@ -148,4 +141,4 @@ Captain approval in code is **`captainVote(proposalId, true)`**; explicit veto i
 - [Hats Protocol — core concepts](https://docs.hatsprotocol.xyz/)
 - [Zodiac modules](https://github.com/gnosisguild/zodiac)
 - [Safe contracts](https://github.com/safe-global/safe-contracts)
-- Deep-dive draft (longer, includes factory steps, security list, conventions): [`ai-docs/nave-pirata-hats-pointer-architecture.md`](../../ai-docs/nave-pirata-hats-pointer-architecture.md)
+- Plain-language guidebook: [`../README.md`](../README.md)
