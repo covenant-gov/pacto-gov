@@ -74,7 +74,7 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
     address _masterCopy,
     bytes calldata _initData,
     bytes32 _salt
-  ) external override returns (address _newClone) {
+  ) external returns (address _newClone) {
     if (_oldClone == address(0) || _masterCopy == address(0)) revert RoleHatUpgrader_ZeroAddress();
     if (!_HATS.isAdminOfHat(msg.sender, _roleHatId)) revert RoleHatUpgrader_NotAdmin(_roleHatId, msg.sender);
     if (allowListEnabled && !_allowedMasterCopies[_kind][_masterCopy]) {
@@ -108,13 +108,13 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IRoleHatUpgrader
-  function setAllowListEnabled(bool _enabled) external override onlyOwner {
+  function setAllowListEnabled(bool _enabled) external onlyOwner {
     allowListEnabled = _enabled;
     emit AllowListEnabledSet(_enabled);
   }
 
   /// @inheritdoc IRoleHatUpgrader
-  function setMasterCopyAllowed(RoleKind _kind, address _masterCopy, bool _allowed) external override onlyOwner {
+  function setMasterCopyAllowed(RoleKind _kind, address _masterCopy, bool _allowed) external onlyOwner {
     if (_masterCopy == address(0)) revert RoleHatUpgrader_ZeroAddress();
     _allowedMasterCopies[_kind][_masterCopy] = _allowed;
     emit MasterCopyAllowListUpdated(_kind, _masterCopy, _allowed);
@@ -125,22 +125,22 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IRoleHatUpgrader
-  function isMasterCopyAllowed(RoleKind _kind, address _masterCopy) external view override returns (bool _allowed) {
+  function isMasterCopyAllowed(RoleKind _kind, address _masterCopy) external view returns (bool _allowed) {
     _allowed = _allowedMasterCopies[_kind][_masterCopy];
   }
 
   /// @inheritdoc IRoleHatUpgrader
-  function hats() external view override returns (IHats _hats) {
+  function hats() external view returns (IHats _hats) {
     _hats = _HATS;
   }
 
   /// @inheritdoc IRoleHatUpgrader
-  function clonesFactory() external view override returns (IRoleHatClonesFactory _clones) {
+  function clonesFactory() external view returns (IRoleHatClonesFactory _clones) {
     _clones = _CLONES;
   }
 
   /// @inheritdoc IRoleHatUpgrader
-  function registry() external view override returns (INavePirataRegistry _registry) {
+  function registry() external view returns (INavePirataRegistry _registry) {
     _registry = _REGISTRY;
   }
 

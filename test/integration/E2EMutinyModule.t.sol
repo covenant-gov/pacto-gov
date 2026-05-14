@@ -40,7 +40,7 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
     if (_fixtureHasOpenRound) return;
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutiny(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEOA(_squadProposedCaptain);
     _squadActiveMutinyId = _squadMutiny.activeMutinyId();
     _fixtureHasOpenRound = true;
   }
@@ -64,8 +64,9 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
 /**
  * @title E2EMutinyModuleTest
  * @author Pacto
- * @notice End-to-end scenarios for `MutinyModule` against real peer contracts. Function names follow
- *          branching in `MutinyModule` / `IMutinyModule`; empty bodies are intentional for a follow-up pass.
+ * @notice Forked E2E for `MutinyModule`. Categories mirror `MutinyModule` / `IMutinyModule`: init, four
+ *         `startMutinyTo*` entrypoints (plus shared `onlyHatWearer(crewHatId)` and `_mutinyCheck` / `_liveQuartermaster`),
+ *         vote / execute / resign, views. Empty bodies are placeholders for a follow-up pass.
  */
 contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   /*///////////////////////////////////////////////////////////////
@@ -96,28 +97,68 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_initialize_reverts_whenAlreadyInitialized() public withDeployedNavePirataSquad {}
 
   /*///////////////////////////////////////////////////////////////
-                        startMutiny
+              mutiny start — onlyHatWearer(crewHatId)
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_startMutiny_reverts_whenCallerDoesNotWearCrewHat() public withDeployedNavePirataSquad {
-    address _stranger = makeAddr('e2eStartMutinyStranger');
+  function test_e2e_mutinyStart_reverts_whenCallerDoesNotWearCrewHat() public withDeployedNavePirataSquad {
+    address _stranger = makeAddr('e2eMutinyStartStranger');
 
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadCrewHatId, _stranger));
     vm.prank(_stranger);
-    _squadMutiny.startMutiny(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEOA(_squadProposedCaptain);
   }
 
-  function test_e2e_startMutiny_reverts_whenProposedCaptainIsZero() public withDeployedNavePirataSquad {}
+  /*///////////////////////////////////////////////////////////////
+        mutiny start — _mutinyCheck / _liveQuartermaster (shared)
+  //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_startMutiny_reverts_whenProposedCaptainIsCurrentCaptain() public withDeployedNavePirataSquad {}
+  function test_e2e_mutinyStart_reverts_whenProposedIsZero() public withDeployedNavePirataSquad {}
 
-  function test_e2e_startMutiny_reverts_whenMutinyAlreadyActive() public withDeployedNavePirataSquad {}
+  function test_e2e_mutinyStart_reverts_whenProposedIsCurrentCaptain() public withDeployedNavePirataSquad {}
 
-  function test_e2e_startMutiny_reverts_whenQuartermasterPeerIsStale() public withDeployedNavePirataSquad {}
+  function test_e2e_mutinyStart_reverts_whenRoundAlreadyActive() public withDeployedNavePirataSquad {}
 
-  function test_e2e_startMutiny_reverts_whenCaptainCacheDoesNotWearCaptainHat() public withDeployedNavePirataSquad {}
+  function test_e2e_mutinyStart_reverts_whenQuartermasterPeerIsStale() public withDeployedNavePirataSquad {}
 
-  function test_e2e_startMutiny_succeeds_emitsAndFreezesQuartermaster() public withDeployedNavePirataSquad {}
+  function test_e2e_mutinyStart_reverts_whenCaptainDoesNotWearCaptainHat() public withDeployedNavePirataSquad {}
+
+  /*///////////////////////////////////////////////////////////////
+                        startMutinyToCrewMember
+  //////////////////////////////////////////////////////////////*/
+
+  function test_e2e_startMutinyToCrewMember_reverts_whenProposedDoesNotWearCrewHat()
+    public
+    withDeployedNavePirataSquad
+  {}
+
+  function test_e2e_startMutinyToCrewMember_succeeds_opensRound() public withDeployedNavePirataSquad {}
+
+  /*///////////////////////////////////////////////////////////////
+                        startMutinyToCommittee
+  //////////////////////////////////////////////////////////////*/
+
+  function test_e2e_startMutinyToCommittee_reverts_whenGetThresholdInvalid() public withDeployedNavePirataSquad {}
+
+  function test_e2e_startMutinyToCommittee_succeeds_opensRound() public withDeployedNavePirataSquad {}
+
+  /*///////////////////////////////////////////////////////////////
+                        startMutinyToArbitraryEOA
+  //////////////////////////////////////////////////////////////*/
+
+  function test_e2e_startMutinyToArbitraryEOA_reverts_whenProposedHasCode() public withDeployedNavePirataSquad {}
+
+  function test_e2e_startMutinyToArbitraryEOA_succeeds_emitsAndFreezesQuartermaster()
+    public
+    withDeployedNavePirataSquad
+  {}
+
+  /*///////////////////////////////////////////////////////////////
+                    startMutinyToArbitraryContract
+  //////////////////////////////////////////////////////////////*/
+
+  function test_e2e_startMutinyToArbitraryContract_reverts_whenProposedIsEoa() public withDeployedNavePirataSquad {}
+
+  function test_e2e_startMutinyToArbitraryContract_succeeds_opensRound() public withDeployedNavePirataSquad {}
 
   /*///////////////////////////////////////////////////////////////
                         castVote

@@ -106,7 +106,6 @@ contract NavePirataFactory is INavePirataFactory {
   /// @inheritdoc INavePirataFactory
   function deployNavePirata(DeployParams calldata _params)
     external
-    override
     returns (
       uint256 _topHatId,
       address _safe,
@@ -168,10 +167,7 @@ contract NavePirataFactory is INavePirataFactory {
   }
 
   /// @inheritdoc INavePirataFactory
-  function deploySquadAdminExtStandalone(
-    address _implementation,
-    address _owner
-  ) external override returns (address _clone) {
+  function deploySquadAdminExtStandalone(address _implementation, address _owner) external returns (address _clone) {
     if (_implementation == address(0)) {
       revert NavePirataFactory_ZeroAddress('squadAdminExtImplementation');
     }
@@ -185,7 +181,7 @@ contract NavePirataFactory is INavePirataFactory {
   function deploySquadAdminStandaloneCaptainHat(
     address _implementation,
     uint256 _captainHatId
-  ) external override returns (address _clone) {
+  ) external returns (address _clone) {
     if (_implementation == address(0)) {
       revert NavePirataFactory_ZeroAddress('squadAdminImplementation');
     }
@@ -200,32 +196,32 @@ contract NavePirataFactory is INavePirataFactory {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataFactory
-  function HATS() external view override returns (address _hats) {
+  function HATS() external view returns (address _hats) {
     _hats = address(_HATS);
   }
 
   /// @inheritdoc INavePirataFactory
-  function SAFE_PROXY_FACTORY() external view override returns (address _factory) {
+  function SAFE_PROXY_FACTORY() external view returns (address _factory) {
     _factory = address(_SAFE_PROXY_FACTORY);
   }
 
   /// @inheritdoc INavePirataFactory
-  function SAFE_SINGLETON() external view override returns (address _singleton) {
+  function SAFE_SINGLETON() external view returns (address _singleton) {
     _singleton = _SAFE_SINGLETON;
   }
 
   /// @inheritdoc INavePirataFactory
-  function CLONES_FACTORY() external view override returns (address _clones) {
+  function CLONES_FACTORY() external view returns (address _clones) {
     _clones = address(_CLONES_FACTORY);
   }
 
   /// @inheritdoc INavePirataFactory
-  function REGISTRY() external view override returns (address _registry) {
+  function REGISTRY() external view returns (address _registry) {
     _registry = address(_REGISTRY);
   }
 
   /// @inheritdoc INavePirataFactory
-  function UPGRADER() external view override returns (address _upgrader) {
+  function UPGRADER() external view returns (address _upgrader) {
     _upgrader = _UPGRADER;
   }
 

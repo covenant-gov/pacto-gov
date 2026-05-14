@@ -37,12 +37,12 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   }
 
   /// @inheritdoc ISquadAdmin
-  function initialize(InitParams calldata _p) external virtual override initializer {
+  function initialize(InitParams calldata _p) external virtual initializer {
     _squadAdminInit(_p);
   }
 
   /// @inheritdoc ISquadAdmin
-  function initialize(uint256 _ownerHatId) external virtual override initializer {
+  function initialize(uint256 _ownerHatId) external virtual initializer {
     captainHatId = _ownerHatId;
   }
 
@@ -51,7 +51,7 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ISquadAdmin
-  function postInitialize(InitParams calldata _p) external virtual override isAllowed {
+  function postInitialize(InitParams calldata _p) external virtual isAllowed {
     _squadAdminInit(_p);
   }
 

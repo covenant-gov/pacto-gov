@@ -21,7 +21,7 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   constructor(IHats hats_) SquadAdmin(hats_) {}
 
   /// @inheritdoc ISquadAdminExt
-  function initialize(address _owner) external override(ISquadAdminExt) initializer {
+  function initialize(address _owner) external initializer {
     if (_owner == address(0)) revert SquadAdminBase_ZeroAddress();
     owner = _owner;
   }

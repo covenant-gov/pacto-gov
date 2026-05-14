@@ -67,7 +67,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function initialize(InitParams calldata _p) external override initializer {
+  function initialize(InitParams calldata _p) external initializer {
     _applyInit(_p);
   }
 
@@ -81,7 +81,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     uint256 _value,
     bytes calldata _data,
     Operation _op
-  ) external override returns (uint256 _proposalId) {
+  ) external returns (uint256 _proposalId) {
     _requireCaptainOrCrew(msg.sender);
 
     uint256 _prior = openProposalOf[msg.sender];
@@ -120,7 +120,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function crewVote(uint256 _proposalId, bool _support) external override onlyHatWearer(crewHatId) {
+  function crewVote(uint256 _proposalId, bool _support) external onlyHatWearer(crewHatId) {
     Proposal storage _p = _requireAlive(_proposalId);
     if (_p.captainDefeated) revert TreasuryAuthority_NotExecutable(_proposalId);
     if (_voted[_proposalId][msg.sender]) revert TreasuryAuthority_AlreadyVoted(msg.sender);
@@ -134,7 +134,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function captainVote(uint256 _proposalId, bool _support) external override onlyHatWearer(captainHatId) {
+  function captainVote(uint256 _proposalId, bool _support) external onlyHatWearer(captainHatId) {
     _captainVote(_proposalId, _support);
   }
 
@@ -143,7 +143,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function execute(uint256 _proposalId) external override {
+  function execute(uint256 _proposalId) external {
     Proposal storage _p = _requireAlive(_proposalId);
     if (_p.captainDefeated || !_crewVotePassed(_p) || !_p.captainApproved) {
       revert TreasuryAuthority_NotExecutable(_proposalId);
@@ -164,7 +164,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function setProposalExpiry(uint256 _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
+  function setProposalExpiry(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
     uint256 _old = proposalExpiry;
     proposalExpiry = _newValue;
@@ -172,14 +172,14 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function setCrewVoteMode(CrewVoteMode _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
+  function setCrewVoteMode(CrewVoteMode _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     CrewVoteMode _old = crewVoteMode;
     crewVoteMode = _newValue;
     emit CrewVoteModeUpdated(_old, _newValue);
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function setQuorumBps(uint256 _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
+  function setQuorumBps(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateQuorumBps(_newValue);
     uint256 _old = quorumBps;
     quorumBps = _newValue;
@@ -194,7 +194,6 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   function proposal(uint256 _id)
     external
     view
-    override
     returns (
       address _proposer,
       address _to,
@@ -226,17 +225,17 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function hasVoted(uint256 _proposalId, address _voter) external view override returns (bool __voted) {
+  function hasVoted(uint256 _proposalId, address _voter) external view returns (bool __voted) {
     __voted = _voted[_proposalId][_voter];
   }
 
   /// @inheritdoc ITreasuryAuthority
-  function SAFE() external view override returns (address _safe) {
+  function SAFE() external view returns (address _safe) {
     _safe = avatar;
   }
 
   /// @inheritdoc IQuiescent
-  function isQuiet() external view override returns (bool _quiet) {
+  function isQuiet() external view returns (bool _quiet) {
     _quiet = block.timestamp >= _maxDeadline;
   }
 

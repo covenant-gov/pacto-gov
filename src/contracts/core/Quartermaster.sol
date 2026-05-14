@@ -65,7 +65,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function initialize(InitParams calldata _p) external override initializer {
+  function initialize(InitParams calldata _p) external initializer {
     _validateDelay(_p.crewChangeDelay);
     captainHatId = _p.captainHatId;
     crewHatId = _p.crewHatId;
@@ -81,7 +81,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IQuartermaster
-  function requestAddCrew(address _candidate) external override onlyHatWearer(captainHatId) {
+  function requestAddCrew(address _candidate) external onlyHatWearer(captainHatId) {
     if (mutinyActive) revert Quartermaster_MutinyActive();
     _validateAddCandidate(_candidate);
     if (pendingCrewAddAt[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
@@ -94,7 +94,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function bootstrapCrew(address[] calldata _candidates) external override onlyHatWearer(captainHatId) {
+  function bootstrapCrew(address[] calldata _candidates) external onlyHatWearer(captainHatId) {
     if (mutinyActive) revert Quartermaster_MutinyActive();
     if (_HATS.hatSupply(crewHatId) != 0) revert Quartermaster_BootstrapRequiresEmptyCrew();
 
@@ -114,7 +114,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function cancelAddCrew(address _candidate) external override onlyHatWearer(captainHatId) {
+  function cancelAddCrew(address _candidate) external onlyHatWearer(captainHatId) {
     if (pendingCrewAddAt[_candidate] == 0) revert Quartermaster_NotPending(_candidate);
     delete pendingCrewAddAt[_candidate];
     _pendingAddCount--;
@@ -122,7 +122,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function executeAddCrew(address _candidate) external override {
+  function executeAddCrew(address _candidate) external {
     uint256 _eta = pendingCrewAddAt[_candidate];
     if (_eta == 0) revert Quartermaster_NotPending(_candidate);
     if (block.timestamp < _eta) revert Quartermaster_StillLocked(_candidate, _eta);
@@ -141,7 +141,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IQuartermaster
-  function requestRemoveCrew(address _crew) external override onlyHatWearer(captainHatId) {
+  function requestRemoveCrew(address _crew) external onlyHatWearer(captainHatId) {
     if (mutinyActive) revert Quartermaster_MutinyActive();
     if (_crew == address(0)) revert Quartermaster_ZeroAddress();
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
@@ -153,7 +153,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function cancelRemoveCrew(address _crew) external override onlyHatWearer(captainHatId) {
+  function cancelRemoveCrew(address _crew) external onlyHatWearer(captainHatId) {
     if (pendingCrewRemoveAt[_crew] == 0) revert Quartermaster_NotPending(_crew);
     delete pendingCrewRemoveAt[_crew];
     _pendingRemoveCount--;
@@ -161,7 +161,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function executeRemoveCrew(address _crew) external override {
+  function executeRemoveCrew(address _crew) external {
     uint256 _eta = pendingCrewRemoveAt[_crew];
     if (_eta == 0) revert Quartermaster_NotPending(_crew);
     if (block.timestamp < _eta) revert Quartermaster_StillLocked(_crew, _eta);
@@ -180,7 +180,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IQuartermaster
-  function mintCrewFromMutiny(address _formerCaptain) external override onlyHatWearer(mutinyRoleHatId) {
+  function mintCrewFromMutiny(address _formerCaptain) external onlyHatWearer(mutinyRoleHatId) {
     if (_formerCaptain == address(0)) revert Quartermaster_ZeroAddress();
     if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
@@ -191,10 +191,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function crewHandoffForMutiny(
-    address _formerCaptain,
-    address _newCaptain
-  ) external override onlyHatWearer(mutinyRoleHatId) {
+  function crewHandoffForMutiny(address _formerCaptain, address _newCaptain) external onlyHatWearer(mutinyRoleHatId) {
     if (_formerCaptain == address(0) || _newCaptain == address(0)) {
       revert Quartermaster_ZeroAddress();
     }
@@ -207,7 +204,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function setMutinyActive(bool _active) external override onlyHatWearer(mutinyRoleHatId) {
+  function setMutinyActive(bool _active) external onlyHatWearer(mutinyRoleHatId) {
     mutinyActive = _active;
     emit MutinyActiveSet(_active);
   }
@@ -217,7 +214,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IQuartermaster
-  function setCrewChangeDelay(uint256 _newValue) external override onlyHatWearer(treasuryAuthorityRoleHatId) {
+  function setCrewChangeDelay(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
     uint256 _old = crewChangeDelay;
     crewChangeDelay = _newValue;
@@ -232,13 +229,13 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function getWearerStatus(
     address _wearer,
     uint256 /*_hatId*/
-  ) external view override returns (bool _eligible, bool _standing) {
+  ) external view returns (bool _eligible, bool _standing) {
     _eligible = _crewEligible[_wearer];
     _standing = true;
   }
 
   /// @inheritdoc IQuiescent
-  function isQuiet() external view override returns (bool _quiet) {
+  function isQuiet() external view returns (bool _quiet) {
     _quiet = _pendingAddCount == 0 && _pendingRemoveCount == 0 && !mutinyActive;
   }
 

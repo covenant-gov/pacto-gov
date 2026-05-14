@@ -57,7 +57,7 @@ interface IMutinyModule is IQuiescent {
    * @param _mutinyId Round identifier.
    * @param _proposer Crew member that opened the round.
    * @param _proposedNewCaptain Successor if the mutiny passes.
-   * @param _snapshot Snapshot size of eligible crew at `startMutiny` time.
+   * @param _snapshot Snapshot size of eligible crew when the round opened.
    */
   event MutinyStarted(
     uint256 indexed _mutinyId, address indexed _proposer, address indexed _proposedNewCaptain, uint256 _snapshot
@@ -127,6 +127,18 @@ interface IMutinyModule is IQuiescent {
    */
   error MutinyModule_StaleCaptain(address _captain);
 
+  /**
+   * @notice `startMutinyToArbitraryEOA` was called with an address that has contract code.
+   * @param _proposedArbitraryEOA The rejected successor candidate.
+   */
+  error MutinyModule_NotEOA(address _proposedArbitraryEOA);
+
+  /**
+   * @notice `startMutinyToArbitraryContract` was called with an address that has no code, or `startMutinyToCommittee`.
+   * @param _proposedArbitraryContract The rejected successor candidate.
+   */
+  error MutinyModule_NotContract(address _proposedArbitraryContract);
+
   /// @notice A mutiny round is already active.
   error MutinyModule_AlreadyActive();
   /// @notice No active mutiny exists for the requested id.
@@ -147,11 +159,28 @@ interface IMutinyModule is IQuiescent {
                             LOGIC
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Open a mutiny round. Crew-hat-gated.
-   * @dev Fixes the snapshot electorate to the current crew supply and toggles Quartermaster mutiny mode.
-   * @param _proposedNewCaptain Non-zero successor for the captain hat.
+   * @notice Open a mutiny to a crew-hat successor. Crew-hat-gated; `_proposedCrewMember` must wear `crewHatId`.
+   * @param _proposedCrewMember Address that wears `crewHatId`.
    */
-  function startMutiny(address _proposedNewCaptain) external;
+  function startMutinyToCrewMember(address _proposedCrewMember) external;
+
+  /**
+   * @notice Open a mutiny to a Safe-style multisig (`getThreshold()` returns one word). Crew-hat-gated.
+   * @param _proposedMultisigCommittee Address that is a Safe-style multisig.
+   */
+  function startMutinyToCommittee(address _proposedMultisigCommittee) external;
+
+  /**
+   * @notice Open a mutiny to an EOA successor (no contract code). Crew-hat-gated.
+   * @param _proposedArbitraryEOA Address that is an EOA.
+   */
+  function startMutinyToArbitraryEOA(address _proposedArbitraryEOA) external;
+
+  /**
+   * @notice Open a mutiny to a contract successor (non-zero code length). Crew-hat-gated.
+   * @param _proposedArbitraryContract Address that is a contract.
+   */
+  function startMutinyToArbitraryContract(address _proposedArbitraryContract) external;
 
   /**
    * @notice Cast a yea vote in the active mutiny. Crew-hat-gated and snapshot-constrained.
