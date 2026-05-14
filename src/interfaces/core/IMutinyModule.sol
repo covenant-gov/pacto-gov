@@ -128,10 +128,10 @@ interface IMutinyModule is IQuiescent {
   error MutinyModule_StaleCaptain(address _captain);
 
   /**
-   * @notice `startMutinyToArbitraryEOA` was called with an address that has contract code.
-   * @param _proposedArbitraryEOA The rejected successor candidate.
+   * @notice `startMutinyToArbitraryEoa` was called with an address that has contract code.
+   * @param _proposedArbitraryEoa The rejected successor candidate.
    */
-  error MutinyModule_NotEOA(address _proposedArbitraryEOA);
+  error MutinyModule_NotEOA(address _proposedArbitraryEoa);
 
   /**
    * @notice `startMutinyToArbitraryContract` was called with an address that has no code, or `startMutinyToCommittee`.
@@ -172,9 +172,9 @@ interface IMutinyModule is IQuiescent {
 
   /**
    * @notice Open a mutiny to an EOA successor (no contract code). Crew-hat-gated.
-   * @param _proposedArbitraryEOA Address that is an EOA.
+   * @param _proposedArbitraryEoa Address that is an EOA.
    */
-  function startMutinyToArbitraryEOA(address _proposedArbitraryEOA) external;
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa) external;
 
   /**
    * @notice Open a mutiny to a contract successor (non-zero code length). Crew-hat-gated.

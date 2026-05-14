@@ -99,7 +99,7 @@ abstract contract UnitMutinyModuleBase is Test {
     _mockQmMutinyActive(true);
 
     vm.prank(_alice);
-    _mm.startMutinyToArbitraryEOA(_proposedNewCaptain);
+    _mm.startMutinyToArbitraryEoa(_proposedNewCaptain);
     _mutinyId = _mm.activeMutinyId();
 
     vm.prank(_alice);
@@ -199,7 +199,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     emit IMutinyModule.MutinyStarted(1, _alice, _newCaptainEoa, 5);
 
     vm.prank(_alice);
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
 
     assertEq(_mm.activeMutinyId(), 1);
     assertFalse(_mm.isQuiet());
@@ -216,21 +216,21 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_stranger, _CREW_HAT, false);
     vm.prank(_stranger);
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CREW_HAT, _stranger));
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
   }
 
   function test_StartMutiny_RevertsOnZeroNewCaptain() external {
     _mockWearer(_alice, _CREW_HAT, true);
     vm.prank(_alice);
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
-    _mm.startMutinyToArbitraryEOA(address(0));
+    _mm.startMutinyToArbitraryEoa(address(0));
   }
 
   function test_StartMutiny_RevertsOnSameCaptain() external {
     _mockWearer(_alice, _CREW_HAT, true);
     vm.prank(_alice);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_SameCaptain.selector, _captain));
-    _mm.startMutinyToArbitraryEOA(_captain);
+    _mm.startMutinyToArbitraryEoa(_captain);
   }
 
   function test_StartMutiny_RevertsIfAlreadyActive() external {
@@ -240,11 +240,11 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockQmMutinyActive(true);
 
     vm.prank(_alice);
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
 
     vm.prank(_alice);
     vm.expectRevert(IMutinyModule.MutinyModule_AlreadyActive.selector);
-    _mm.startMutinyToArbitraryEOA(_bob);
+    _mm.startMutinyToArbitraryEoa(_bob);
   }
 
   function test_StartMutiny_RevertsOnStaleQuartermaster() external {
@@ -256,7 +256,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     // which reverts due to the stale role hat.
     vm.prank(_alice);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleQuartermaster.selector, _quartermaster));
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
   }
 
   function test_StartMutiny_RevertsOnStaleCaptain() external {
@@ -264,7 +264,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_alice, _CREW_HAT, true);
     vm.prank(_alice);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleCaptain.selector, _captain));
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
   }
 }
 
@@ -278,7 +278,7 @@ contract UnitMutinyModuleVote is UnitMutinyModuleBase {
     _mockHatSupply(_CREW_HAT, 5);
     _mockQmMutinyActive(true);
     vm.prank(_alice);
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     _mutinyId = _mm.activeMutinyId();
   }
 
@@ -409,7 +409,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockQmMutinyActive(true);
 
     vm.prank(_alice);
-    _mm2.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm2.startMutinyToArbitraryEoa(_newCaptainEoa);
     uint256 _id = _mm2.activeMutinyId();
 
     vm.prank(_alice);
@@ -459,7 +459,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockQmMutinyActive(true);
 
     vm.prank(_alice);
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     uint256 _id = _mm.activeMutinyId();
 
     vm.prank(_alice);
@@ -547,7 +547,7 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     _mockHatSupply(_CREW_HAT, 5);
     _mockQmMutinyActive(true);
     vm.prank(_alice);
-    _mm.startMutinyToArbitraryEOA(_newCaptainEoa);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
 
     vm.prank(_captain);
     vm.expectRevert(IMutinyModule.MutinyModule_AlreadyActive.selector);

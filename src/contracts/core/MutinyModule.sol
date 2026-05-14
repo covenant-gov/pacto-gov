@@ -47,7 +47,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /*///////////////////////////////////////////////////////////////
                             MODIFIERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Runs `_mutinyCheck` before the wrapped function body.
    * @param _target Proposed successor from the mutiny entrypoint.
@@ -115,13 +114,13 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryEOA(address _proposedArbitraryEOA)
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa)
     external
     onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedArbitraryEOA)
+    mutinyCheck(_proposedArbitraryEoa)
   {
-    if (_isContract(_proposedArbitraryEOA)) revert MutinyModule_NotEOA(_proposedArbitraryEOA);
-    _startMutiny(_proposedArbitraryEOA);
+    if (_isContract(_proposedArbitraryEoa)) revert MutinyModule_NotEOA(_proposedArbitraryEoa);
+    _startMutiny(_proposedArbitraryEoa);
   }
 
   /// @inheritdoc IMutinyModule

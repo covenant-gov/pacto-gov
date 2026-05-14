@@ -40,7 +40,7 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
     if (_fixtureHasOpenRound) return;
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEOA(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
     _squadActiveMutinyId = _squadMutiny.activeMutinyId();
     _fixtureHasOpenRound = true;
   }
@@ -105,7 +105,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadCrewHatId, _stranger));
     vm.prank(_stranger);
-    _squadMutiny.startMutinyToArbitraryEOA(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_startMutinyToCommittee_succeeds_opensRound() public withDeployedNavePirataSquad {}
 
   /*///////////////////////////////////////////////////////////////
-                        startMutinyToArbitraryEOA
+                        startMutinyToArbitraryEoa
   //////////////////////////////////////////////////////////////*/
 
   function test_e2e_startMutinyToArbitraryEOA_reverts_whenProposedHasCode() public withDeployedNavePirataSquad {}
