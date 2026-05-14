@@ -26,6 +26,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   /*///////////////////////////////////////////////////////////////
                             MODIFIERS
   //////////////////////////////////////////////////////////////*/
+
   /// @notice Runs the body only if `msg.sender` wears the captain hat.
   modifier isAllowed() {
     _requireAllowed();
@@ -84,10 +85,6 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
-
-  /// @notice Hook for access control on `isAllowed`; implementations revert when denied (e.g. `HatGated_NotHatWearer` or `SquadAdminExt_NotAllowed`).
-  function _requireAllowed() internal view virtual;
-
   /**
    * @notice Reads the pause sentinel for `_executor`.
    * @param _executor Account queried.
@@ -105,4 +102,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   function _isExecutorFullPermission(address _executor) internal view returns (bool _fullPermission) {
     _fullPermission = _executors[_executor][_FULL_PERMISSION];
   }
+
+  /// @notice Hook for access control on `isAllowed`; implementations revert when denied (e.g. `HatGated_NotHatWearer` or `SquadAdminExt_NotAllowed`).
+  function _requireAllowed() internal view virtual;
 }

@@ -31,7 +31,6 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Deploys the registry owned by `_admin`.
    * @dev Zero-admin protection comes from `Ownable`, which reverts with `OwnableInvalidOwner`.

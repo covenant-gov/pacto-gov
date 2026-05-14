@@ -14,7 +14,6 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Constructor.
    * @param hats_ Hats protocol address.
@@ -51,16 +50,14 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
 
+  /// @notice Reverts unless `msg.sender` is the owner.
+  function _requireOwner() internal view {
+    if (msg.sender != owner) revert SquadAdminExt_NotAllowed();
+  }
+
   /// @inheritdoc SquadAdmin
   function _requireAllowed() internal view override {
     if (owner != address(0)) _requireOwner();
     else super._requireAllowed();
-  }
-
-  /**
-   * @notice Reverts unless `msg.sender` is the owner.
-   */
-  function _requireOwner() internal view {
-    if (msg.sender != owner) revert SquadAdminExt_NotAllowed();
   }
 }

@@ -100,7 +100,6 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
         upgradedAt: uint64(block.timestamp)
       })
     );
-
     emit RoleHatUpgraded(_roleHatId, _oldClone, _newClone, _masterCopy, _kind);
   }
 
@@ -148,7 +147,6 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Namespaced CREATE2 salt: `keccak256` over ABI-encoded `roleHatId` and `salt`.
    * @param _roleHatId Role hat id being upgraded.

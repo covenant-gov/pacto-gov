@@ -55,7 +55,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Master-copy constructor; bakes the Hats Protocol singleton into runtime code
    *         shared by all clones and disables direct initialization of the master copy.
@@ -246,7 +245,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /*///////////////////////////////////////////////////////////////
                         INTERNAL LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Timelock for a captain-scheduled crew add (`0` when no crew wearer yet; else `crewChangeDelay`).
    * @return _delay Seconds added to `block.timestamp` when recording `pendingCrewAddAt`.
