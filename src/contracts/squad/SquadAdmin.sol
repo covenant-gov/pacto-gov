@@ -27,7 +27,6 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Master-copy constructor; bakes the Hats singleton into implementation runtime code
    *         and locks direct initialization of the implementation.

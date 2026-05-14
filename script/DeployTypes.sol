@@ -20,6 +20,7 @@ library DeployTypes {
     address mutinyModule;
     address treasuryAuthority;
     address squadAdminImpl;
+    address squadAdminExtImpl;
   }
 
   /// @notice Pacto infra wired after masters exist.

@@ -39,7 +39,8 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'quartermaster', m.quartermaster);
     vm.serializeAddress(k, 'mutinyModule', m.mutinyModule);
     vm.serializeAddress(k, 'treasuryAuthority', m.treasuryAuthority);
-    string memory json = vm.serializeAddress(k, 'squadAdminImpl', m.squadAdminImpl);
+    vm.serializeAddress(k, 'squadAdminImpl', m.squadAdminImpl);
+    string memory json = vm.serializeAddress(k, 'squadAdminExtImpl', m.squadAdminExtImpl);
     vm.writeJson(json, _deploymentJsonPath('master-copies.json'));
   }
 
@@ -69,6 +70,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'masterMutinyModule', m.mutinyModule);
     vm.serializeAddress(k, 'masterTreasuryAuthority', m.treasuryAuthority);
     vm.serializeAddress(k, 'masterSquadAdminImpl', m.squadAdminImpl);
+    vm.serializeAddress(k, 'masterSquadAdminExtImpl', m.squadAdminExtImpl);
     vm.serializeAddress(k, 'roleHatClonesFactory', i.clonesFactory);
     vm.serializeAddress(k, 'navePirataRegistry', i.registry);
     vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
@@ -96,5 +98,39 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'treasuryAuthority', treasuryAuthority);
     string memory json = vm.serializeAddress(k, 'squadAdminProxy', squadAdminProxy);
     vm.writeJson(json, _deploymentJsonPath(string.concat('squad-', vm.toString(saltNonce), '.json')));
+  }
+
+  function _writeSquadAdminExtStandaloneJson(
+    address clone,
+    address owner,
+    address implementation,
+    uint256 artifactNonce
+  ) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_sa_ext_standalone';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeAddress(k, 'clone', clone);
+    vm.serializeAddress(k, 'owner', owner);
+    string memory json = vm.serializeAddress(k, 'implementation', implementation);
+    vm.writeJson(
+      json, _deploymentJsonPath(string.concat('squad-admin-ext-standalone-', vm.toString(artifactNonce), '.json'))
+    );
+  }
+
+  function _writeSquadAdminStandaloneCaptainJson(
+    address clone,
+    uint256 captainHatId,
+    address implementation,
+    uint256 artifactNonce
+  ) internal {
+    if (!_shouldWriteDeploymentJson()) return;
+    string memory k = 'pacto_sa_standalone_captain';
+    vm.serializeUint(k, 'chainId', block.chainid);
+    vm.serializeUint(k, 'captainHatId', captainHatId);
+    vm.serializeAddress(k, 'clone', clone);
+    string memory json = vm.serializeAddress(k, 'implementation', implementation);
+    vm.writeJson(
+      json, _deploymentJsonPath(string.concat('squad-admin-standalone-captain-', vm.toString(artifactNonce), '.json'))
+    );
   }
 }

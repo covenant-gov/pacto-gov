@@ -6,8 +6,9 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 /**
  * @title INavePirataFactory
  * @author Pacto
- * @notice One transaction: deploy Safe, build hat tree, clone QM / Mutiny / TA + squad-admin EIP-1167 clone, mint hats,
- *         wire `TreasuryAuthority` as sole Safe module+owner, `registerDeployment`, then move tophat to the Safe
+ * @notice Full squad: `deployNavePirata`. Standalone squad-admin helpers: `deploySquadAdminExtStandalone`,
+ *         `deploySquadAdminStandaloneCaptainHat`. Governance migration after deploy uses `postInitialize` on the clone
+ *         (called by the controller / captain), not the factory.
  */
 interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
@@ -92,6 +93,22 @@ interface INavePirataFactory {
     address _squadAdminProxy
   );
 
+  /**
+   * @notice EIP-1167 clone of `SquadAdminExt` initialized with `owner` (address-gated roster).
+   * @param clone Minimal proxy address.
+   * @param owner Controller seeded by `initialize(address)`.
+   * @param implementation Master copy cloned.
+   */
+  event SquadAdminExtStandaloneDeployed(address indexed clone, address indexed owner, address indexed implementation);
+
+  /**
+   * @notice EIP-1167 clone of `SquadAdmin` initialized with a single captain hat (no squad-admin hat id yet).
+   * @param clone Minimal proxy address.
+   * @param implementation Master copy cloned.
+   * @param captainHatId Hat id that gates roster mutations until `postInitialize`.
+   */
+  event SquadAdminStandaloneDeployed(address indexed clone, address indexed implementation, uint256 captainHatId);
+
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
@@ -104,6 +121,8 @@ interface INavePirataFactory {
   error NavePirataFactory_SafeDeployFailed();
   /// @notice Teardown of the factory's temporary ownership at the end of the ceremony failed.
   error NavePirataFactory_BootstrapTeardownFailed();
+  /// @notice `deploySquadAdminStandaloneCaptainHat` requires a non-zero captain hat id.
+  error NavePirataFactory_InvalidCaptainHat();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -128,6 +147,28 @@ interface INavePirataFactory {
       address _treasuryAuthority,
       address _squadAdminProxy
     );
+
+  /**
+   * @notice Permissionless one-off: clone `SquadAdminExt` and `initialize(_owner)`. Does not register in `REGISTRY`.
+   * @param squadAdminExtImplementation `SquadAdminExt` master copy (same `IHats` chain singleton as protocol).
+   * @param owner Non-zero controller (DAO, multisig, Moloch, etc.).
+   * @return clone Minimal proxy address.
+   */
+  function deploySquadAdminExtStandalone(
+    address squadAdminExtImplementation,
+    address owner
+  ) external returns (address clone);
+
+  /**
+   * @notice Permissionless one-off: clone `SquadAdmin` and `initialize(captainHatId)` for an existing captain hat.
+   * @param squadAdminImplementation `SquadAdmin` master copy.
+   * @param captainHatId Non-zero hat id worn by captains for roster ops; full protocol ids via `postInitialize` later.
+   * @return clone Minimal proxy address.
+   */
+  function deploySquadAdminStandaloneCaptainHat(
+    address squadAdminImplementation,
+    uint256 captainHatId
+  ) external returns (address clone);
 
   /*///////////////////////////////////////////////////////////////
                             VIEWS

@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
+import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
 
 import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
@@ -46,6 +47,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
 
   NavePirataFactory internal _factory;
   SquadAdmin internal _squadAdminImpl;
+  SquadAdminExt internal _squadAdminExtImpl;
 
   address internal _captain = makeAddr('captain');
   address internal _caller = makeAddr('caller');
@@ -68,6 +70,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
     vm.etch(_safe, hex'00');
 
     _squadAdminImpl = new SquadAdmin(IHats(_HATS_ADDRESS));
+    _squadAdminExtImpl = new SquadAdminExt(IHats(_HATS_ADDRESS));
 
     _factory = new NavePirataFactory(
       _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, _CLONES_ADDRESS, _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
@@ -527,5 +530,85 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
   /// @notice Predicts the squad-admin clone: next factory `CREATE` (`Clones.clone` uses one nonce step).
   function _expectedSquadAdminProxy() internal view returns (address _proxy) {
     _proxy = vm.computeCreateAddress(address(_factory), vm.getNonce(address(_factory)));
+  }
+}
+
+contract UnitNavePirataFactoryStandaloneSquadAdmin is UnitNavePirataFactoryBase {
+  address internal _standaloneOwner = makeAddr('standaloneOwner');
+
+  function test_DeploySquadAdminExtStandalone_InitializesOwner() external {
+    address _clone = _factory.deploySquadAdminExtStandalone(address(_squadAdminExtImpl), _standaloneOwner);
+    assertEq(SquadAdminExt(_clone).owner(), _standaloneOwner);
+  }
+
+  function test_DeploySquadAdminExtStandalone_OwnerCanEnableExecutor() external {
+    bytes32 _role = keccak256('pacto.factory.standalone.role');
+    address _alice = makeAddr('standaloneAlice');
+    address _clone = _factory.deploySquadAdminExtStandalone(address(_squadAdminExtImpl), _standaloneOwner);
+    vm.prank(_standaloneOwner);
+    SquadAdminExt(_clone).enableExecutor(_alice, _role);
+    assertTrue(SquadAdminExt(_clone).hasExecutorRole(_alice, _role));
+  }
+
+  function test_DeploySquadAdminExtStandalone_RevertsZeroImplementation() external {
+    vm.expectRevert(
+      abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'squadAdminExtImplementation')
+    );
+    _factory.deploySquadAdminExtStandalone(address(0), _standaloneOwner);
+  }
+
+  function test_DeploySquadAdminExtStandalone_RevertsZeroOwner() external {
+    vm.expectRevert(abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'owner'));
+    _factory.deploySquadAdminExtStandalone(address(_squadAdminExtImpl), address(0));
+  }
+
+  function test_DeploySquadAdminExtStandalone_Emits() external {
+    address _expectedClone = vm.computeCreateAddress(address(_factory), vm.getNonce(address(_factory)));
+    vm.expectEmit(true, true, true, true, address(_factory));
+    emit INavePirataFactory.SquadAdminExtStandaloneDeployed(
+      _expectedClone, _standaloneOwner, address(_squadAdminExtImpl)
+    );
+    _factory.deploySquadAdminExtStandalone(address(_squadAdminExtImpl), _standaloneOwner);
+  }
+
+  function test_DeploySquadAdminStandaloneCaptainHat_SetsCaptainHat() external {
+    uint256 _hat = 4242;
+    address _clone = _factory.deploySquadAdminStandaloneCaptainHat(address(_squadAdminImpl), _hat);
+    assertEq(SquadAdmin(_clone).captainHatId(), _hat);
+    assertEq(SquadAdmin(_clone).squadAdminHatId(), 0);
+  }
+
+  function test_DeploySquadAdminStandaloneCaptainHat_CaptainCanEnableExecutor() external {
+    uint256 _hat = 999;
+    address _standaloneCaptain = makeAddr('standaloneCaptain');
+    address _alice = makeAddr('standaloneAliceB');
+    bytes32 _role = keccak256('pacto.factory.standalone.role2');
+    vm.mockCall(
+      _HATS_ADDRESS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _standaloneCaptain, _hat), abi.encode(true)
+    );
+    address _clone = _factory.deploySquadAdminStandaloneCaptainHat(address(_squadAdminImpl), _hat);
+    vm.prank(_standaloneCaptain);
+    SquadAdmin(_clone).enableExecutor(_alice, _role);
+    assertTrue(SquadAdmin(_clone).hasExecutorRole(_alice, _role));
+  }
+
+  function test_DeploySquadAdminStandaloneCaptainHat_RevertsZeroImplementation() external {
+    vm.expectRevert(
+      abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'squadAdminImplementation')
+    );
+    _factory.deploySquadAdminStandaloneCaptainHat(address(0), 1);
+  }
+
+  function test_DeploySquadAdminStandaloneCaptainHat_RevertsZeroCaptainHatId() external {
+    vm.expectRevert(INavePirataFactory.NavePirataFactory_InvalidCaptainHat.selector);
+    _factory.deploySquadAdminStandaloneCaptainHat(address(_squadAdminImpl), 0);
+  }
+
+  function test_DeploySquadAdminStandaloneCaptainHat_Emits() external {
+    uint256 _hat = 777;
+    address _expectedClone = vm.computeCreateAddress(address(_factory), vm.getNonce(address(_factory)));
+    vm.expectEmit(true, true, true, true, address(_factory));
+    emit INavePirataFactory.SquadAdminStandaloneDeployed(_expectedClone, address(_squadAdminImpl), _hat);
+    _factory.deploySquadAdminStandaloneCaptainHat(address(_squadAdminImpl), _hat);
   }
 }

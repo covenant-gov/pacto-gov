@@ -9,6 +9,7 @@ import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 import {RoleHatClonesFactory} from 'contracts/factory/RoleHatClonesFactory.sol';
 import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
+import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
 
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
@@ -79,6 +80,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     _m.mutinyModule = address(new MutinyModule(_hats));
     _m.treasuryAuthority = address(new TreasuryAuthority(_hats));
     _m.squadAdminImpl = address(new SquadAdmin(_hats));
+    _m.squadAdminExtImpl = address(new SquadAdminExt(_hats));
     _masters = _m;
   }
 
@@ -120,6 +122,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     console.log('Master MutinyModule:', _masters.mutinyModule);
     console.log('Master TreasuryAuthority:', _masters.treasuryAuthority);
     console.log('Master SquadAdmin:', _masters.squadAdminImpl);
+    console.log('Master SquadAdminExt:', _masters.squadAdminExtImpl);
     console.log('RoleHatClonesFactory:', _infra.clonesFactory);
     console.log('NavePirataRegistry:', _infra.registry);
     console.log('RoleHatUpgrader:', _infra.upgrader);
