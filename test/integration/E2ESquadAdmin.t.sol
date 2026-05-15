@@ -4,8 +4,11 @@ pragma solidity 0.8.30;
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
+import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 
+import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 import {ISquadAdminBase} from 'interfaces/squad/ISquadAdminBase.sol';
@@ -16,7 +19,7 @@ import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
  * @title E2ESquadAdminTest
  * @author Pacto
  * @notice Forked end-to-end scenarios for `SquadAdmin` / `ISquadAdmin` / `ISquadAdminBase`; names follow public API
- *         groupings. Later sections may still be stubs.
+ *         groupings.
  */
 contract E2ESquadAdminTest is IntegrationBase {
   bytes32 internal constant _E2E_EXECUTOR_ROLE_APP = keccak256('pacto.e2e.squadadmin.role.app');
@@ -145,62 +148,221 @@ contract E2ESquadAdminTest is IntegrationBase {
                         enableFullPermission
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_enableFullPermission_succeeds_whenCallerWearsCaptainHat() public withDeployedNavePirataSquad {}
+  function test_e2e_enableFullPermission_succeeds_whenCallerWearsCaptainHat() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceFull');
 
-  function test_e2e_enableFullPermission_revertsWhenCallerDoesNotWearCaptainHat() public withDeployedNavePirataSquad {}
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.enableFullPermission(_alice, true);
 
-  function test_e2e_hasExecutorRole_reflectsFullPermission_acrossDistinctRoles() public withDeployedNavePirataSquad {}
+    assertTrue(_squadSquadAdmin.isExecutorFullPermission(_alice));
+    assertTrue(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+    assertTrue(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_OTHER));
+  }
+
+  function test_e2e_enableFullPermission_revertsWhenCallerDoesNotWearCaptainHat() public withDeployedNavePirataSquad {
+    address _stranger = makeAddr('e2eSquadAdminStrangerFull');
+    _fund(_stranger, 1 ether);
+    address _alice = makeAddr('e2eSquadAdminAliceFullTarget');
+
+    vm.expectRevert(
+      abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadSquadAdmin.captainHatId(), _stranger)
+    );
+    vm.prank(_stranger);
+    _squadSquadAdmin.enableFullPermission(_alice, true);
+  }
+
+  function test_e2e_hasExecutorRole_reflectsFullPermission_acrossDistinctRoles() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceFullRoles');
+
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_OTHER));
+
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.enableFullPermission(_alice, true);
+    assertTrue(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+    assertTrue(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_OTHER));
+
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.enableFullPermission(_alice, false);
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_OTHER));
+  }
 
   /*///////////////////////////////////////////////////////////////
                         pauseExecutor
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_pauseExecutor_blocksHasExecutorRole_whenPaused() public withDeployedNavePirataSquad {}
+  function test_e2e_pauseExecutor_blocksHasExecutorRole_whenPaused() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAlicePauseBlock');
 
-  function test_e2e_pauseExecutor_unpause_restoresPriorRoleBits() public withDeployedNavePirataSquad {}
+    vm.startPrank(_squadCaptain);
+    _squadSquadAdmin.enableFullPermission(_alice, true);
+    _squadSquadAdmin.pauseExecutor(_alice, true);
+    vm.stopPrank();
 
-  function test_e2e_pauseExecutor_revertsWhenCallerDoesNotWearCaptainHat() public withDeployedNavePirataSquad {}
+    assertTrue(_squadSquadAdmin.isExecutorPaused(_alice));
+    assertFalse(_squadSquadAdmin.isExecutorFullPermission(_alice));
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, bytes32('FULL')));
+  }
+
+  function test_e2e_pauseExecutor_unpause_restoresPriorRoleBits() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAlicePauseUnpause');
+
+    vm.startPrank(_squadCaptain);
+    _squadSquadAdmin.enableExecutor(_alice, _E2E_EXECUTOR_ROLE_APP);
+    assertTrue(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+
+    _squadSquadAdmin.pauseExecutor(_alice, true);
+    assertTrue(_squadSquadAdmin.isExecutorPaused(_alice));
+    assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+
+    _squadSquadAdmin.pauseExecutor(_alice, false);
+    vm.stopPrank();
+
+    assertFalse(_squadSquadAdmin.isExecutorPaused(_alice));
+    assertTrue(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+  }
+
+  function test_e2e_pauseExecutor_revertsWhenCallerDoesNotWearCaptainHat() public withDeployedNavePirataSquad {
+    address _stranger = makeAddr('e2eSquadAdminStrangerPause');
+    _fund(_stranger, 1 ether);
+    address _alice = makeAddr('e2eSquadAdminAlicePauseTarget');
+
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.enableExecutor(_alice, _E2E_EXECUTOR_ROLE_APP);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadSquadAdmin.captainHatId(), _stranger)
+    );
+    vm.prank(_stranger);
+    _squadSquadAdmin.pauseExecutor(_alice, true);
+
+    assertFalse(_squadSquadAdmin.isExecutorPaused(_alice));
+  }
 
   /*///////////////////////////////////////////////////////////////
                         views (isExecutorFullPermission / isExecutorPaused)
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_isExecutorFullPermission_reflectsStorage() public withDeployedNavePirataSquad {}
+  function test_e2e_isExecutorFullPermission_reflectsStorage() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceViewFull');
 
-  function test_e2e_isExecutorPaused_reflectsStorage() public withDeployedNavePirataSquad {}
+    assertFalse(_squadSquadAdmin.isExecutorFullPermission(_alice));
+
+    vm.startPrank(_squadCaptain);
+    _squadSquadAdmin.enableFullPermission(_alice, true);
+    assertTrue(_squadSquadAdmin.isExecutorFullPermission(_alice));
+
+    _squadSquadAdmin.enableFullPermission(_alice, false);
+    vm.stopPrank();
+
+    assertFalse(_squadSquadAdmin.isExecutorFullPermission(_alice));
+  }
+
+  function test_e2e_isExecutorPaused_reflectsStorage() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceViewPause');
+
+    assertFalse(_squadSquadAdmin.isExecutorPaused(_alice));
+
+    vm.startPrank(_squadCaptain);
+    _squadSquadAdmin.pauseExecutor(_alice, true);
+    assertTrue(_squadSquadAdmin.isExecutorPaused(_alice));
+
+    _squadSquadAdmin.pauseExecutor(_alice, false);
+    vm.stopPrank();
+
+    assertFalse(_squadSquadAdmin.isExecutorPaused(_alice));
+  }
 
   /*///////////////////////////////////////////////////////////////
                         events (smoke / ordering)
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_enableExecutor_emitsExecutorEnabled() public withDeployedNavePirataSquad {}
+  function test_e2e_enableExecutor_emitsExecutorEnabled() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceEmitEnable');
 
-  function test_e2e_disableExecutor_emitsExecutorDisabled() public withDeployedNavePirataSquad {}
+    vm.expectEmit(true, true, false, false, address(_squadSquadAdmin));
+    emit ISquadAdminBase.ExecutorEnabled(_alice, _E2E_EXECUTOR_ROLE_APP);
 
-  function test_e2e_enableFullPermission_emitsFullPermissionEnabled() public withDeployedNavePirataSquad {}
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.enableExecutor(_alice, _E2E_EXECUTOR_ROLE_APP);
+  }
 
-  function test_e2e_pauseExecutor_emitsExecutorPaused() public withDeployedNavePirataSquad {}
+  function test_e2e_disableExecutor_emitsExecutorDisabled() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceEmitDisable');
+
+    vm.startPrank(_squadCaptain);
+    _squadSquadAdmin.enableExecutor(_alice, _E2E_EXECUTOR_ROLE_APP);
+
+    vm.expectEmit(true, true, false, false, address(_squadSquadAdmin));
+    emit ISquadAdminBase.ExecutorDisabled(_alice, _E2E_EXECUTOR_ROLE_APP);
+
+    _squadSquadAdmin.disableExecutor(_alice, _E2E_EXECUTOR_ROLE_APP);
+    vm.stopPrank();
+  }
+
+  function test_e2e_enableFullPermission_emitsFullPermissionEnabled() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceEmitFull');
+
+    vm.expectEmit(true, false, false, true, address(_squadSquadAdmin));
+    emit ISquadAdminBase.FullPermissionEnabled(_alice, true);
+
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.enableFullPermission(_alice, true);
+  }
+
+  function test_e2e_pauseExecutor_emitsExecutorPaused() public withDeployedNavePirataSquad {
+    address _alice = makeAddr('e2eSquadAdminAliceEmitPause');
+
+    vm.expectEmit(true, false, false, true, address(_squadSquadAdmin));
+    emit ISquadAdminBase.ExecutorPaused(_alice, true);
+
+    vm.prank(_squadCaptain);
+    _squadSquadAdmin.pauseExecutor(_alice, true);
+  }
 
   /*///////////////////////////////////////////////////////////////
                         integration wiring
   //////////////////////////////////////////////////////////////*/
 
-  function test_integration_squadAdminMasterDeployedAndFactoryLive() public view {}
+  function test_integration_squadAdminMasterDeployedAndFactoryLive() public view {
+    assertGt(_masters.squadAdminImpl.code.length, 0);
+    assertGt(_infra.navePirataFactory.code.length, 0);
+  }
 
-  function test_integration_squadAdminProxyMatchesRegistryDeployment() public withDeployedNavePirataSquad {}
+  function test_integration_squadAdminProxyMatchesRegistryDeployment() public withDeployedNavePirataSquad {
+    INavePirataRegistry.Deployment memory _d = NavePirataRegistry(_infra.registry).deployment(_squadTopHatId);
+    assertEq(address(_squadSquadAdmin), _d.squadAdminProxy);
+  }
 
-  function test_integration_squadAdminCaptainHatId_alignsWithTreasuryCaptainHatId()
-    public
-    withDeployedNavePirataSquad
-  {}
+  function test_integration_squadAdminCaptainHatId_alignsWithTreasuryCaptainHatId() public withDeployedNavePirataSquad {
+    assertEq(_squadSquadAdmin.captainHatId(), _squadTreasury.captainHatId());
+  }
 
   /*///////////////////////////////////////////////////////////////
                         factory standalone SquadAdmin (captain-hat-only init)
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_factory_deploySquadAdminStandaloneCaptainHat_returnsCloneWithCode() public {}
+  function test_e2e_factory_deploySquadAdminStandaloneCaptainHat_returnsCloneWithCode() public {
+    uint256 _hatId = 1;
+    SquadAdmin _clone = SquadAdmin(
+      payable(NavePirataFactory(_infra.navePirataFactory)
+          .deploySquadAdminStandaloneCaptainHat(_masters.squadAdminImpl, _hatId))
+    );
+    assertGt(address(_clone).code.length, 0);
+    assertEq(_clone.captainHatId(), _hatId);
+  }
 
-  function test_e2e_factory_deploySquadAdminStandaloneCaptainHat_revertsOnZeroImplementation() public {}
+  function test_e2e_factory_deploySquadAdminStandaloneCaptainHat_revertsOnZeroImplementation() public {
+    vm.expectRevert(
+      abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'squadAdminImplementation')
+    );
+    NavePirataFactory(_infra.navePirataFactory).deploySquadAdminStandaloneCaptainHat(address(0), 1);
+  }
 
-  function test_e2e_factory_deploySquadAdminStandaloneCaptainHat_revertsOnZeroCaptainHatId() public {}
+  function test_e2e_factory_deploySquadAdminStandaloneCaptainHat_revertsOnZeroCaptainHatId() public {
+    vm.expectRevert(INavePirataFactory.NavePirataFactory_InvalidCaptainHat.selector);
+    NavePirataFactory(_infra.navePirataFactory).deploySquadAdminStandaloneCaptainHat(_masters.squadAdminImpl, 0);
+  }
 }

@@ -111,7 +111,8 @@ abstract contract SquadAdminBase is ISquadAdminBase {
 
   /// @inheritdoc ISquadAdminBase
   function isExecutorFullPermission(address _executor) external view returns (bool _fullPermission) {
-    _fullPermission = _isExecutorFullPermission(_executor);
+    if (_isExecutorPaused(_executor)) _fullPermission = false;
+    else _fullPermission = _isExecutorFullPermission(_executor);
   }
 
   /// @inheritdoc ISquadAdminBase

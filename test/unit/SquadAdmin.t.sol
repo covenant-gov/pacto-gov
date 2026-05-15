@@ -313,7 +313,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.pauseExecutor(_alice, true);
 
     assertTrue(_admin.isExecutorPaused(_alice));
-    assertTrue(_admin.isExecutorFullPermission(_alice));
+    assertFalse(_admin.isExecutorFullPermission(_alice));
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_FULL));
   }
