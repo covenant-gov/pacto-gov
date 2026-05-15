@@ -21,6 +21,7 @@ interface IMutinyModule is IQuiescent {
    * @param quartermasterRoleHatId QuartermasterRole hat id worn by the peer Quartermaster clone.
    * @param captain Initial captain-hat wearer (must be marked eligible before the factory mints the hat).
    * @param quartermaster Peer Quartermaster clone address (verified at every outbound call).
+   * @param safe Squad Safe (Zodiac `avatar` for TreasuryAuthority); successful `startMutinyToPauseCaptain` transfers the captain hat here.
    */
   struct InitParams {
     uint256 captainHatId;
@@ -29,6 +30,7 @@ interface IMutinyModule is IQuiescent {
     uint256 quartermasterRoleHatId;
     address captain;
     address quartermaster;
+    address safe;
   }
 
   /**
@@ -57,7 +59,7 @@ interface IMutinyModule is IQuiescent {
    * @param _mutinyId Round identifier.
    * @param _proposer Crew member that opened the round.
    * @param _proposedNewCaptain Successor if the mutiny passes.
-   * @param _snapshot Snapshot size of eligible crew at `startMutiny` time.
+   * @param _snapshot Snapshot size of eligible crew when the round opened.
    */
   event MutinyStarted(
     uint256 indexed _mutinyId, address indexed _proposer, address indexed _proposedNewCaptain, uint256 _snapshot
@@ -127,6 +129,18 @@ interface IMutinyModule is IQuiescent {
    */
   error MutinyModule_StaleCaptain(address _captain);
 
+  /**
+   * @notice `startMutinyToArbitraryEoa` was called with an address that has contract code.
+   * @param _proposedArbitraryEoa The rejected successor candidate.
+   */
+  error MutinyModule_NotEOA(address _proposedArbitraryEoa);
+
+  /**
+   * @notice `startMutinyToArbitraryContract` was called with an address that has no code, or `startMutinyToCommittee`.
+   * @param _proposedArbitraryContract The rejected successor candidate.
+   */
+  error MutinyModule_NotContract(address _proposedArbitraryContract);
+
   /// @notice A mutiny round is already active.
   error MutinyModule_AlreadyActive();
   /// @notice No active mutiny exists for the requested id.
@@ -138,7 +152,7 @@ interface IMutinyModule is IQuiescent {
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice One-shot init: hat ids, `captain`, `quartermaster`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
+   * @notice One-shot init: hat ids, `captain`, `quartermaster`, `safe`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
    * @param _p Bootstrap parameters.
    */
   function initialize(InitParams calldata _p) external;
@@ -147,11 +161,35 @@ interface IMutinyModule is IQuiescent {
                             LOGIC
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Open a mutiny round. Crew-hat-gated.
-   * @dev Fixes the snapshot electorate to the current crew supply and toggles Quartermaster mutiny mode.
-   * @param _proposedNewCaptain Non-zero successor for the captain hat.
+   * @notice Open a mutiny to a crew-hat successor. Crew-hat-gated; `_proposedCrewMember` must wear `crewHatId`.
+   * @param _proposedCrewMember Address that wears `crewHatId`.
    */
-  function startMutiny(address _proposedNewCaptain) external;
+  function startMutinyToCrewMember(address _proposedCrewMember) external;
+
+  /**
+   * @notice Open a mutiny to a Safe-style multisig (`getThreshold()` returns one word). Crew-hat-gated.
+   * @param _proposedMultisigCommittee Address that is a Safe-style multisig.
+   */
+  function startMutinyToCommittee(address _proposedMultisigCommittee) external;
+
+  /**
+   * @notice Open a mutiny to an EOA successor (no contract code). Crew-hat-gated.
+   * @param _proposedArbitraryEoa Address that is an EOA.
+   */
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa) external;
+
+  /**
+   * @notice Open a mutiny to a contract successor (non-zero code length). Crew-hat-gated.
+   * @param _proposedArbitraryContract Address that is a contract.
+   */
+  function startMutinyToArbitraryContract(address _proposedArbitraryContract) external;
+
+  /**
+   * @notice Open a mutiny that on success transfers the captain hat to the squad Safe (`safe`).
+   * @dev While the Safe wears the captain hat, `TreasuryAuthority` treats crew-passed proposals as executable without a
+   *         separate `captainVote(true)`. A later mutiny can move the hat to a new captain as usual.
+   */
+  function startMutinyToPauseCaptain() external;
 
   /**
    * @notice Cast a yea vote in the active mutiny. Crew-hat-gated and snapshot-constrained.
@@ -254,4 +292,10 @@ interface IMutinyModule is IQuiescent {
    * @return _quartermaster Quartermaster peer address.
    */
   function quartermaster() external view returns (address _quartermaster);
+
+  /**
+   * @notice Squad Safe (Zodiac `avatar`); `startMutinyToPauseCaptain` targets this address.
+   * @return _safe The Safe address captured at `initialize`.
+   */
+  function safe() external view returns (address _safe);
 }

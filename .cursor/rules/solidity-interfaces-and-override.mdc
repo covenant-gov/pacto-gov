@@ -1,0 +1,24 @@
+---
+description: Solidity interfaces vs `override` — when the keyword is required vs optional (solc 0.8.x)
+globs: src/**/*.sol
+alwaysApply: true
+---
+
+# Interfaces and `override`
+
+## Mental model
+
+Interfaces only **declare** signatures; they ship **no** bytecode. Writing **`contract C is I`** means **`C` must supply bodies** for everything **`I`** requires. That is **implementation**, not “replacing logic that lived in the interface” (there was none).
+
+## Language fact (Solidity 0.8.x, verified with `solc` 0.8.30)
+
+- **Single parent / linear interface inheritance** (e.g. **`contract C is I`** only, or **`I2 is I1`** then **`contract C is I2`**) — the implementing function **does not have to** use **`override`**; the project **still compiles** without it.
+- **Diamond-style collision** — **`contract C is I1, I2`** where **`I1`** and **`I2`** both declare the **same** function — the implementation **must** specify **`override(I1, I2)`** (or equivalent) so the compiler knows which declarations are being satisfied.
+
+So: **`override` is not “because the interface had logic.”** It is sometimes **optional** (single declaration path), and **mandatory** when **multiple inherited bases** expose the **same** function and the compiler needs an explicit link.
+
+## Guidance for this repo
+
+- Prefer explaining **`is I`** as **“implements `I`”**, not **“overrides `I`”**, when talking about interfaces.
+- **Do not** strip **`override`** blindly in contracts with **several parents** that might share a signature; check **`forge build`** after edits.
+- **`override` on a function that does not override anything** (wrong parent set, or stale stub) **will fail compilation** — that is a different issue from “interfaces have no logic.”

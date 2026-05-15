@@ -16,11 +16,7 @@ contract RoleHatClonesFactory is IRoleHatClonesFactory {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IRoleHatClonesFactory
-  function createClone(
-    address _masterCopy,
-    bytes calldata _initData,
-    bytes32 _salt
-  ) external override returns (address _clone) {
+  function createClone(address _masterCopy, bytes calldata _initData, bytes32 _salt) external returns (address _clone) {
     if (_masterCopy == address(0)) revert RoleHatClonesFactory_ZeroMasterCopy();
 
     _clone = Clones.cloneDeterministic(_masterCopy, _salt);
@@ -38,7 +34,7 @@ contract RoleHatClonesFactory is IRoleHatClonesFactory {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IRoleHatClonesFactory
-  function predictCloneAddress(address _masterCopy, bytes32 _salt) external view override returns (address _predicted) {
+  function predictCloneAddress(address _masterCopy, bytes32 _salt) external view returns (address _predicted) {
     _predicted = Clones.predictDeterministicAddress(_masterCopy, _salt, address(this));
   }
 }

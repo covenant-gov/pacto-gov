@@ -40,7 +40,7 @@ The Quartermaster is also the **eligibility reference** for the **crew hat** in 
 | **Mutiny module** | **Calls into** the Quartermaster to set mutiny mode and, when needed, to mint or hand off crew hats after a captain change. |
 | **Hats Protocol** | All real “who holds the crew hat” operations go through **Hats** (mint, transfer, status checks). The Quartermaster does not talk to the Treasury Authority or Safe directly. |
 | **Treasury Authority** | No direct code link. The **Treasury Authority role** hat gates **delay changes** on the Quartermaster, so treasury governance can tune how patient crew changes must be. |
-| **Captain & crew** | The **captain** drives normal roster proposals; **crew** don’t vote on Quartermaster actions in this contract — their power shows up mainly through the **mutiny module** and treasury flows elsewhere. |
+| **Captain & crew** | The **captain** drives normal roster proposals; **crew** don’t vote on Quartermaster actions in this contract — their power shows up mainly through the **mutiny module** and treasury flows elsewhere. If the **Safe** wears the captain hat (pause-captain mutiny), roster actions still require **captain** checks: the Safe must call **as itself** (e.g. via a Safe transaction) for `onlyHatWearer(captainHatId)` paths to succeed. |
 
 ## Mental model
 

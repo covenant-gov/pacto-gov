@@ -106,7 +106,6 @@ contract NavePirataFactory is INavePirataFactory {
   /// @inheritdoc INavePirataFactory
   function deployNavePirata(DeployParams calldata _params)
     external
-    override
     returns (
       uint256 _topHatId,
       address _safe,
@@ -132,7 +131,7 @@ contract NavePirataFactory is INavePirataFactory {
       _quartermaster =
         _deployQuartermasterClone(_params.quartermasterMasterCopy, _hats, _params.squadParams.crewChangeDelay, _qmSalt);
       _mutinyModule =
-        _deployMutinyModuleClone(_params.mutinyMasterCopy, _hats, _params.captain, _quartermaster, _mmSalt);
+        _deployMutinyModuleClone(_params.mutinyMasterCopy, _hats, _params.captain, _quartermaster, _safe, _mmSalt);
       _treasuryAuthority = _deployTreasuryAuthorityClone(_params, _safe, _hats, _taSalt);
       _squadAdminProxy = _deploySquadAdminProxy(_params.squadAdminImplementation, _hats);
     }
@@ -168,10 +167,7 @@ contract NavePirataFactory is INavePirataFactory {
   }
 
   /// @inheritdoc INavePirataFactory
-  function deploySquadAdminExtStandalone(
-    address _implementation,
-    address _owner
-  ) external override returns (address _clone) {
+  function deploySquadAdminExtStandalone(address _implementation, address _owner) external returns (address _clone) {
     if (_implementation == address(0)) {
       revert NavePirataFactory_ZeroAddress('squadAdminExtImplementation');
     }
@@ -185,7 +181,7 @@ contract NavePirataFactory is INavePirataFactory {
   function deploySquadAdminStandaloneCaptainHat(
     address _implementation,
     uint256 _captainHatId
-  ) external override returns (address _clone) {
+  ) external returns (address _clone) {
     if (_implementation == address(0)) {
       revert NavePirataFactory_ZeroAddress('squadAdminImplementation');
     }
@@ -200,32 +196,32 @@ contract NavePirataFactory is INavePirataFactory {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataFactory
-  function HATS() external view override returns (address _hats) {
+  function HATS() external view returns (address _hats) {
     _hats = address(_HATS);
   }
 
   /// @inheritdoc INavePirataFactory
-  function SAFE_PROXY_FACTORY() external view override returns (address _factory) {
+  function SAFE_PROXY_FACTORY() external view returns (address _factory) {
     _factory = address(_SAFE_PROXY_FACTORY);
   }
 
   /// @inheritdoc INavePirataFactory
-  function SAFE_SINGLETON() external view override returns (address _singleton) {
+  function SAFE_SINGLETON() external view returns (address _singleton) {
     _singleton = _SAFE_SINGLETON;
   }
 
   /// @inheritdoc INavePirataFactory
-  function CLONES_FACTORY() external view override returns (address _clones) {
+  function CLONES_FACTORY() external view returns (address _clones) {
     _clones = address(_CLONES_FACTORY);
   }
 
   /// @inheritdoc INavePirataFactory
-  function REGISTRY() external view override returns (address _registry) {
+  function REGISTRY() external view returns (address _registry) {
     _registry = address(_REGISTRY);
   }
 
   /// @inheritdoc INavePirataFactory
-  function UPGRADER() external view override returns (address _upgrader) {
+  function UPGRADER() external view returns (address _upgrader) {
     _upgrader = _UPGRADER;
   }
 
@@ -402,6 +398,7 @@ contract NavePirataFactory is INavePirataFactory {
    * @param _hats Hat tree from `_createHatTree`.
    * @param _captain Initial captain address.
    * @param _quartermaster Deployed Quartermaster clone (peer for init).
+   * @param _safe Squad Safe (Zodiac `avatar`); stored on MutinyModule for pause-mutiny transfers.
    * @param _salt CREATE2 salt for this clone.
    * @return _clone Deployed MutinyModule clone address.
    */
@@ -410,6 +407,7 @@ contract NavePirataFactory is INavePirataFactory {
     HatTree memory _hats,
     address _captain,
     address _quartermaster,
+    address _safe,
     bytes32 _salt
   ) internal returns (address _clone) {
     _clone = _CLONES_FACTORY.createClone(
@@ -422,7 +420,8 @@ contract NavePirataFactory is INavePirataFactory {
             mutinyRoleHatId: _hats.mutinyRoleHatId,
             quartermasterRoleHatId: _hats.quartermasterRoleHatId,
             captain: _captain,
-            quartermaster: _quartermaster
+            quartermaster: _quartermaster,
+            safe: _safe
           }))
       ),
       _salt

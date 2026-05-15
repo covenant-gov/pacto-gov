@@ -43,14 +43,14 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataRegistry
-  function setFactory(address _factory) external override onlyOwner {
+  function setFactory(address _factory) external onlyOwner {
     if (factory != address(0)) revert NavePirataRegistry_AlreadyWired();
     if (_factory == address(0)) revert NavePirataRegistry_ZeroAddress();
     factory = _factory;
   }
 
   /// @inheritdoc INavePirataRegistry
-  function setUpgrader(address _upgrader) external override onlyOwner {
+  function setUpgrader(address _upgrader) external onlyOwner {
     if (upgrader != address(0)) revert NavePirataRegistry_AlreadyWired();
     if (_upgrader == address(0)) revert NavePirataRegistry_ZeroAddress();
     upgrader = _upgrader;
@@ -61,7 +61,7 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataRegistry
-  function registerDeployment(Deployment calldata _deployment) external override {
+  function registerDeployment(Deployment calldata _deployment) external {
     if (msg.sender != factory) revert NavePirataRegistry_NotFactory(msg.sender);
     uint256 _topHatId = _deployment.topHatId;
     if (_deployments[_topHatId].topHatId != 0) revert NavePirataRegistry_AlreadyRegistered(_topHatId);
@@ -72,7 +72,7 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   }
 
   /// @inheritdoc INavePirataRegistry
-  function recordUpgrade(uint256 _topHatId, UpgradeRecord calldata _record) external override {
+  function recordUpgrade(uint256 _topHatId, UpgradeRecord calldata _record) external {
     if (msg.sender != upgrader) revert NavePirataRegistry_NotUpgrader(msg.sender);
     if (_deployments[_topHatId].topHatId == 0) revert NavePirataRegistry_NotRegistered(_topHatId);
 
@@ -85,27 +85,27 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataRegistry
-  function deployment(uint256 _topHatId) external view override returns (Deployment memory _deployment) {
+  function deployment(uint256 _topHatId) external view returns (Deployment memory _deployment) {
     _deployment = _deployments[_topHatId];
   }
 
   /// @inheritdoc INavePirataRegistry
-  function deploymentCount() external view override returns (uint256 _count) {
+  function deploymentCount() external view returns (uint256 _count) {
     _count = _topHats.length;
   }
 
   /// @inheritdoc INavePirataRegistry
-  function deploymentAt(uint256 _i) external view override returns (uint256 _topHatId) {
+  function deploymentAt(uint256 _i) external view returns (uint256 _topHatId) {
     _topHatId = _topHats[_i];
   }
 
   /// @inheritdoc INavePirataRegistry
-  function upgradeCount(uint256 _topHatId) external view override returns (uint256 _count) {
+  function upgradeCount(uint256 _topHatId) external view returns (uint256 _count) {
     _count = _upgradeLogs[_topHatId].length;
   }
 
   /// @inheritdoc INavePirataRegistry
-  function upgradeAt(uint256 _topHatId, uint256 _i) external view override returns (UpgradeRecord memory _record) {
+  function upgradeAt(uint256 _topHatId, uint256 _i) external view returns (UpgradeRecord memory _record) {
     _record = _upgradeLogs[_topHatId][_i];
   }
 }

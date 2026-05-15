@@ -49,6 +49,12 @@ abstract contract UnitSquadAdminBase is Test {
     _clone = Clones.clone(address(_impl));
     SquadAdmin(payable(_clone)).initialize(_p);
     _admin = SquadAdmin(payable(_clone));
+
+    _mockCaptain(_captain, true);
+    vm.startPrank(_captain);
+    _admin.createRole(_ROLE_APP);
+    _admin.createRole(_ROLE_OTHER);
+    vm.stopPrank();
   }
 
   function _mockCaptain(address _account, bool _wearsCaptain) internal {
@@ -128,8 +134,10 @@ contract UnitSquadAdminInit is UnitSquadAdminBase {
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _captain, _customCaptainHat), abi.encode(true)
     );
 
-    vm.prank(_captain);
+    vm.startPrank(_captain);
+    _g.createRole(_ROLE_APP);
     _g.enableExecutor(_alice, _ROLE_APP);
+    vm.stopPrank();
     assertTrue(_g.hasExecutorRole(_alice, _ROLE_APP));
   }
 
@@ -305,7 +313,7 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.pauseExecutor(_alice, true);
 
     assertTrue(_admin.isExecutorPaused(_alice));
-    assertTrue(_admin.isExecutorFullPermission(_alice));
+    assertFalse(_admin.isExecutorFullPermission(_alice));
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_FULL));
   }
@@ -357,6 +365,9 @@ contract UnitSquadAdminExt is Test {
     address _clone = Clones.clone(address(_impl));
     SquadAdminExt(payable(_clone)).initialize(_moloch);
     _admin = SquadAdminExt(payable(_clone));
+
+    vm.prank(_moloch);
+    _admin.createRole(_ROLE_APP);
   }
 
   function test_Ext_RevertsHatStyleInitializers() external {

@@ -1,6 +1,6 @@
 # Gas, proxies, and Hats integration
 
-This note explains **why Nave Pirata deploys the way it does**: cheap per-squad contracts, **minimal proxies (EIP-1167)** for most roles, and **Hats-based “pointers”** for upgrades instead of the upgrade patterns Hats modules usually emphasize. It is a readable summary; the line-by-line storage and gas review lives in [`ai-docs/gas-and-data-structure-review.md`](../../ai-docs/gas-and-data-structure-review.md) (if present in your checkout).
+This note explains **why Nave Pirata deploys the way it does**: cheap per-squad contracts, **minimal proxies (EIP-1167)** for most roles, and **Hats-based “pointers”** for upgrades instead of the upgrade patterns Hats modules usually emphasize. It is a readable summary; storage packing and hot-path costs are reflected in the contracts and unit tests.
 
 ---
 
@@ -61,7 +61,7 @@ The gas review calls out several patterns worth preserving:
 
 ## What not to sacrifice for gas
 
-The review’s “do not” list is part of the security model:
+The following constraints are part of the security model:
 
 - Do not drop **snapshots** or per-voter vote tracking to “recompute from Hats.”
 - Do not strip **registry / deployment** fields without an indexer strategy—you move cost and trust off-chain.
@@ -73,4 +73,3 @@ The review’s “do not” list is part of the security model:
 
 - **Plain-language modules** — [`../README.md`](../README.md) (guidebook index).
 - **Hat tree and pointer upgrade story** — [`hats-tree-and-pointer-architecture.md`](./hats-tree-and-pointer-architecture.md).
-- **Full gas and storage review** — [`ai-docs/gas-and-data-structure-review.md`](../../ai-docs/gas-and-data-structure-review.md).

@@ -545,8 +545,10 @@ contract UnitNavePirataFactoryStandaloneSquadAdmin is UnitNavePirataFactoryBase 
     bytes32 _role = keccak256('pacto.factory.standalone.role');
     address _alice = makeAddr('standaloneAlice');
     address _clone = _factory.deploySquadAdminExtStandalone(address(_squadAdminExtImpl), _standaloneOwner);
-    vm.prank(_standaloneOwner);
+    vm.startPrank(_standaloneOwner);
+    SquadAdminExt(_clone).createRole(_role);
     SquadAdminExt(_clone).enableExecutor(_alice, _role);
+    vm.stopPrank();
     assertTrue(SquadAdminExt(_clone).hasExecutorRole(_alice, _role));
   }
 
@@ -587,8 +589,10 @@ contract UnitNavePirataFactoryStandaloneSquadAdmin is UnitNavePirataFactoryBase 
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _standaloneCaptain, _hat), abi.encode(true)
     );
     address _clone = _factory.deploySquadAdminStandaloneCaptainHat(address(_squadAdminImpl), _hat);
-    vm.prank(_standaloneCaptain);
+    vm.startPrank(_standaloneCaptain);
+    SquadAdmin(_clone).createRole(_role);
     SquadAdmin(_clone).enableExecutor(_alice, _role);
+    vm.stopPrank();
     assertTrue(SquadAdmin(_clone).hasExecutorRole(_alice, _role));
   }
 

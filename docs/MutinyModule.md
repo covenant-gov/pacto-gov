@@ -11,7 +11,7 @@ Together, this makes **leadership change** something the chain can enforce, inst
 ## What it does
 
 1. **Start a mutiny**  
-   A crew member proposes an address that should become the new captain. The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad.
+   A crew member proposes an address that should become the new captain (several entrypoints exist: another crew member, a committee contract, an arbitrary EOA or contract, etc.). There is also **`startMutinyToPauseCaptain`**, which targets the squad **Safe** — the same address the Treasury Authority uses as its Zodiac **avatar**. On success, the **captain hat moves to the Safe**, which shifts how treasury execution works (see [Treasury Authority](./TreasuryAuthority.md)). The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad.
 
 2. **Crew vote**  
    Crew members who agree cast a vote. Each can vote once per mutiny.
@@ -33,7 +33,8 @@ Together, this makes **leadership change** something the chain can enforce, inst
 |--------|----------------|
 | **Quartermaster** | The mutiny module **calls** the Quartermaster to flip mutiny mode on/off and, when needed, to adjust crew membership after a successful mutiny. |
 | **Hats Protocol** | Captain and crew membership live in **hats**. The module is wired as **eligibility** for the captain hat so transfers stay consistent with stored captain state. |
-| **Treasury Authority** | There is **no direct link in code**. In practice the same squad still coordinates: a mutiny doesn’t automatically cancel treasury proposals, but **who** is captain for approvals **can** change if a mutiny succeeds. |
+| **Treasury Authority** | **No direct calls**, but the module stores the squad **Safe** at init. A successful **pause-captain** mutiny moves the captain hat to that Safe, and Treasury Authority **execution rules** read whether the **avatar** wears the captain hat — so this path changes treasury from “crew + human captain” to “crew-only execute” until the hat moves again. |
+| **Squad Admin** | **No direct link.** Optional integrations use the squad-admin hat separately from mutiny. |
 | **“Quiet” checks elsewhere** | While a mutiny is active, this module reports the squad as **not quiet**, which other processes (like safe contract upgrades) may use to avoid risky changes during turmoil. |
 
 ## What this module does *not* do
@@ -44,4 +45,4 @@ Together, this makes **leadership change** something the chain can enforce, inst
 
 ## Mental model
 
-Think of the mutiny module as the squad’s **written constitution for removing or replacing the captain**, enforced by code — with a **pause** on normal HR (Quartermaster) while the vote is live.
+Think of the mutiny module as the squad’s **written constitution for removing or replacing the captain**, enforced by code — with a **pause** on normal HR (Quartermaster) while the vote is live. The **pause-captain** path is the same vote, but the declared successor is the **Safe**, so treasury can later run in a **crew-only execute** mode until leadership is restored on the hat.
