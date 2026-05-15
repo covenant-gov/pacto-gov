@@ -28,7 +28,7 @@ Only when the rule above is satisfied can the proposal **execute** as a transact
 
 ### Captain vote
 
-- When a **human** (or any non–Safe wearer) holds the captain hat, the captain gets **one** vote per proposal: **approve** (yes to executing, if crew passes) or **veto** (no — the proposal is dead for execution, and the proposer’s “open slot” is freed so they can propose something else).
+- When a **human** or non-avatar **smart contract** (any non–Safe wearer) holds the captain hat, the captain gets **one** vote per proposal: **approve** (yes to executing, if crew passes) or **veto** (no — the proposal is dead for execution, and the proposer’s “open slot” is freed so they can propose something else).
 - A veto does **not** require waiting until the proposal’s deadline; it’s an early **off-ramp**.
 - When the **Safe** wears the captain hat, **`captainVote(true)` is not required** for `execute`; crew threshold still applies. Product-wise, treat that window as **crew-led execution** for passed proposals.
 
@@ -51,7 +51,7 @@ Only when the rule above is satisfied can the proposal **execute** as a transact
 
 ## Mental model
 
-Think of the Treasury Authority as **“crew sign-off before the vault acts,”** plus **captain sign-off when a human wears the captain hat** — with a captain **veto** in that mode so leadership can stop a bad transaction without waiting for the clock to run out. When the **Safe** wears the captain hat, the mental model is **“crew quorum unlocks execution”** for the same proposal object.
+Think of the Treasury Authority as **“crew sign-off before the vault acts,”** plus **captain sign-off** — with a captain **veto** in that mode so leadership can stop a bad transaction without waiting for the clock to run out. When the **Safe** wears the captain hat, the mental model is **“crew quorum unlocks execution”** for the same proposal object.
 
 ## Note for readers
 

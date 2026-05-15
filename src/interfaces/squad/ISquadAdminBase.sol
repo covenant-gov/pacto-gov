@@ -44,10 +44,28 @@ interface ISquadAdminBase {
 
   /// @notice A required address argument was zero.
   error SquadAdminBase_ZeroAddress();
+  /// @notice A required role argument does not exist.
+  error SquadAdminBase_RoleDoesNotExist();
+  /// @notice A required role argument already exists.
+  error SquadAdminBase_RoleAlreadyExists();
+  /// @notice `bytes32("FULL")` / `bytes32("PAUSE")` cannot be removed from the catalog.
+  error SquadAdminBase_ReservedRole();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Register an app-defined role before it may be used with `enableExecutor` / `hasExecutorRole`.
+   * @param _role Non-zero role id; must not duplicate an existing registration.
+   */
+  function createRole(bytes32 _role) external;
+
+  /**
+   * @notice Remove a registered role from the catalog (does not clear per-executor flags in `_executors`).
+   * @param _role Role id previously registered via `createRole`.
+   */
+  function deleteRole(bytes32 _role) external;
+
   /**
    * @notice Enable an executor for an app role. Access-gated by the implementation.
    * @param _executor Address to enable.

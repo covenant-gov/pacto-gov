@@ -124,7 +124,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /// @inheritdoc ITreasuryAuthority
   function crewVote(uint256 _proposalId, bool _support) external onlyHatWearer(crewHatId) {
     Proposal storage _p = _requireAlive(_proposalId);
-    if (_p.captainDefeated) revert TreasuryAuthority_NotExecutable(_proposalId);
+    _rejectIfCaptainVetoed(_proposalId, _p);
     if (_voted[_proposalId][msg.sender]) revert TreasuryAuthority_AlreadyVoted(msg.sender);
 
     _voted[_proposalId][msg.sender] = true;
@@ -147,6 +147,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /// @inheritdoc ITreasuryAuthority
   function execute(uint256 _proposalId) external {
     Proposal storage _p = _requireAlive(_proposalId);
+    _rejectIfCaptainVetoed(_proposalId, _p);
     bool _captainOk = _p.captainApproved || _HATS.isWearerOfHat(avatar, captainHatId);
     if (!_crewVotePassed(_p) || !_captainOk) revert TreasuryAuthority_NotExecutable(_proposalId);
 
@@ -324,6 +325,15 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     if (_p.proposer == address(0)) revert TreasuryAuthority_ProposalDoesNotExist(_proposalId);
     if (_p.executed) revert TreasuryAuthority_AlreadyExecuted();
     if (block.timestamp >= _p.deadline) revert TreasuryAuthority_ProposalExpired(_proposalId);
+  }
+
+  /**
+   * @notice Reverts if the captain vetoed; used by `crewVote` and `execute` only.
+   * @param _proposalId Proposal id (for revert payload).
+   * @param _p Proposal storage from `_requireAlive`.
+   */
+  function _rejectIfCaptainVetoed(uint256 _proposalId, Proposal storage _p) internal view {
+    if (_p.captainDefeated) revert TreasuryAuthority_NotExecutable(_proposalId);
   }
 
   /**
