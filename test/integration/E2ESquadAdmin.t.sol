@@ -3,10 +3,10 @@ pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
 
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';

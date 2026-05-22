@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AssetRescuer} from 'contracts/abstracts/AssetRescuer.sol';
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
-import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
-import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
+import {AssetRescuer} from 'contracts/utils/AssetRescuer.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
+import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
+import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Module} from '@gnosis-guild/zodiac/contracts/core/Module.sol';
 import {FactoryFriendly} from '@gnosis-guild/zodiac/contracts/factory/FactoryFriendly.sol';

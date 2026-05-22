@@ -5,10 +5,10 @@ import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IHatsIdUtilities} from 'hats-core/Interfaces/IHatsIdUtilities.sol';
-import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 import {IRoleHatUpgrader} from 'interfaces/factory/IRoleHatUpgrader.sol';
+import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 

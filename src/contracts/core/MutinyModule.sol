@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
-import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
+import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';

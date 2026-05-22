@@ -8,7 +8,7 @@ import {CREW_CHANGE_DELAY, DEFAULT_CREW_VOTE_MODE, PROPOSAL_EXPIRY, SQUAD_QUORUM
  * @title ScriptGovernanceParams
  * @author Pacto
  * @notice Default squad governance values for deploy scripts and integration tests on every chain.
- * @dev Numeric defaults live in `script/Constants.sol`. Not to be confused with `contracts/abstracts/RangeValidator.sol`
+ * @dev Numeric defaults live in `script/Constants.sol`. Not to be confused with `contracts/utils/RangeValidator.sol`
  *      (on-chain min/max validation). Use `vm.warp` in tests instead of shorter Anvil-only delays.
  */
 abstract contract ScriptGovernanceParams {

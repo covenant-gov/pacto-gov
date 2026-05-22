@@ -10,7 +10,7 @@ import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Const
 import {ModuleManager} from '@safe-global/safe-contracts/contracts/base/ModuleManager.sol';
 import {OwnerManager} from '@safe-global/safe-contracts/contracts/base/OwnerManager.sol';
 import {Enum} from '@safe-global/safe-contracts/contracts/common/Enum.sol';
-import {ISafe, ISafeProxyFactory} from 'interfaces/safe/ISafe141.sol';
+import {ISafe, ISafeProxyFactory} from 'interfaces/utils/safe/ISafe141.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';

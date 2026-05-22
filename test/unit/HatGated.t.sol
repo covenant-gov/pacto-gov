@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 

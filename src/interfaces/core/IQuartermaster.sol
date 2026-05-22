@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IQuiescent} from 'interfaces/abstracts/IQuiescent.sol';
+import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 /**
  * @title IQuartermaster

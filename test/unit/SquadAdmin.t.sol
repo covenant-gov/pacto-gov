@@ -3,9 +3,9 @@ pragma solidity 0.8.30;
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';

@@ -4,14 +4,14 @@ pragma solidity 0.8.30;
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
-import {RangeValidator} from 'contracts/abstracts/RangeValidator.sol';
 import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
+import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 
-import {IAssetRescuer} from 'interfaces/abstracts/IAssetRescuer.sol';
 import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
+import {IAssetRescuer} from 'interfaces/utils/IAssetRescuer.sol';
 
 import {HATS_PROTOCOL_V1, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 

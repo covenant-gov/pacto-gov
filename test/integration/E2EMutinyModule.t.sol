@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
 import {MutinyModule} from 'contracts/core/MutinyModule.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
 
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';

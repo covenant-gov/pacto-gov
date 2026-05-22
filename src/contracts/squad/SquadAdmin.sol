@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {HatGated} from 'contracts/abstracts/HatGated.sol';
-import {SquadAdminBase} from 'contracts/abstracts/SquadAdminBase.sol';
+import {SquadAdminBase} from 'contracts/squad/SquadAdminBase.sol';
+import {HatGated} from 'contracts/utils/HatGated.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
