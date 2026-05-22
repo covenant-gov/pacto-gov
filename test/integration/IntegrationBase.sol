@@ -72,7 +72,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
     _;
   }
 
-  function setUp() public virtual {
+  function setUp() public {
     _requireEthereumMainnetFork();
     DeployTypes.ExternalAddresses memory _ext = _loadExternalAddresses();
     _deployFullSystem(_ext, address(this));
@@ -80,12 +80,12 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev Resolves `{hats,safe singleton,factory}` for `block.chainid`; override only for forks with different infra.
-  function _loadExternalAddresses() internal view virtual returns (DeployTypes.ExternalAddresses memory) {
+  function _loadExternalAddresses() internal view returns (DeployTypes.ExternalAddresses memory) {
     return _externalAddressesForCurrentChain();
   }
 
   /// @dev Selects Forge CLI fork (`HATS` already has code) or `vm.createSelectFork` + `_integrationForkActive`; otherwise reverts.
-  function _requireEthereumMainnetFork() internal virtual {
+  function _requireEthereumMainnetFork() internal {
     if (HATS_PROTOCOL_V1.code.length > 0) {
       _integrationForkActive = true;
       return;
@@ -102,42 +102,42 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev Re-rolls the fork to `DEFAULT_MAINNET_FORK_BLOCK` when the pinned Safe singleton has no bytecode.
-  function _ensureSafeSingletonBytecodeAfterFork() internal virtual {
+  function _ensureSafeSingletonBytecodeAfterFork() internal {
     if (SAFE_SINGLETON_141.code.length > 0) return;
     vm.rollFork(DEFAULT_MAINNET_FORK_BLOCK);
   }
 
   /// @dev Sets native balance for EOAs/contracts that submit fork transactions.
-  function _fund(address _who, uint256 _wei) internal virtual {
+  function _fund(address _who, uint256 _wei) internal {
     vm.deal(_who, _wei);
   }
 
   /// @dev `saltNonce` for `deployNavePirata`; override after multiple squads from the same test contract.
-  function _freshSquadSalt() internal view virtual returns (uint256 _saltNonce) {
+  function _freshSquadSalt() internal view returns (uint256 _saltNonce) {
     _saltNonce = DEPLOY_NAV_PIRATA_SALT_NONCE;
   }
 
   /// @dev Fresh `SquadAdmin` minimal proxy for init / revert scenarios (mirrors `_newTaClone` pattern in E2E suites).
-  function _newSquadAdminClone() internal virtual returns (SquadAdmin _fresh) {
+  function _newSquadAdminClone() internal returns (SquadAdmin _fresh) {
     SquadAdmin _impl = SquadAdmin(payable(_masters.squadAdminImpl));
     _fresh = SquadAdmin(payable(Clones.clone(address(_impl))));
   }
 
   /// @dev Fresh `SquadAdminExt` minimal proxy for owner-bootstrap / `postInitialize` scenarios.
-  function _newSquadAdminExtClone() internal virtual returns (SquadAdminExt _fresh) {
+  function _newSquadAdminExtClone() internal returns (SquadAdminExt _fresh) {
     SquadAdminExt _impl = SquadAdminExt(payable(_masters.squadAdminExtImpl));
     _fresh = SquadAdminExt(payable(Clones.clone(address(_impl))));
   }
 
   /// @dev `InitParams` aligned with the deployed Nave Pirata squad-admin clone (requires `_ensureSquad` first).
-  function _baselineSquadAdminInit() internal view virtual returns (ISquadAdmin.InitParams memory _p) {
+  function _baselineSquadAdminInit() internal view returns (ISquadAdmin.InitParams memory _p) {
     _p = ISquadAdmin.InitParams({
       captainHatId: _squadSquadAdmin.captainHatId(), squadAdminHatId: _squadSquadAdmin.squadAdminHatId()
     });
   }
 
   /// @dev Permissionless factory path; caller should `_fund(_owner, …)` if the owner must send txs.
-  function _deployStandaloneSquadAdminExt(address _owner) internal virtual returns (SquadAdminExt _clone) {
+  function _deployStandaloneSquadAdminExt(address _owner) internal returns (SquadAdminExt _clone) {
     _clone = SquadAdminExt(
       payable(NavePirataFactory(_infra.navePirataFactory)
           .deploySquadAdminExtStandalone(_masters.squadAdminExtImpl, _owner))
@@ -145,7 +145,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev Permissionless factory path for `SquadAdmin` with captain hat id only (no squad-admin hat id until `postInitialize`).
-  function _deployStandaloneSquadAdminCaptainHat(uint256 _captainHatId) internal virtual returns (SquadAdmin _clone) {
+  function _deployStandaloneSquadAdminCaptainHat(uint256 _captainHatId) internal returns (SquadAdmin _clone) {
     _clone = SquadAdmin(
       payable(NavePirataFactory(_infra.navePirataFactory)
           .deploySquadAdminStandaloneCaptainHat(_masters.squadAdminImpl, _captainHatId))
@@ -153,7 +153,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev Idempotent squad bootstrap shared by forked E2E suites; exposes `_squad*` storage including `TreasuryAuthority`.
-  function _ensureSquad() internal virtual {
+  function _ensureSquad() internal {
     if (_fixtureHasSquad) return;
 
     _squadCaptain = makeAddr('integrationSquadCaptain');
@@ -222,7 +222,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev IERC1155 inbound check on `_squadSafe` for the rescue path (operator and `from` are `treasuryAuthority`).
-  function _mockSquadSafeErc1155Receive(address treasuryAuthority, uint256 id, uint256 amount) internal virtual {
+  function _mockSquadSafeErc1155Receive(address treasuryAuthority, uint256 id, uint256 amount) internal {
     vm.mockCall(
       _squadSafe,
       abi.encodeCall(IERC1155Receiver.onERC1155Received, (treasuryAuthority, treasuryAuthority, id, amount, bytes(''))),

@@ -36,7 +36,7 @@ abstract contract UnitRoleHatUpgraderBase is Test {
   address internal _newClone = makeAddr('newClone');
   address internal _masterCopy = makeAddr('masterCopy');
 
-  function setUp() public virtual {
+  function setUp() public {
     vm.etch(_HATS_ADDRESS, hex'00');
     vm.etch(_CLONES_ADDRESS, hex'00');
     vm.etch(_REGISTRY_ADDRESS, hex'00');
