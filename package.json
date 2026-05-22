@@ -12,7 +12,7 @@
   "scripts": {
     "build": "forge build",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
-    "commit": "pnpm lint:check && pnpm lint:natspec && pnpm test:unit && pnpm test:integration",
+    "commit": "pnpm lint:fix && pnpm lint:natspec && pnpm test:unit && pnpm test:integration",
     "coverage": "forge coverage --ir-minimum --report summary --report lcov --match-path 'test/unit/*' --no-match-coverage 'script/|test/integration/'",
     "deploy:mainnet": "bash -c 'source .env && forge script Deploy --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --verify --chain mainnet -vvvvv'",
     "deploy:sepolia": "bash -c 'source .env && forge script Deploy --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --verify --chain sepolia -vvvvv'",
@@ -29,8 +29,7 @@
     "test": "forge test -vvv",
     "test:bulloak:fix": "bulloak check --fix ./**/*.tree",
     "test:bulloak:scaffold": "bulloak scaffold -wS ./**/*.tree",
-    "test:integration": "forge test --match-contract E2E -vvv",
-    "test:integration:ci": "bash scripts/ci/run-e2e-tests.sh",
+    "test:integration": "forge test --match-contract E2E --fork-url mainnet -vvv",
     "test:unit": "forge test --match-contract Unit -vvv",
     "test:unit:deep": "FOUNDRY_FUZZ_RUNS=5000 pnpm test:unit"
   },

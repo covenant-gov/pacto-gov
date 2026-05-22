@@ -40,7 +40,7 @@ abstract contract UnitSquadAdminBase is Test {
   address internal _bob = makeAddr('bob');
   address internal _stranger = makeAddr('stranger');
 
-  function setUp() public virtual {
+  function setUp() public {
     vm.etch(_HATS_ADDRESS, hex'00');
     _impl = new SquadAdmin(IHats(_HATS_ADDRESS));
 

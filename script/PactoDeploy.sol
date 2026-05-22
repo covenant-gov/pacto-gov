@@ -53,7 +53,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   }
 
   /// @dev Breadchain-style chain → infra map; every supported id currently shares the same public singletons.
-  function _initExternalByChain() internal virtual {
+  function _initExternalByChain() internal {
     DeployTypes.ExternalAddresses memory _e = DeployTypes.ExternalAddresses({
       hats: HATS_PROTOCOL_V1, safeProxyFactory: SAFE_PROXY_FACTORY_141, safeSingleton: SAFE_SINGLETON_141
     });
@@ -66,7 +66,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   }
 
   /// @notice Squad params for `deployNavePirata` call sites; same on all chains (use `vm.warp` in tests).
-  function _squadParams() internal view virtual returns (INavePirataFactory.SquadParams memory) {
+  function _squadParams() internal view returns (INavePirataFactory.SquadParams memory) {
     return _squadParamsProduction();
   }
 
@@ -75,7 +75,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     if (_ext.hats == address(0)) revert UnsupportedChain(block.chainid);
   }
 
-  function _deployMasterCopies(IHats _hats) internal virtual returns (DeployTypes.MasterCopyAddresses memory _m) {
+  function _deployMasterCopies(IHats _hats) internal returns (DeployTypes.MasterCopyAddresses memory _m) {
     _m.quartermaster = address(new Quartermaster(_hats));
     _m.mutinyModule = address(new MutinyModule(_hats));
     _m.treasuryAuthority = address(new TreasuryAuthority(_hats));
@@ -87,7 +87,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   function _deployInfra(
     DeployTypes.ExternalAddresses memory _ext,
     address _admin
-  ) internal virtual returns (DeployTypes.InfraAddresses memory _i) {
+  ) internal returns (DeployTypes.InfraAddresses memory _i) {
     _i.clonesFactory = address(new RoleHatClonesFactory());
     _i.registry = address(new NavePirataRegistry(_admin));
     _i.upgrader = address(
@@ -103,7 +103,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     _infra = _i;
   }
 
-  function _wireRegistry(address _registry, address _factory, address _upgrader, address _admin) internal virtual {
+  function _wireRegistry(address _registry, address _factory, address _upgrader, address _admin) internal {
     vm.prank(_admin);
     NavePirataRegistry(_registry).setFactory(_factory);
     vm.prank(_admin);
@@ -111,13 +111,13 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   }
 
   /// @notice Full chain bootstrap: masters → infra → `setFactory` / `setUpgrader`.
-  function _deployFullSystem(DeployTypes.ExternalAddresses memory _ext, address _admin) internal virtual {
+  function _deployFullSystem(DeployTypes.ExternalAddresses memory _ext, address _admin) internal {
     _deployMasterCopies(IHats(_ext.hats));
     _deployInfra(_ext, _admin);
     _wireRegistry(_infra.registry, _infra.navePirataFactory, _infra.upgrader, _admin);
   }
 
-  function _logDeployment() internal view virtual {
+  function _logDeployment() internal view {
     console.log('Master Quartermaster:', _masters.quartermaster);
     console.log('Master MutinyModule:', _masters.mutinyModule);
     console.log('Master TreasuryAuthority:', _masters.treasuryAuthority);
