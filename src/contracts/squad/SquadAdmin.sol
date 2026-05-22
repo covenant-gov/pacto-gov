@@ -62,7 +62,7 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
    * @notice Initializes the squad admin.
    * @param _p Bootstrap parameters.
    */
-  function _squadAdminInit(InitParams calldata _p) internal virtual {
+  function _squadAdminInit(InitParams calldata _p) internal {
     captainHatId = _p.captainHatId;
     squadAdminHatId = _p.squadAdminHatId;
   }

@@ -26,7 +26,7 @@ abstract contract UnitRoleHatClonesFactoryBase is Test {
 
   address internal _deployer = makeAddr('deployer');
 
-  function setUp() public virtual {
+  function setUp() public {
     vm.etch(_HATS_ADDRESS, hex'00');
     _factory = new RoleHatClonesFactory();
     _master = new Quartermaster(IHats(_HATS_ADDRESS));

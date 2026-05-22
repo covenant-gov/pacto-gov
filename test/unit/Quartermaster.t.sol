@@ -43,7 +43,7 @@ abstract contract UnitQuartermasterBase is Test {
   address internal _alice = makeAddr('alice');
   address internal _bob = makeAddr('bob');
 
-  function setUp() public virtual {
+  function setUp() public {
     vm.etch(_HATS_ADDRESS, hex'00');
     _master = new Quartermaster(IHats(_HATS_ADDRESS));
     _qm = Quartermaster(Clones.clone(address(_master)));

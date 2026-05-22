@@ -60,7 +60,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
   address internal _predTa = makeAddr('predTa');
   address internal _safe = makeAddr('safe');
 
-  function setUp() public virtual {
+  function setUp() public {
     vm.etch(_HATS_ADDRESS, hex'00');
     vm.etch(_SAFE_PROXY_FACTORY_ADDRESS, hex'00');
     vm.etch(_SAFE_SINGLETON, hex'00');
