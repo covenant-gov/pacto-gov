@@ -113,7 +113,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev `saltNonce` for `deployNavePirata`; override after multiple squads from the same test contract.
-  function _freshSquadSalt() internal view returns (uint256 _saltNonce) {
+  function _freshSquadSalt() internal pure returns (uint256 _saltNonce) {
     _saltNonce = DEPLOY_NAV_PIRATA_SALT_NONCE;
   }
 
