@@ -203,6 +203,8 @@ contract E2ESquadAdminTest is IntegrationBase {
     assertTrue(_squadSquadAdmin.isExecutorPaused(_alice));
     assertFalse(_squadSquadAdmin.isExecutorFullPermission(_alice));
     assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, _E2E_EXECUTOR_ROLE_APP));
+    // casting to 'bytes32' is safe here
+    // forge-lint: disable-next-line(unsafe-typecast)
     assertFalse(_squadSquadAdmin.hasExecutorRole(_alice, bytes32('FULL')));
   }
 

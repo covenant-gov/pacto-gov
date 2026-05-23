@@ -37,7 +37,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
    * @param _role Role id that must be registered (or sentinel `FULL` / `PAUSE`).
    */
   modifier roleExists(bytes32 _role) {
-    if (!_roleExists(_role)) revert SquadAdminBase_RoleDoesNotExist();
+    _enforceRoleExists(_role);
     _;
   }
 
@@ -149,6 +149,14 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   function _roleExists(bytes32 _role) internal view returns (bool _exists) {
     if (_role == _FULL_PERMISSION || _role == _PAUSE_PERMISSION) return true;
     _exists = _enabledRoles[_role];
+  }
+
+  /**
+   * @notice Reverts if a role does not exist.
+   * @param _role Role to check.
+   */
+  function _enforceRoleExists(bytes32 _role) internal view {
+    if (!_roleExists(_role)) revert SquadAdminBase_RoleDoesNotExist();
   }
 
   /// @notice Hook for access control on `isAllowed`; implementations revert when denied (e.g. `HatGated_NotHatWearer` or `SquadAdminExt_NotAllowed`).
