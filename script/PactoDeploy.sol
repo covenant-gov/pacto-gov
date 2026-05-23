@@ -66,7 +66,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   }
 
   /// @notice Squad params for `deployNavePirata` call sites; same on all chains (use `vm.warp` in tests).
-  function _squadParams() internal view returns (INavePirataFactory.SquadParams memory) {
+  function _squadParams() internal pure returns (INavePirataFactory.SquadParams memory) {
     return _squadParamsProduction();
   }
 
