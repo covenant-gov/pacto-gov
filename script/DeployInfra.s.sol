@@ -17,8 +17,7 @@ contract DeployInfra is PactoDeploy {
   function run() external {
     DeployTypes.ExternalAddresses memory _ext = _externalAddressesForCurrentChain();
     vm.startBroadcast();
-    _deployInfra(_ext, msg.sender);
-    _wireRegistry(_infra.registry, _infra.navePirataFactory, _infra.upgrader, msg.sender);
+    _deployInfra(_ext, _broadcastDeployer());
     vm.stopBroadcast();
     _writeExternalAddressesJson(_ext);
     _writeInfraJson(_infra);

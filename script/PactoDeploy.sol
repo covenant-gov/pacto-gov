@@ -89,7 +89,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     address _admin
   ) internal returns (DeployTypes.InfraAddresses memory _i) {
     _i.clonesFactory = address(new RoleHatClonesFactory());
-    _i.registry = address(new NavePirataRegistry(_admin));
+    _i.registry = address(new NavePirataRegistry());
     _i.upgrader = address(
       new RoleHatUpgrader(
         IHats(_ext.hats), IRoleHatClonesFactory(_i.clonesFactory), INavePirataRegistry(_i.registry), _admin
@@ -100,21 +100,19 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
         _ext.hats, address(_ext.safeProxyFactory), _ext.safeSingleton, _i.clonesFactory, _i.registry, _i.upgrader
       )
     );
+    NavePirataRegistry(_i.registry).initialize(_i.navePirataFactory, _i.upgrader);
     _infra = _i;
   }
 
-  function _wireRegistry(address _registry, address _factory, address _upgrader, address _admin) internal {
-    vm.prank(_admin);
-    NavePirataRegistry(_registry).setFactory(_factory);
-    vm.prank(_admin);
-    NavePirataRegistry(_registry).setUpgrader(_upgrader);
-  }
-
-  /// @notice Full chain bootstrap: masters → infra → `setFactory` / `setUpgrader`.
+  /// @notice Full chain bootstrap: masters → infra (including registry `initialize`).
   function _deployFullSystem(DeployTypes.ExternalAddresses memory _ext, address _admin) internal {
     _deployMasterCopies(IHats(_ext.hats));
     _deployInfra(_ext, _admin);
-    _wireRegistry(_infra.registry, _infra.navePirataFactory, _infra.upgrader, _admin);
+  }
+
+  /// @dev After `vm.startBroadcast()`, `msg.sender` in `run()` is still the script default; use the broadcaster address.
+  function _broadcastDeployer() internal returns (address _deployer) {
+    (, _deployer,) = vm.readCallers();
   }
 
   function _logDeployment() internal view {
