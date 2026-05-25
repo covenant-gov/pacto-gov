@@ -17,7 +17,7 @@ import {console} from 'forge-std/console.sol';
  * @title VerifyDeploy
  * @author Pacto
  * @notice Etherscan verification for full-system bootstrap contracts from `deployments/<chainId>/full-system.json`.
- * @dev Requires `ffi = true` in `foundry.toml`. Run after `Deploy` (or standalone if broadcast already landed).
+ * @dev Requires `FOUNDRY_PROFILE=verify` (`ffi = true` in `[profile.verify]` only). Run after `Deploy`.
  */
 contract VerifyDeploy is Script {
   using stdJson for string;

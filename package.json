@@ -14,9 +14,9 @@
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
     "commit": "pnpm lint:fix && pnpm lint:natspec && pnpm test:unit && pnpm test:integration",
     "coverage": "forge coverage --ir-minimum --report summary --report lcov --match-path 'test/unit/*' --no-match-coverage 'script/|test/integration/'",
-    "deploy:arbitrum": "bash -c 'source .env && forge script Deploy --rpc-url arbitrum --account $ARBITRUM_DEPLOYER_NAME --broadcast --chain arbitrum -vvvvv && forge script VerifyDeploy --chain arbitrum -vvvv'",
-    "deploy:mainnet": "bash -c 'source .env && forge script Deploy --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --chain mainnet -vvvvv && forge script VerifyDeploy --chain mainnet -vvvv'",
-    "deploy:sepolia": "bash -c 'source .env && forge script Deploy --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvvv && forge script VerifyDeploy --chain sepolia -vvvv'",
+    "deploy:arbitrum": "bash -c 'source .env && forge script Deploy --rpc-url arbitrum --account $ARBITRUM_DEPLOYER_NAME --broadcast --chain arbitrum -vvvvv && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain arbitrum -vvvv'",
+    "deploy:mainnet": "bash -c 'source .env && forge script Deploy --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --chain mainnet -vvvvv && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain mainnet -vvvv'",
+    "deploy:sepolia": "bash -c 'source .env && forge script Deploy --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvvv && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain sepolia -vvvv'",
     "deploy:squad-admin-ext:mainnet": "bash -c 'source .env && forge script DeploySquadAdminExtStandalone --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --chain mainnet -vvvv'",
     "deploy:squad-admin-ext:sepolia": "bash -c 'source .env && forge script DeploySquadAdminExtStandalone --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvv'",
     "deploy:squad-admin-standalone-captain:mainnet": "bash -c 'source .env && forge script DeploySquadAdminStandaloneCaptainHat --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --chain mainnet -vvvv'",
@@ -34,9 +34,9 @@
     "test:integration": "forge test --match-contract E2E --fork-url mainnet -vvv",
     "test:unit": "forge test --match-contract Unit -vvv",
     "test:unit:deep": "FOUNDRY_FUZZ_RUNS=5000 pnpm test:unit",
-    "verify:arbitrum": "bash -c 'source .env && forge script VerifyDeploy --chain arbitrum -vvvv'",
-    "verify:mainnet": "bash -c 'source .env && forge script VerifyDeploy --chain mainnet -vvvv'",
-    "verify:sepolia": "bash -c 'source .env && forge script VerifyDeploy --chain sepolia -vvvv'"
+    "verify:arbitrum": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain arbitrum -vvvv'",
+    "verify:mainnet": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain mainnet -vvvv'",
+    "verify:sepolia": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain sepolia -vvvv'"
   },
   "lint-staged": {
     "*.{js,css,md,ts,sol}": "forge fmt",

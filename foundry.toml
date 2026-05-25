@@ -14,9 +14,12 @@ evm_version = 'prague'
 libs = ['node_modules']
 optimizer_runs = 10_000
 via_ir = true
-ffi = true
 ignored_warnings_from = ["node_modules/@openzeppelin/contracts/proxy/utils/Initializable.sol"]
 fs_permissions = [{ access = 'read-write', path = './deployments' }]
+
+[profile.verify]
+ffi = true
+fs_permissions = [{ access = 'read', path = './deployments' }]
 
 [profile.optimized]
 via_ir = true
