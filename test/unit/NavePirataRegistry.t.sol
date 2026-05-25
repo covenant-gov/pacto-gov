@@ -5,32 +5,24 @@ import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 import {Test} from 'forge-std/Test.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
-
 /**
  * @title UnitNavePirataRegistryBase
  * @author Pacto
- * @notice Shared fixture for `NavePirataRegistry` unit tests. Deploys a fresh registry owned by
- *         an admin EOA; factory/upgrader wiring is performed per-suite so wiring-gate tests can
- *         observe the pre-wired state.
+ * @notice Shared fixture for `NavePirataRegistry` unit tests.
  */
 abstract contract UnitNavePirataRegistryBase is Test {
   NavePirataRegistry internal _registry;
 
-  address internal _admin = makeAddr('admin');
   address internal _factory = makeAddr('factory');
   address internal _upgrader = makeAddr('upgrader');
   address internal _stranger = makeAddr('stranger');
 
   function setUp() public virtual {
-    _registry = new NavePirataRegistry(_admin);
+    _registry = new NavePirataRegistry();
   }
 
   function _wire() internal {
-    vm.prank(_admin);
-    _registry.setFactory(_factory);
-    vm.prank(_admin);
-    _registry.setUpgrader(_upgrader);
+    _registry.initialize(_factory, _upgrader);
   }
 
   function _sampleDeployment(uint256 _topHatId) internal returns (INavePirataRegistry.Deployment memory _d) {
@@ -64,76 +56,33 @@ abstract contract UnitNavePirataRegistryBase is Test {
 }
 
 contract UnitNavePirataRegistryConstruction is UnitNavePirataRegistryBase {
-  function test_Constructor_RevertsOnZeroAdmin() external {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
-    new NavePirataRegistry(address(0));
-  }
-
-  function test_Constructor_SetsOwner() external view {
-    assertEq(_registry.owner(), _admin);
+  function test_Constructor_LeavesWiringUnset() external view {
     assertEq(_registry.factory(), address(0));
     assertEq(_registry.upgrader(), address(0));
   }
 }
 
-contract UnitNavePirataRegistryWiring is UnitNavePirataRegistryBase {
-  function test_SetFactory_HappyPath() external {
-    vm.prank(_admin);
-    _registry.setFactory(_factory);
+contract UnitNavePirataRegistryInitialize is UnitNavePirataRegistryBase {
+  function test_Initialize_HappyPath() external {
+    _registry.initialize(_factory, _upgrader);
     assertEq(_registry.factory(), _factory);
-  }
-
-  function test_SetFactory_RevertsIfNotOwner() external {
-    vm.prank(_stranger);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _stranger));
-    _registry.setFactory(_factory);
-  }
-
-  function test_SetFactory_RevertsOnZero() external {
-    vm.prank(_admin);
-    vm.expectRevert(INavePirataRegistry.NavePirataRegistry_ZeroAddress.selector);
-    _registry.setFactory(address(0));
-  }
-
-  function test_SetFactory_RevertsIfAlreadyWired() external {
-    vm.prank(_admin);
-    _registry.setFactory(_factory);
-    vm.prank(_admin);
-    vm.expectRevert(INavePirataRegistry.NavePirataRegistry_AlreadyWired.selector);
-    _registry.setFactory(makeAddr('other'));
-  }
-
-  function test_SetUpgrader_HappyPath() external {
-    vm.prank(_admin);
-    _registry.setUpgrader(_upgrader);
     assertEq(_registry.upgrader(), _upgrader);
   }
 
-  function test_SetUpgrader_RevertsIfNotOwner() external {
-    vm.prank(_stranger);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _stranger));
-    _registry.setUpgrader(_upgrader);
-  }
-
-  function test_SetUpgrader_RevertsOnZero() external {
-    vm.prank(_admin);
+  function test_Initialize_RevertsOnZeroFactory() external {
     vm.expectRevert(INavePirataRegistry.NavePirataRegistry_ZeroAddress.selector);
-    _registry.setUpgrader(address(0));
+    _registry.initialize(address(0), _upgrader);
   }
 
-  function test_SetUpgrader_RevertsIfAlreadyWired() external {
-    vm.prank(_admin);
-    _registry.setUpgrader(_upgrader);
-    vm.prank(_admin);
+  function test_Initialize_RevertsOnZeroUpgrader() external {
+    vm.expectRevert(INavePirataRegistry.NavePirataRegistry_ZeroAddress.selector);
+    _registry.initialize(_factory, address(0));
+  }
+
+  function test_Initialize_RevertsIfAlreadyWired() external {
+    _registry.initialize(_factory, _upgrader);
     vm.expectRevert(INavePirataRegistry.NavePirataRegistry_AlreadyWired.selector);
-    _registry.setUpgrader(makeAddr('other'));
-  }
-
-  function test_AdminCanRenounceAfterWiring() external {
-    _wire();
-    vm.prank(_admin);
-    _registry.renounceOwnership();
-    assertEq(_registry.owner(), address(0));
+    _registry.initialize(makeAddr('other-factory'), makeAddr('other-upgrader'));
   }
 }
 

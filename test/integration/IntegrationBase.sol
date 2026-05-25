@@ -36,7 +36,7 @@ import {Test} from 'forge-std/Test.sol';
 /**
  * @title IntegrationBase
  * @author Pacto
- * @notice Runs the same deploy routine as `script/Deploy.sol` during `setUp`; registry owner is the test contract.
+ * @notice Runs the same deploy routine as `script/Deploy.sol` during `setUp`.
  * @dev Requires an Ethereum mainnet fork: `forge test --fork-url …`, env `MAINNET_RPC`, or `foundry.toml` `rpc_endpoints.mainnet`.
  *      Pin matches `DEFAULT_MAINNET_FORK_BLOCK` in `Constants.sol`. Use `_fund()`, `_freshSquadSalt()` in subclasses.
  *      Squad helpers (`withDeployedNavePirataSquad`, `_ensureSquad`) run on that fork via `deployNavePirata`.
@@ -113,7 +113,7 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev `saltNonce` for `deployNavePirata`; override after multiple squads from the same test contract.
-  function _freshSquadSalt() internal view returns (uint256 _saltNonce) {
+  function _freshSquadSalt() internal pure returns (uint256 _saltNonce) {
     _saltNonce = DEPLOY_NAV_PIRATA_SALT_NONCE;
   }
 

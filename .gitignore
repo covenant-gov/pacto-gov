@@ -24,3 +24,5 @@ crytic-export
 
 #ai
 ai-docs/*
+
+/deployments

@@ -111,19 +111,14 @@ interface INavePirataRegistry {
   error NavePirataRegistry_ZeroAddress();
 
   /*///////////////////////////////////////////////////////////////
-                            ADMIN WIRING
+                            INITIALIZER
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice One-shot setter for the factory address. Reverts after the first successful call.
+   * @notice One-shot wiring for factory and upgrader write access. Reverts after the first successful call.
    * @param _factory Address of the `NavePirataFactory` authorised to register deployments.
-   */
-  function setFactory(address _factory) external;
-
-  /**
-   * @notice One-shot setter for the upgrader address. Reverts after the first successful call.
    * @param _upgrader Address of the `RoleHatUpgrader` authorised to record upgrades.
    */
-  function setUpgrader(address _upgrader) external;
+  function initialize(address _factory, address _upgrader) external;
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

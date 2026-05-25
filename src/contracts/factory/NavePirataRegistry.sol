@@ -3,15 +3,13 @@ pragma solidity 0.8.30;
 
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
-
 /**
  * @title NavePirataRegistry
  * @author Pacto
  * @notice On-chain, append-only squad + upgrade log; see `INavePirataRegistry`
- * @dev Factory/upgrader set once; owner should renounce after wiring
+ * @dev `initialize` wires factory/upgrader once; no owner role after that
  */
-contract NavePirataRegistry is INavePirataRegistry, Ownable {
+contract NavePirataRegistry is INavePirataRegistry {
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
@@ -29,30 +27,14 @@ contract NavePirataRegistry is INavePirataRegistry, Ownable {
   mapping(uint256 _topHatId => UpgradeRecord[] _records) internal _upgradeLogs;
 
   /*///////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
-  //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Deploys the registry owned by `_admin`.
-   * @dev Zero-admin protection comes from `Ownable`, which reverts with `OwnableInvalidOwner`.
-   * @param _admin Address permitted to perform the one-shot wiring setters.
-   */
-  constructor(address _admin) Ownable(_admin) {}
-
-  /*///////////////////////////////////////////////////////////////
-                            ADMIN WIRING
+                            INITIALIZER
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataRegistry
-  function setFactory(address _factory) external onlyOwner {
-    if (factory != address(0)) revert NavePirataRegistry_AlreadyWired();
-    if (_factory == address(0)) revert NavePirataRegistry_ZeroAddress();
+  function initialize(address _factory, address _upgrader) external {
+    if (factory != address(0) || upgrader != address(0)) revert NavePirataRegistry_AlreadyWired();
+    if (_factory == address(0) || _upgrader == address(0)) revert NavePirataRegistry_ZeroAddress();
     factory = _factory;
-  }
-
-  /// @inheritdoc INavePirataRegistry
-  function setUpgrader(address _upgrader) external onlyOwner {
-    if (upgrader != address(0)) revert NavePirataRegistry_AlreadyWired();
-    if (_upgrader == address(0)) revert NavePirataRegistry_ZeroAddress();
     upgrader = _upgrader;
   }
 
