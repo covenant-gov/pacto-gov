@@ -22,6 +22,11 @@ abstract contract DeploymentArtifacts is Script {
     return string.concat('deployments/', vm.toString(block.chainid), '/', filename);
   }
 
+  function _writeDeploymentJson(string memory json, string memory filename) internal {
+    vm.createDir(string.concat('deployments/', vm.toString(block.chainid)), true);
+    vm.writeJson(json, _deploymentJsonPath(filename));
+  }
+
   function _writeExternalAddressesJson(DeployTypes.ExternalAddresses memory ext) internal {
     if (!_shouldWriteDeploymentJson()) return;
     string memory k = 'pacto_external';
@@ -29,7 +34,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'hats', ext.hats);
     vm.serializeAddress(k, 'safeProxyFactory', ext.safeProxyFactory);
     string memory json = vm.serializeAddress(k, 'safeSingleton', ext.safeSingleton);
-    vm.writeJson(json, _deploymentJsonPath('external.json'));
+    _writeDeploymentJson(json, 'external.json');
   }
 
   function _writeMasterCopiesJson(DeployTypes.MasterCopyAddresses memory m) internal {
@@ -41,7 +46,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'treasuryAuthority', m.treasuryAuthority);
     vm.serializeAddress(k, 'squadAdminImpl', m.squadAdminImpl);
     string memory json = vm.serializeAddress(k, 'squadAdminExtImpl', m.squadAdminExtImpl);
-    vm.writeJson(json, _deploymentJsonPath('master-copies.json'));
+    _writeDeploymentJson(json, 'master-copies.json');
   }
 
   function _writeInfraJson(DeployTypes.InfraAddresses memory i) internal {
@@ -52,13 +57,14 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'navePirataRegistry', i.registry);
     vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
     string memory json = vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
-    vm.writeJson(json, _deploymentJsonPath('infra.json'));
+    _writeDeploymentJson(json, 'infra.json');
   }
 
   function _writeFullSystemJson(
     DeployTypes.ExternalAddresses memory ext,
     DeployTypes.MasterCopyAddresses memory m,
-    DeployTypes.InfraAddresses memory i
+    DeployTypes.InfraAddresses memory i,
+    address deployer
   ) internal {
     if (!_shouldWriteDeploymentJson()) return;
     string memory k = 'pacto_full_system';
@@ -74,8 +80,9 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'roleHatClonesFactory', i.clonesFactory);
     vm.serializeAddress(k, 'navePirataRegistry', i.registry);
     vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
-    string memory json = vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
-    vm.writeJson(json, _deploymentJsonPath('full-system.json'));
+    vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
+    string memory json = vm.serializeAddress(k, 'deployer', deployer);
+    _writeDeploymentJson(json, 'full-system.json');
   }
 
   function _writeSquadDeploymentJson(
@@ -97,7 +104,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'mutinyModule', mutinyModule);
     vm.serializeAddress(k, 'treasuryAuthority', treasuryAuthority);
     string memory json = vm.serializeAddress(k, 'squadAdminProxy', squadAdminProxy);
-    vm.writeJson(json, _deploymentJsonPath(string.concat('squad-', vm.toString(saltNonce), '.json')));
+    _writeDeploymentJson(json, string.concat('squad-', vm.toString(saltNonce), '.json'));
   }
 
   function _writeSquadAdminExtStandaloneJson(
@@ -112,9 +119,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'clone', clone);
     vm.serializeAddress(k, 'owner', owner);
     string memory json = vm.serializeAddress(k, 'implementation', implementation);
-    vm.writeJson(
-      json, _deploymentJsonPath(string.concat('squad-admin-ext-standalone-', vm.toString(artifactNonce), '.json'))
-    );
+    _writeDeploymentJson(json, string.concat('squad-admin-ext-standalone-', vm.toString(artifactNonce), '.json'));
   }
 
   function _writeSquadAdminStandaloneCaptainJson(
@@ -129,8 +134,6 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeUint(k, 'captainHatId', captainHatId);
     vm.serializeAddress(k, 'clone', clone);
     string memory json = vm.serializeAddress(k, 'implementation', implementation);
-    vm.writeJson(
-      json, _deploymentJsonPath(string.concat('squad-admin-standalone-captain-', vm.toString(artifactNonce), '.json'))
-    );
+    _writeDeploymentJson(json, string.concat('squad-admin-standalone-captain-', vm.toString(artifactNonce), '.json'));
   }
 }
