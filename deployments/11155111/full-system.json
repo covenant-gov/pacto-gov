@@ -1,0 +1,16 @@
+{
+  "chainId": 11155111,
+  "hats": "0x3bc1A0Ad72417f2d411118085256fC53CBdDd137",
+  "masterMutinyModule": "0xeA647c49a3594EEb3Cf0f38f705F34e036d3733B",
+  "masterQuartermaster": "0xE9C111428E23bd68C892785A6566DFc160358af1",
+  "masterSquadAdminExtImpl": "0x55B4e8df8DC23e4f414025e252Db26cbA22e25F1",
+  "masterSquadAdminImpl": "0x85A7B39ED76b84efd85619F6df939c711b14DB54",
+  "masterTreasuryAuthority": "0x3AfD425EEFC54d4d97f610C47D4a3cEAE0FeC298",
+  "navePirataFactory": "0x44E42cf7b2DadDe6D5fc27B57625EaF3e3D41316",
+  "navePirataRegistry": "0x45127C1c92741C0dA38e1A73fbb97a8a2C46770f",
+  "roleHatClonesFactory": "0xB240e490980b3EF11c30d7476a40f43B3311Ad58",
+  "roleHatUpgrader": "0x327f1B3cdcabe6F1BC934bed768032B7b42906f7",
+  "safeProxyFactory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+  "safeSingleton": "0x41675C099F32341bf84BFc5382aF534df5C7461a",
+  "deployer": "0x6522cE18D0098A2f98fB6E4a40C081F16d9a71e7"
+}
