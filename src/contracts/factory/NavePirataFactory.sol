@@ -247,9 +247,9 @@ contract NavePirataFactory is INavePirataFactory {
 
     uint256 _namespacedNonce = uint256(keccak256(abi.encode(msg.sender, _saltNonce)));
 
-    try _SAFE_PROXY_FACTORY.createProxyWithNonce(
-      _SAFE_SINGLETON, _setupData, _namespacedNonce
-    ) returns (address _proxy) {
+    try _SAFE_PROXY_FACTORY.createProxyWithNonce(_SAFE_SINGLETON, _setupData, _namespacedNonce) returns (
+      address _proxy
+    ) {
       if (_proxy == address(0)) {
         revert NavePirataFactory_SafeDeployFailed();
       }
@@ -282,10 +282,9 @@ contract NavePirataFactory is INavePirataFactory {
       _HATS.createHat(_hats.topHatId, 'QuartermasterRole', 1, _placeholder, _placeholder, false, '');
     _hats.treasuryAuthorityRoleHatId =
       _HATS.createHat(_hats.topHatId, 'TreasuryAuthorityRole', 1, _placeholder, _placeholder, false, '');
-    _hats.captainHatId =
-      _HATS.createHat(_hats.mutinyRoleHatId, 'Captain', 1, _predMutinyModule, _placeholder, false, '');
+    _hats.captainHatId = _HATS.createHat(_hats.mutinyRoleHatId, 'Captain', 1, _predMutinyModule, _placeholder, true, '');
     _hats.crewHatId = _HATS.createHat(
-      _hats.quartermasterRoleHatId, 'Crew', _MAX_CREW_SUPPLY, _predQuartermaster, _placeholder, false, ''
+      _hats.quartermasterRoleHatId, 'Crew', _MAX_CREW_SUPPLY, _predQuartermaster, _placeholder, true, ''
     );
     _hats.squadAdminHatId =
       _HATS.createHat(_hats.captainHatId, 'SquadAdminProxy', 1, _placeholder, _placeholder, false, '');
