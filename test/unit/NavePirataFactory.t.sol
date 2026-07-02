@@ -146,13 +146,13 @@ abstract contract UnitNavePirataFactoryBase is Test {
     );
     vm.mockCall(
       _HATS_ADDRESS,
-      abi.encodeCall(IHats.createHat, (_MUTINY_ROLE_HAT_ID, 'Captain', 1, _predMm, _UPGRADER_ADDRESS, false, '')),
+      abi.encodeCall(IHats.createHat, (_MUTINY_ROLE_HAT_ID, 'Captain', 1, _predMm, _UPGRADER_ADDRESS, true, '')),
       abi.encode(_CAPTAIN_HAT_ID)
     );
     vm.mockCall(
       _HATS_ADDRESS,
       abi.encodeCall(
-        IHats.createHat, (_QUARTERMASTER_ROLE_HAT_ID, 'Crew', type(uint32).max, _predQm, _UPGRADER_ADDRESS, false, '')
+        IHats.createHat, (_QUARTERMASTER_ROLE_HAT_ID, 'Crew', type(uint32).max, _predQm, _UPGRADER_ADDRESS, true, '')
       ),
       abi.encode(_CREW_HAT_ID)
     );

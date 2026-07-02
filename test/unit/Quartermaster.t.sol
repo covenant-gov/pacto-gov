@@ -702,28 +702,20 @@ contract UnitQuartermasterBootstrap is UnitQuartermasterBase {
     _qm.bootstrapCrew(_c);
   }
 
-  function test_BootstrapCrew_Succeeds_whenSameCandidateListedTwice() external {
+  function test_BootstrapCrew_RevertsIfSameCandidateListedTwice() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CAPTAIN_HAT, false);
-    _mockWearer(_alice, _CREW_HAT, false);
+    // Models the second-loop `_validateAddCandidate` path after a duplicate would have minted once on-chain.
+    _mockWearer(_alice, _CREW_HAT, true);
     _mockCrewCapacity(0, _CREW_MAX);
-    _mockMintHat(_CREW_HAT, _alice, true);
 
     address[] memory _c = new address[](2);
     _c[0] = _alice;
     _c[1] = _alice;
 
-    vm.expectEmit(true, false, false, true, address(_qm));
-    emit IQuartermaster.CrewAddExecuted(_alice);
-    vm.expectEmit(true, false, false, true, address(_qm));
-    emit IQuartermaster.CrewAddExecuted(_alice);
-
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_AlreadyCrew.selector, _alice));
     vm.prank(_captain);
     _qm.bootstrapCrew(_c);
-
-    (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
-    assertTrue(_eligible);
-    assertTrue(_qm.isQuiet());
   }
 
   function test_BootstrapCrew_RevertsIfMoreCandidatesThanMaxSupply() external {

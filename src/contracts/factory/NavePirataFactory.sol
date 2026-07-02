@@ -282,10 +282,9 @@ contract NavePirataFactory is INavePirataFactory {
       _HATS.createHat(_hats.topHatId, 'QuartermasterRole', 1, _placeholder, _placeholder, false, '');
     _hats.treasuryAuthorityRoleHatId =
       _HATS.createHat(_hats.topHatId, 'TreasuryAuthorityRole', 1, _placeholder, _placeholder, false, '');
-    _hats.captainHatId =
-      _HATS.createHat(_hats.mutinyRoleHatId, 'Captain', 1, _predMutinyModule, _placeholder, false, '');
+    _hats.captainHatId = _HATS.createHat(_hats.mutinyRoleHatId, 'Captain', 1, _predMutinyModule, _placeholder, true, '');
     _hats.crewHatId = _HATS.createHat(
-      _hats.quartermasterRoleHatId, 'Crew', _MAX_CREW_SUPPLY, _predQuartermaster, _placeholder, false, ''
+      _hats.quartermasterRoleHatId, 'Crew', _MAX_CREW_SUPPLY, _predQuartermaster, _placeholder, true, ''
     );
     _hats.squadAdminHatId =
       _HATS.createHat(_hats.captainHatId, 'SquadAdminProxy', 1, _placeholder, _placeholder, false, '');

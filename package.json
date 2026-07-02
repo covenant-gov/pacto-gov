@@ -31,7 +31,7 @@
     "test": "forge test -vvv",
     "test:bulloak:fix": "bulloak check --fix ./**/*.tree",
     "test:bulloak:scaffold": "bulloak scaffold -wS ./**/*.tree",
-    "test:integration": "forge test --match-contract E2E --fork-url mainnet -vvv",
+    "test:integration": "bash scripts/run-integration-tests.sh",
     "test:unit": "forge test --match-contract Unit -vvv",
     "test:unit:deep": "FOUNDRY_FUZZ_RUNS=5000 pnpm test:unit",
     "verify:arbitrum": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain arbitrum -vvvv'",
