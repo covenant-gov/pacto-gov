@@ -247,9 +247,9 @@ contract NavePirataFactory is INavePirataFactory {
 
     uint256 _namespacedNonce = uint256(keccak256(abi.encode(msg.sender, _saltNonce)));
 
-    try _SAFE_PROXY_FACTORY.createProxyWithNonce(_SAFE_SINGLETON, _setupData, _namespacedNonce) returns (
-      address _proxy
-    ) {
+    try _SAFE_PROXY_FACTORY.createProxyWithNonce(
+      _SAFE_SINGLETON, _setupData, _namespacedNonce
+    ) returns (address _proxy) {
       if (_proxy == address(0)) {
         revert NavePirataFactory_SafeDeployFailed();
       }
