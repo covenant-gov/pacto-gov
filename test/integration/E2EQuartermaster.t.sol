@@ -51,10 +51,9 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
     });
   }
 
-  /// @dev Unique labeled address; funds 1 ether so fork txs can be sent when needed.
+  /// @dev Unique labeled address for revert-path callers (no balance needed; avoids fork RPC reads from `vm.deal`).
   function _qmLabeledAddr(string memory _label) internal returns (address _a) {
     _a = makeAddr(_label);
-    _fund(_a, 1 ether);
   }
 
   /// @dev Collision-resistant candidate for add / bootstrap paths.

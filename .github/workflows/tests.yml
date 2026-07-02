@@ -38,6 +38,16 @@ jobs:
       - name: install-tools
         uses: ./.github/workflows/install-tools
 
+      - name: Cache Foundry fork RPC
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache
+            ~/.foundry/cache
+          key: foundry-rpc-v1-${{ hashFiles('script/Constants.sol', 'foundry.toml') }}
+          restore-keys: |
+            foundry-rpc-v1-
+
       - name: Run E2E tests
         run: pnpm test:integration
 

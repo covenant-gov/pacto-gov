@@ -36,9 +36,10 @@ src = 'src/interfaces/'
 runs = 1000
 
 [rpc_endpoints]
-mainnet = "${MAINNET_RPC}"
-sepolia = "${SEPOLIA_RPC}"
-arbitrum = "${ARBITRUM_RPC}"
+# Throttle + retry fork RPC (CI integration tests); alias used by `--fork-url mainnet`.
+mainnet = { endpoint = "${MAINNET_RPC}", retries = 10, retry_backoff = 2000, compute_units_per_second = 400 }
+sepolia = { endpoint = "${SEPOLIA_RPC}", retries = 5, retry_backoff = 1000 }
+arbitrum = { endpoint = "${ARBITRUM_RPC}", retries = 5, retry_backoff = 1000 }
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
