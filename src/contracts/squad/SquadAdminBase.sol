@@ -126,8 +126,8 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   }
 
   /// @inheritdoc ISquadAdminBase
-  function roleAt(uint256 _i) external view returns (bytes32 _role) {
-    _role = _roles[_i];
+  function roleAt(uint256 _index) external view returns (bytes32 _role) {
+    _role = _roles[_index];
   }
 
   /// @inheritdoc ISquadAdminBase

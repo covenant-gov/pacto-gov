@@ -77,8 +77,8 @@ contract NavePirataRegistry is INavePirataRegistry {
   }
 
   /// @inheritdoc INavePirataRegistry
-  function deploymentAt(uint256 _i) external view returns (uint256 _topHatId) {
-    _topHatId = _topHats[_i];
+  function deploymentAt(uint256 _index) external view returns (uint256 _topHatId) {
+    _topHatId = _topHats[_index];
   }
 
   /// @inheritdoc INavePirataRegistry
@@ -87,8 +87,8 @@ contract NavePirataRegistry is INavePirataRegistry {
   }
 
   /// @inheritdoc INavePirataRegistry
-  function upgradeAt(uint256 _topHatId, uint256 _i) external view returns (UpgradeRecord memory _record) {
-    _record = _upgradeLogs[_topHatId][_i];
+  function upgradeAt(uint256 _topHatId, uint256 _index) external view returns (UpgradeRecord memory _record) {
+    _record = _upgradeLogs[_topHatId][_index];
   }
 
   /// @inheritdoc INavePirataRegistry

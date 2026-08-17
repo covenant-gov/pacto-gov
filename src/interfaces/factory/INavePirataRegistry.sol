@@ -166,10 +166,10 @@ interface INavePirataRegistry {
 
   /**
    * @notice Enumerate registered squads.
-   * @param _i Zero-based index (`_i < deploymentCount()`).
+   * @param _index Zero-based index (`_index < deploymentCount()`).
    * @return _topHatId The tophat id of the squad at that index.
    */
-  function deploymentAt(uint256 _i) external view returns (uint256 _topHatId);
+  function deploymentAt(uint256 _index) external view returns (uint256 _topHatId);
 
   /**
    * @notice Count of upgrade records for a squad.
@@ -181,10 +181,10 @@ interface INavePirataRegistry {
   /**
    * @notice Read an upgrade record by index.
    * @param _topHatId Squad tophat id.
-   * @param _i Zero-based index (`_i < upgradeCount(_topHatId)`).
+   * @param _index Zero-based index (`_index < upgradeCount(_topHatId)`).
    * @return _record The stored upgrade record.
    */
-  function upgradeAt(uint256 _topHatId, uint256 _i) external view returns (UpgradeRecord memory _record);
+  function upgradeAt(uint256 _topHatId, uint256 _index) external view returns (UpgradeRecord memory _record);
 
   /**
    * @notice All registered squad tophat ids, in registration order.

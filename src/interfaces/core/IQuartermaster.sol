@@ -278,20 +278,20 @@ interface IQuartermaster is IQuiescent, IHatGated {
   function pendingRemoveCount() external view returns (uint256 _count);
 
   /**
-   * @notice Pending add at index `_i`. Reverts if `_i >= pendingAddCount()`.
-   * @param _i Zero-based index into the pending-add set.
+   * @notice Pending add at index `_index`. Reverts if `_index >= pendingAddCount()`.
+   * @param _index Zero-based index into the pending-add set.
    * @return _candidate Address waiting to receive the crew hat.
    * @return _executableAt Timestamp when `executeAddCrew` becomes valid.
    */
-  function pendingAddAt(uint256 _i) external view returns (address _candidate, uint256 _executableAt);
+  function pendingAddAt(uint256 _index) external view returns (address _candidate, uint256 _executableAt);
 
   /**
-   * @notice Pending remove at index `_i`. Reverts if `_i >= pendingRemoveCount()`.
-   * @param _i Zero-based index into the pending-remove set.
+   * @notice Pending remove at index `_index`. Reverts if `_index >= pendingRemoveCount()`.
+   * @param _index Zero-based index into the pending-remove set.
    * @return _crew Address waiting to lose the crew hat.
    * @return _executableAt Timestamp when `executeRemoveCrew` becomes valid.
    */
-  function pendingRemoveAt(uint256 _i) external view returns (address _crew, uint256 _executableAt);
+  function pendingRemoveAt(uint256 _index) external view returns (address _crew, uint256 _executableAt);
 
   /**
    * @notice All pending crew adds and their executable timestamps.

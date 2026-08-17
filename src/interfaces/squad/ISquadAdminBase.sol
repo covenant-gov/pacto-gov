@@ -140,11 +140,11 @@ interface ISquadAdminBase {
   function roleCount() external view returns (uint256 _count);
 
   /**
-   * @notice Role id at catalog index `_i`. Reverts if `_i >= roleCount()`.
-   * @param _i Zero-based index.
+   * @notice Role id at catalog index `_index`. Reverts if `_index >= roleCount()`.
+   * @param _index Zero-based index.
    * @return _role Registered role id.
    */
-  function roleAt(uint256 _i) external view returns (bytes32 _role);
+  function roleAt(uint256 _index) external view returns (bytes32 _role);
 
   /**
    * @notice Full app-defined role catalog (excludes `FULL` / `PAUSE`).

@@ -249,14 +249,14 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function pendingAddAt(uint256 _i) external view returns (address _candidate, uint256 _executableAt) {
-    _candidate = _pendingAdds.at(_i);
+  function pendingAddAt(uint256 _index) external view returns (address _candidate, uint256 _executableAt) {
+    _candidate = _pendingAdds.at(_index);
     _executableAt = pendingCrewAddAt[_candidate];
   }
 
   /// @inheritdoc IQuartermaster
-  function pendingRemoveAt(uint256 _i) external view returns (address _crew, uint256 _executableAt) {
-    _crew = _pendingRemoves.at(_i);
+  function pendingRemoveAt(uint256 _index) external view returns (address _crew, uint256 _executableAt) {
+    _crew = _pendingRemoves.at(_index);
     _executableAt = pendingCrewRemoveAt[_crew];
   }
 
