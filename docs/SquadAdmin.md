@@ -17,7 +17,7 @@ Think of it as **delegated admin under one hat**: one on-chain “desk,” many 
 - **`enableFullPermission(account, enable)`** — Captain grants or clears a **full** sentinel (`bytes32("FULL")`): that executor is treated as having **every** role for `hasExecutorRole` checks until cleared.
 - **`pauseExecutor(account, pause)`** — Captain sets a **pause** sentinel (`bytes32("PAUSE")`): while paused, `hasExecutorRole` returns **false** for every role for that executor (full flag may still be set in storage; pause wins for reads).
 
-Integrations call **`hasExecutorRole(executor, role)`** to gate their own entrypoints.
+Integrations call **`hasExecutorRole(executor, role)`** to gate their own entrypoints. The app-defined role catalog is readable via `roles()` / `roleCount()` / `roleAt(i)` (excludes the `FULL` / `PAUSE` sentinels, which are the public constants `FULL_PERMISSION` and `PAUSE_PERMISSION`).
 
 ### Initialization and variants
 

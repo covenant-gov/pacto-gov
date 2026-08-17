@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
+
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
 /**
@@ -9,7 +11,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  * @notice Hats is the source of truth for gates; `_HATS` is immutable in the master so clones share it
  * @dev EIP-1167 min proxies delegate to the same runtime that holds the immutable
  */
-abstract contract HatGated {
+abstract contract HatGated is IHatGated {
   /// @notice Hats singleton for `isWearerOfHat` checks
   IHats internal immutable _HATS;
 
@@ -36,6 +38,11 @@ abstract contract HatGated {
    */
   constructor(IHats hats_) {
     _HATS = hats_;
+  }
+
+  /// @inheritdoc IHatGated
+  function hats() public view virtual returns (IHats _hats) {
+    _hats = _HATS;
   }
 
   /**

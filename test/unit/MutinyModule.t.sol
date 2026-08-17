@@ -137,7 +137,9 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
     assertEq(_mm.quartermaster(), _quartermaster);
     assertEq(_mm.safe(), _squadSafe);
     assertEq(_mm.activeMutinyId(), 0);
+    assertEq(_mm.mutinyCount(), 0);
     assertTrue(_mm.isQuiet());
+    assertEq(address(_mm.hats()), _HATS_ADDRESS);
   }
 
   function test_Initialize_RevertsOnZeroCaptain() external {
@@ -226,12 +228,16 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     assertEq(_mm.activeMutinyId(), 1);
     assertFalse(_mm.isQuiet());
 
-    (address _proposed, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed) = _mm.mutiny(1);
+    (address _proposed, address _fromCaptain, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed) =
+      _mm.mutiny(1);
     assertEq(_proposed, _newCaptainEoa);
+    assertEq(_fromCaptain, _captain);
     assertEq(_startedAt, uint64(block.timestamp));
     assertEq(_snapshot, 5);
     assertEq(_yeas, 0);
     assertFalse(_executed);
+    assertEq(_mm.mutinyCount(), 1);
+    assertFalse(_mm.thresholdReached(1));
   }
 
   function test_StartMutiny_RevertsIfNotCrew() external {
@@ -301,7 +307,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     vm.prank(_alice);
     _mm.startMutinyToPauseCaptain();
 
-    (address _proposed,,,,) = _mm.mutiny(1);
+    (address _proposed,,,,,) = _mm.mutiny(1);
     assertEq(_proposed, _squadSafe);
     assertEq(_mm.safe(), _squadSafe);
   }
@@ -329,8 +335,9 @@ contract UnitMutinyModuleVote is UnitMutinyModuleBase {
     _mm.castVote(_mutinyId);
 
     assertTrue(_mm.hasVoted(_mutinyId, _bob));
-    (,,, uint64 _yeas,) = _mm.mutiny(_mutinyId);
+    (,,,, uint64 _yeas,) = _mm.mutiny(_mutinyId);
     assertEq(_yeas, 1);
+    assertFalse(_mm.thresholdReached(_mutinyId));
   }
 
   function test_CastVote_RevertsIfNotCrew() external {
@@ -379,6 +386,8 @@ contract UnitMutinyModuleVote is UnitMutinyModuleBase {
 contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
   function test_ExecuteMutiny_HappyPath_EOA_NonCrewSuccessor() external {
     uint256 _id = _stageWinningMutiny(_newCaptainEoa);
+    assertTrue(_mm.thresholdReached(_id));
+    assertFalse(_mm.thresholdReached(0));
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
     _mockWearer(_newCaptainEoa, _CREW_HAT, false);
@@ -398,7 +407,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     assertEq(_mm.captain(), _newCaptainEoa);
     assertEq(_mm.activeMutinyId(), 0);
     assertTrue(_mm.isQuiet());
-    (,,,, bool _executed) = _mm.mutiny(_id);
+    (,,,,, bool _executed) = _mm.mutiny(_id);
     assertTrue(_executed);
 
     // Eligibility flipped to the new captain.

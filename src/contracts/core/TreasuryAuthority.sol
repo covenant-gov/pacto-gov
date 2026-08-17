@@ -5,6 +5,7 @@ import {AssetRescuer} from 'contracts/utils/AssetRescuer.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Module} from '@gnosis-guild/zodiac/contracts/core/Module.sol';
@@ -45,16 +46,11 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /// @notice Per-proposal vote registry; `true` iff `_voter` has cast a vote on `_proposalId`.
   mapping(uint256 _proposalId => mapping(address _voter => bool _voted)) internal _voted;
 
-  /// @notice Monotonically increasing id counter. First issued id is `1`.
-  uint256 internal _nextProposalId;
+  /// @inheritdoc ITreasuryAuthority
+  uint256 public proposalCount;
 
-  /**
-   * @notice Maximum deadline ever assigned by `propose`. Used by `isQuiet` as a cheap
-   *         over-approximation of "some proposal could still execute". Once
-   *         `block.timestamp >= _maxDeadline`, every ever-created proposal is past its
-   *         deadline and therefore can no longer transition to `executed`.
-   */
-  uint256 internal _maxDeadline;
+  /// @inheritdoc ITreasuryAuthority
+  uint256 public maxDeadline;
 
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
@@ -101,7 +97,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     // forge-lint: disable-next-line(unsafe-typecast)
     uint64 _deadline = uint64(_deadline256);
 
-    _proposalId = ++_nextProposalId;
+    _proposalId = ++proposalCount;
 
     Proposal storage _np = _proposals[_proposalId];
     _np.proposer = msg.sender;
@@ -113,7 +109,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     _np.data = _data;
 
     openProposalOf[msg.sender] = _proposalId;
-    if (_deadline > _maxDeadline) _maxDeadline = _deadline;
+    if (_deadline > maxDeadline) maxDeadline = _deadline;
     emit ProposalCreated(_proposalId, msg.sender, _to, _value, _op, _data, _deadline, _snapshot);
   }
 
@@ -236,9 +232,26 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     _safe = avatar;
   }
 
+  /// @inheritdoc ITreasuryAuthority
+  function crewVotePassed(uint256 _id) external view returns (bool _passed) {
+    Proposal storage _p = _proposals[_id];
+    if (_p.proposer == address(0)) return false;
+    _passed = _crewVotePassed(_p);
+  }
+
+  /// @inheritdoc ITreasuryAuthority
+  function isExecutable(uint256 _id) external view returns (bool _executable) {
+    Proposal storage _p = _proposals[_id];
+    if (_p.proposer == address(0) || _p.executed || block.timestamp >= _p.deadline || _p.captainDefeated) {
+      return false;
+    }
+    bool _captainOk = _p.captainApproved || _HATS.isWearerOfHat(avatar, captainHatId);
+    _executable = _crewVotePassed(_p) && _captainOk;
+  }
+
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = block.timestamp >= _maxDeadline;
+    _quiet = block.timestamp >= maxDeadline;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -251,6 +264,11 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
    */
   function setUp(bytes memory _initializeParams) public override(ITreasuryAuthority, FactoryFriendly) initializer {
     _applyInit(abi.decode(_initializeParams, (InitParams)));
+  }
+
+  /// @inheritdoc IHatGated
+  function hats() public view override(IHatGated, HatGated) returns (IHats _hats) {
+    _hats = _HATS;
   }
 
   /*///////////////////////////////////////////////////////////////

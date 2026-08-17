@@ -11,7 +11,7 @@ Together, this makes **leadership change** something the chain can enforce, inst
 ## What it does
 
 1. **Start a mutiny**  
-   A crew member proposes an address that should become the new captain (several entrypoints exist: another crew member, a committee contract, an arbitrary EOA or contract, etc.). There is also **`startMutinyToPauseCaptain`**, which targets the squad **Safe** — the same address the Treasury Authority uses as its Zodiac **avatar**. On success, the **captain hat moves to the Safe**, which shifts how treasury execution works (see [Treasury Authority](./TreasuryAuthority.md)). The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad.
+   A crew member proposes an address that should become the new captain (several entrypoints exist: another crew member, a committee contract, an arbitrary EOA or contract, etc.). There is also **`startMutinyToPauseCaptain`**, which targets the squad **Safe** — the same address the Treasury Authority uses as its Zodiac **avatar**. On success, the **captain hat moves to the Safe**, which shifts how treasury execution works (see [Treasury Authority](./TreasuryAuthority.md)). The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad. `mutiny(id)` returns that successor, the captain at open (`fromCaptain`), snapshot, yeas, and whether it executed. `mutinyCount` is the highest id issued; `thresholdReached(id)` is whether yeas already meet the 51% snapshot rule.
 
 2. **Crew vote**  
    Crew members who agree cast a vote. Each can vote once per mutiny.

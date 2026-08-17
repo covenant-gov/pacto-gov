@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {ISquadAdminBase} from 'interfaces/squad/ISquadAdminBase.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 
 /**
  * @title ISquadAdmin
@@ -9,7 +10,7 @@ import {ISquadAdminBase} from 'interfaces/squad/ISquadAdminBase.sol';
  * @notice `ISquadAdminBase` roster API plus clone `initialize` and hat-id views. Not upgradeable;
  *      use fresh EIP-1167 instances if logic must change.
  */
-interface ISquadAdmin is ISquadAdminBase {
+interface ISquadAdmin is ISquadAdminBase, IHatGated {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/

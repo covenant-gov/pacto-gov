@@ -185,4 +185,17 @@ interface INavePirataRegistry {
    * @return _record The stored upgrade record.
    */
   function upgradeAt(uint256 _topHatId, uint256 _i) external view returns (UpgradeRecord memory _record);
+
+  /**
+   * @notice All registered squad tophat ids, in registration order.
+   * @return _topHatIds The tophat id list.
+   */
+  function topHatIds() external view returns (uint256[] memory _topHatIds);
+
+  /**
+   * @notice All upgrade records for a squad, in append order.
+   * @param _topHatId Squad tophat id.
+   * @return _records The upgrade log (empty if unknown or never upgraded).
+   */
+  function upgrades(uint256 _topHatId) external view returns (UpgradeRecord[] memory _records);
 }

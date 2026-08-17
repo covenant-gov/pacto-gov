@@ -139,6 +139,12 @@ contract UnitNavePirataRegistryRegisterDeployment is UnitNavePirataRegistryBase 
     assertEq(_registry.deploymentAt(0), 1);
     assertEq(_registry.deploymentAt(1), 2);
     assertEq(_registry.deploymentAt(2), 3);
+
+    uint256[] memory _ids = _registry.topHatIds();
+    assertEq(_ids.length, 3);
+    assertEq(_ids[0], 1);
+    assertEq(_ids[1], 2);
+    assertEq(_ids[2], 3);
   }
 }
 
@@ -189,5 +195,9 @@ contract UnitNavePirataRegistryRecordUpgrade is UnitNavePirataRegistryBase {
     }
     assertEq(_registry.upgradeCount(_TOPHAT), 3);
     assertEq(_registry.upgradeAt(_TOPHAT, 2).roleHatId, 3 + 500);
+
+    INavePirataRegistry.UpgradeRecord[] memory _all = _registry.upgrades(_TOPHAT);
+    assertEq(_all.length, 3);
+    assertEq(_all[2].roleHatId, 3 + 500);
   }
 }

@@ -8,13 +8,13 @@ abstract contract SquadAdminBase is ISquadAdminBase {
                             CONSTANTS
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Full permission role.
+  /// @inheritdoc ISquadAdminBase
   // forge-lint: disable-next-line(unsafe-typecast) — ASCII labels fit in `bytes32` (Solidity left-padding).
-  bytes32 internal constant _FULL_PERMISSION = bytes32('FULL');
+  bytes32 public constant FULL_PERMISSION = bytes32('FULL');
 
-  /// @notice When enabled for an executor, `hasExecutorRole` is false for every `_role` until cleared.
+  /// @inheritdoc ISquadAdminBase
   // forge-lint: disable-next-line(unsafe-typecast) — ASCII labels fit in `bytes32` (Solidity left-padding).
-  bytes32 internal constant _PAUSE_PERMISSION = bytes32('PAUSE');
+  bytes32 public constant PAUSE_PERMISSION = bytes32('PAUSE');
 
   /*///////////////////////////////////////////////////////////////
                             STORAGE
@@ -54,7 +54,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   /// @inheritdoc ISquadAdminBase
   function createRole(bytes32 _role) external isAllowed {
     if (_role == bytes32(0)) revert SquadAdminBase_ZeroAddress();
-    if (_role == _FULL_PERMISSION || _role == _PAUSE_PERMISSION) revert SquadAdminBase_RoleAlreadyExists();
+    if (_role == FULL_PERMISSION || _role == PAUSE_PERMISSION) revert SquadAdminBase_RoleAlreadyExists();
     if (_roleExists(_role)) revert SquadAdminBase_RoleAlreadyExists();
     _enabledRoles[_role] = true;
     _roles.push(_role);
@@ -62,7 +62,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
 
   /// @inheritdoc ISquadAdminBase
   function deleteRole(bytes32 _role) external isAllowed roleExists(_role) {
-    if (_role == _FULL_PERMISSION || _role == _PAUSE_PERMISSION) revert SquadAdminBase_ReservedRole();
+    if (_role == FULL_PERMISSION || _role == PAUSE_PERMISSION) revert SquadAdminBase_ReservedRole();
     _enabledRoles[_role] = false;
     uint256 _len = _roles.length;
     for (uint256 i = 0; i < _len; ++i) {
@@ -83,7 +83,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
 
   /// @inheritdoc ISquadAdminBase
   function enableFullPermission(address _executor, bool _enable) external isAllowed {
-    _executors[_executor][_FULL_PERMISSION] = _enable;
+    _executors[_executor][FULL_PERMISSION] = _enable;
     emit FullPermissionEnabled(_executor, _enable);
   }
 
@@ -95,7 +95,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
 
   /// @inheritdoc ISquadAdminBase
   function pauseExecutor(address _executor, bool _pause) external isAllowed {
-    _executors[_executor][_PAUSE_PERMISSION] = _pause;
+    _executors[_executor][PAUSE_PERMISSION] = _pause;
     emit ExecutorPaused(_executor, _pause);
   }
 
@@ -120,25 +120,40 @@ abstract contract SquadAdminBase is ISquadAdminBase {
     _paused = _isExecutorPaused(_executor);
   }
 
+  /// @inheritdoc ISquadAdminBase
+  function roleCount() external view returns (uint256 _count) {
+    _count = _roles.length;
+  }
+
+  /// @inheritdoc ISquadAdminBase
+  function roleAt(uint256 _i) external view returns (bytes32 _role) {
+    _role = _roles[_i];
+  }
+
+  /// @inheritdoc ISquadAdminBase
+  function roles() external view returns (bytes32[] memory _catalog) {
+    _catalog = _roles;
+  }
+
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Reads the pause sentinel for `_executor`.
    * @param _executor Account queried.
-   * @return _paused Whether `_PAUSE_PERMISSION` is enabled in storage.
+   * @return _paused Whether `PAUSE_PERMISSION` is enabled in storage.
    */
   function _isExecutorPaused(address _executor) internal view returns (bool _paused) {
-    _paused = _executors[_executor][_PAUSE_PERMISSION];
+    _paused = _executors[_executor][PAUSE_PERMISSION];
   }
 
   /**
    * @notice Reads the full-permission sentinel for `_executor`.
    * @param _executor Account queried.
-   * @return _fullPermission Whether `_FULL_PERMISSION` is enabled in storage.
+   * @return _fullPermission Whether `FULL_PERMISSION` is enabled in storage.
    */
   function _isExecutorFullPermission(address _executor) internal view returns (bool _fullPermission) {
-    _fullPermission = _executors[_executor][_FULL_PERMISSION];
+    _fullPermission = _executors[_executor][FULL_PERMISSION];
   }
 
   /**
@@ -147,7 +162,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
    * @return _exists Whether the role exists.
    */
   function _roleExists(bytes32 _role) internal view returns (bool _exists) {
-    if (_role == _FULL_PERMISSION || _role == _PAUSE_PERMISSION) return true;
+    if (_role == FULL_PERMISSION || _role == PAUSE_PERMISSION) return true;
     _exists = _enabledRoles[_role];
   }
 

@@ -90,4 +90,14 @@ contract NavePirataRegistry is INavePirataRegistry {
   function upgradeAt(uint256 _topHatId, uint256 _i) external view returns (UpgradeRecord memory _record) {
     _record = _upgradeLogs[_topHatId][_i];
   }
+
+  /// @inheritdoc INavePirataRegistry
+  function topHatIds() external view returns (uint256[] memory _ids) {
+    _ids = _topHats;
+  }
+
+  /// @inheritdoc INavePirataRegistry
+  function upgrades(uint256 _topHatId) external view returns (UpgradeRecord[] memory _records) {
+    _records = _upgradeLogs[_topHatId];
+  }
 }

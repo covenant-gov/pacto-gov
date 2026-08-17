@@ -6,6 +6,7 @@ import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 import {ISquadAdminExt} from 'interfaces/squad/ISquadAdminExt.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 
 contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   /// @inheritdoc ISquadAdminExt
@@ -44,6 +45,11 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   function postInitialize(InitParams calldata _p) external override(ISquadAdmin, SquadAdmin) isAllowed {
     _squadAdminInit(_p);
     owner = address(0);
+  }
+
+  /// @inheritdoc IHatGated
+  function hats() public view override(IHatGated, SquadAdmin) returns (IHats _hats) {
+    _hats = _HATS;
   }
 
   /*///////////////////////////////////////////////////////////////

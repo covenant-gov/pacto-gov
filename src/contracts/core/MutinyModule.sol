@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
@@ -38,8 +39,8 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   /// @inheritdoc IMutinyModule
   uint256 public activeMutinyId;
 
-  /// @notice Monotonic round id counter; first issued is `1`, `0` means no active mutiny
-  uint256 internal _nextMutinyId;
+  /// @inheritdoc IMutinyModule
+  uint256 public mutinyCount;
 
   /// @notice Round state indexed by mutiny id.
   mapping(uint256 _mutinyId => MutinyRound _round) internal _rounds;
@@ -90,7 +91,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     captain = _p.captain;
     quartermaster = _p.quartermaster;
     safe = _p.safe;
-    _nextMutinyId = 0;
+    mutinyCount = 0;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -178,14 +179,29 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   function mutiny(uint256 _id)
     external
     view
-    returns (address _proposedNewCaptain, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed)
+    returns (
+      address _proposedNewCaptain,
+      address _fromCaptain,
+      uint64 _startedAt,
+      uint64 _snapshot,
+      uint64 _yeas,
+      bool _executed
+    )
   {
     MutinyRound storage _r = _rounds[_id];
     _proposedNewCaptain = _r.proposedNewCaptain;
+    _fromCaptain = _r.fromCaptain;
     _startedAt = _r.startedAt;
     _snapshot = _r.snapshot;
     _yeas = _r.yeas;
     _executed = _r.executed;
+  }
+
+  /// @inheritdoc IMutinyModule
+  function thresholdReached(uint256 _id) external view returns (bool _reached) {
+    MutinyRound storage _r = _rounds[_id];
+    if (_r.startedAt == 0) return false;
+    _reached = uint256(_r.yeas) * 2 > _r.snapshot;
   }
 
   /// @inheritdoc IMutinyModule
@@ -214,6 +230,11 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     _quiet = activeMutinyId == 0;
   }
 
+  /// @inheritdoc IHatGated
+  function hats() public view override(IHatGated, HatGated) returns (IHats _hats) {
+    _hats = _HATS;
+  }
+
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
@@ -226,7 +247,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     onlyHatWearer(crewHatId)
     mutinyCheck(_proposedNewCaptain)
   {
-    uint256 _id = ++_nextMutinyId;
+    uint256 _id = ++mutinyCount;
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
 
     _rounds[_id] = MutinyRound({

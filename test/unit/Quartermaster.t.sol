@@ -127,6 +127,9 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
     assertEq(_qm.treasuryAuthorityRoleHatId(), _TREASURY_AUTHORITY_ROLE_HAT);
     assertEq(_qm.crewChangeDelay(), CREW_CHANGE_DELAY);
     assertFalse(_qm.mutinyActive());
+    assertEq(_qm.pendingAddCount(), 0);
+    assertEq(_qm.pendingRemoveCount(), 0);
+    assertEq(address(_qm.hats()), _HATS_ADDRESS);
   }
 
   function test_Initialize_RevertsIfAlreadyInitialized() external {
@@ -186,6 +189,10 @@ contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
     _qm.requestAddCrew(_alice);
 
     assertEq(_qm.pendingCrewAddAt(_alice), _expectedEta);
+    assertEq(_qm.pendingAddCount(), 1);
+    (address _listed, uint256 _listedEta) = _qm.pendingAddAt(0);
+    assertEq(_listed, _alice);
+    assertEq(_listedEta, _expectedEta);
     assertFalse(_qm.isQuiet());
   }
 
@@ -528,6 +535,8 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
 
     (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
     assertTrue(_eligible);
+    assertTrue(_qm.crewEligible(_alice));
+    assertEq(_qm.pendingAddCount(), 0);
   }
 
   function test_MintCrewFromMutiny_RevertsIfNotMutinyRole() external {
@@ -576,6 +585,8 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
 
     (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
     assertTrue(_eligible);
+    assertTrue(_qm.crewEligible(_alice));
+    assertEq(_qm.pendingAddCount(), 0);
   }
 
   function test_CrewHandoffForMutiny_RevertsOnZero() external {
@@ -654,6 +665,8 @@ contract UnitQuartermasterBootstrap is UnitQuartermasterBase {
     (bool _bOk,) = _qm.getWearerStatus(_bob, _CREW_HAT);
     assertTrue(_aOk);
     assertTrue(_bOk);
+    assertTrue(_qm.crewEligible(_alice));
+    assertEq(_qm.pendingAddCount(), 0);
     assertTrue(_qm.isQuiet());
   }
 
@@ -795,5 +808,98 @@ contract UnitQuartermasterEligibility is UnitQuartermasterBase {
 
     (bool _eligibleAfter,) = _qm.getWearerStatus(_alice, _CREW_HAT);
     assertFalse(_eligibleAfter);
+  }
+}
+
+contract UnitQuartermasterPendingViews is UnitQuartermasterBase {
+  address internal _carol = makeAddr('carol');
+
+  function test_PendingSets_TwoAddsOneRemove_CancelAndExecute() external {
+    _seedCrew(_alice);
+
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_bob, _CAPTAIN_HAT, false);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockWearer(_carol, _CAPTAIN_HAT, false);
+    _mockWearer(_carol, _CREW_HAT, false);
+    _mockCrewCapacity(1, _CREW_MAX);
+
+    vm.prank(_captain);
+    _qm.requestAddCrew(_bob);
+    vm.prank(_captain);
+    _qm.requestAddCrew(_carol);
+
+    _mockWearer(_alice, _CREW_HAT, true);
+    vm.prank(_captain);
+    _qm.requestRemoveCrew(_alice);
+
+    assertEq(_qm.pendingAddCount(), 2);
+    assertEq(_qm.pendingRemoveCount(), 1);
+    assertFalse(_qm.isQuiet());
+
+    (address[] memory _adds, uint256[] memory _addEtas) = _qm.pendingAdds();
+    assertEq(_adds.length, 2);
+    assertEq(_addEtas.length, 2);
+    (address _add0, uint256 _eta0) = _qm.pendingAddAt(0);
+    (address _add1, uint256 _eta1) = _qm.pendingAddAt(1);
+    assertEq(_adds[0], _add0);
+    assertEq(_adds[1], _add1);
+    assertEq(_addEtas[0], _eta0);
+    assertEq(_addEtas[1], _eta1);
+
+    (address[] memory _rems, uint256[] memory _remEtas) = _qm.pendingRemoves();
+    assertEq(_rems.length, 1);
+    assertEq(_rems[0], _alice);
+    (address _rem0, uint256 _remEta0) = _qm.pendingRemoveAt(0);
+    assertEq(_rem0, _alice);
+    assertEq(_remEtas[0], _remEta0);
+
+    vm.prank(_captain);
+    _qm.cancelAddCrew(_bob);
+    assertEq(_qm.pendingAddCount(), 1);
+    (address[] memory _addsAfterCancel,) = _qm.pendingAdds();
+    assertEq(_addsAfterCancel.length, 1);
+    assertEq(_addsAfterCancel[0], _carol);
+
+    vm.warp(_qm.pendingCrewAddAt(_carol));
+    _mockWearer(_carol, _CREW_HAT, false);
+    _mockMintHat(_CREW_HAT, _carol, true);
+    _qm.executeAddCrew(_carol);
+
+    assertEq(_qm.pendingAddCount(), 0);
+    assertEq(_qm.pendingRemoveCount(), 1);
+    assertTrue(_qm.crewEligible(_carol));
+    assertFalse(_qm.isQuiet());
+  }
+
+  function test_RequestRemoveCrew_RerequestOverwritesEtaWithoutChangingCount() external {
+    _seedCrew(_alice);
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+
+    vm.prank(_captain);
+    _qm.requestRemoveCrew(_alice);
+    uint256 _firstEta = _qm.pendingCrewRemoveAt(_alice);
+    assertEq(_qm.pendingRemoveCount(), 1);
+
+    vm.warp(block.timestamp + 1 hours);
+    vm.prank(_captain);
+    _qm.requestRemoveCrew(_alice);
+
+    assertEq(_qm.pendingRemoveCount(), 1);
+    assertGt(_qm.pendingCrewRemoveAt(_alice), _firstEta);
+    (address[] memory _rems,) = _qm.pendingRemoves();
+    assertEq(_rems.length, 1);
+    assertEq(_rems[0], _alice);
+  }
+
+  function test_PendingAddAt_RevertsOutOfBounds() external {
+    vm.expectRevert();
+    _qm.pendingAddAt(0);
+  }
+
+  function test_PendingRemoveAt_RevertsOutOfBounds() external {
+    vm.expectRevert();
+    _qm.pendingRemoveAt(0);
   }
 }

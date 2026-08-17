@@ -4,9 +4,11 @@ pragma solidity 0.8.30;
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 
@@ -17,6 +19,8 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  * @dev EIP-1167 master; `initialize` for clones. Access = hats only
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValidator, Initializable {
+  using EnumerableSet for EnumerableSet.AddressSet;
+
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
@@ -41,16 +45,18 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuartermaster
   mapping(address _crew => uint256 _executableAt) public pendingCrewRemoveAt;
 
-  /**
-   * @notice Eligibility map backing `IHatsEligibility.getWearerStatus` for the crew hat.
-   * @dev Set to `true` on mint (including mutiny paths) and to `false` on executed removal.
-   */
-  mapping(address _wearer => bool _eligible) internal _crewEligible;
+  /// @inheritdoc IQuartermaster
+  mapping(address _wearer => bool _eligible) public crewEligible;
 
-  /// @notice Count of outstanding pending adds. Used by `isQuiet`.
-  uint256 internal _pendingAddCount;
-  /// @notice Count of outstanding pending removes. Used by `isQuiet`.
-  uint256 internal _pendingRemoveCount;
+  /// @inheritdoc IQuartermaster
+  uint256 public pendingAddCount;
+  /// @inheritdoc IQuartermaster
+  uint256 public pendingRemoveCount;
+
+  /// @notice Enumerable keys for `pendingCrewAddAt`. Updated in lockstep with `pendingAddCount`.
+  EnumerableSet.AddressSet internal _pendingAdds;
+  /// @notice Enumerable keys for `pendingCrewRemoveAt`. Updated in lockstep with `pendingRemoveCount`.
+  EnumerableSet.AddressSet internal _pendingRemoves;
 
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
@@ -87,7 +93,8 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (pendingCrewAddAt[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    _pendingAddCount++;
+    pendingAddCount++;
+    _pendingAdds.add(_candidate);
     uint256 _eta = block.timestamp + _crewAddDelay();
     pendingCrewAddAt[_candidate] = _eta;
     emit CrewAddRequested(_candidate, _eta);
@@ -107,7 +114,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     for (uint256 _i = 0; _i < _n; _i++) {
       address _c = _candidates[_i];
       _validateAddCandidate(_c);
-      _crewEligible[_c] = true;
+      crewEligible[_c] = true;
       _HATS.mintHat(crewHatId, _c);
       emit CrewAddExecuted(_c);
     }
@@ -117,7 +124,8 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function cancelAddCrew(address _candidate) external onlyHatWearer(captainHatId) {
     if (pendingCrewAddAt[_candidate] == 0) revert Quartermaster_NotPending(_candidate);
     delete pendingCrewAddAt[_candidate];
-    _pendingAddCount--;
+    pendingAddCount--;
+    _pendingAdds.remove(_candidate);
     emit CrewAddCancelled(_candidate);
   }
 
@@ -130,8 +138,9 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_HATS.isWearerOfHat(_candidate, crewHatId)) revert Quartermaster_AlreadyCrew(_candidate);
 
     delete pendingCrewAddAt[_candidate];
-    _pendingAddCount--;
-    _crewEligible[_candidate] = true;
+    pendingAddCount--;
+    _pendingAdds.remove(_candidate);
+    crewEligible[_candidate] = true;
     _HATS.mintHat(crewHatId, _candidate);
     emit CrewAddExecuted(_candidate);
   }
@@ -146,7 +155,10 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_crew == address(0)) revert Quartermaster_ZeroAddress();
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
-    if (pendingCrewRemoveAt[_crew] == 0) _pendingRemoveCount++;
+    if (pendingCrewRemoveAt[_crew] == 0) {
+      pendingRemoveCount++;
+      _pendingRemoves.add(_crew);
+    }
     uint256 _eta = block.timestamp + crewChangeDelay;
     pendingCrewRemoveAt[_crew] = _eta;
     emit CrewRemoveRequested(_crew, _eta);
@@ -156,7 +168,8 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function cancelRemoveCrew(address _crew) external onlyHatWearer(captainHatId) {
     if (pendingCrewRemoveAt[_crew] == 0) revert Quartermaster_NotPending(_crew);
     delete pendingCrewRemoveAt[_crew];
-    _pendingRemoveCount--;
+    pendingRemoveCount--;
+    _pendingRemoves.remove(_crew);
     emit CrewRemoveCancelled(_crew);
   }
 
@@ -169,8 +182,9 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
     delete pendingCrewRemoveAt[_crew];
-    _pendingRemoveCount--;
-    _crewEligible[_crew] = false;
+    pendingRemoveCount--;
+    _pendingRemoves.remove(_crew);
+    crewEligible[_crew] = false;
     _HATS.checkHatWearerStatus(crewHatId, _crew);
     emit CrewRemoveExecuted(_crew);
   }
@@ -185,7 +199,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    _crewEligible[_formerCaptain] = true;
+    crewEligible[_formerCaptain] = true;
     _HATS.mintHat(crewHatId, _formerCaptain);
     emit CrewMintedFromMutiny(_formerCaptain);
   }
@@ -198,7 +212,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (!_HATS.isWearerOfHat(_newCaptain, crewHatId)) revert Quartermaster_NotCrew(_newCaptain);
     if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
 
-    _crewEligible[_formerCaptain] = true;
+    crewEligible[_formerCaptain] = true;
     _HATS.transferHat(crewHatId, _newCaptain, _formerCaptain);
     emit CrewHandoffForMutiny(_formerCaptain, _newCaptain);
   }
@@ -230,13 +244,50 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     address _wearer,
     uint256 /*_hatId*/
   ) external view returns (bool _eligible, bool _standing) {
-    _eligible = _crewEligible[_wearer];
+    _eligible = crewEligible[_wearer];
     _standing = true;
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingAddAt(uint256 _i) external view returns (address _candidate, uint256 _executableAt) {
+    _candidate = _pendingAdds.at(_i);
+    _executableAt = pendingCrewAddAt[_candidate];
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingRemoveAt(uint256 _i) external view returns (address _crew, uint256 _executableAt) {
+    _crew = _pendingRemoves.at(_i);
+    _executableAt = pendingCrewRemoveAt[_crew];
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingAdds() external view returns (address[] memory _candidates, uint256[] memory _executableAts) {
+    _candidates = _pendingAdds.values();
+    uint256 _n = _candidates.length;
+    _executableAts = new uint256[](_n);
+    for (uint256 _i; _i < _n; ++_i) {
+      _executableAts[_i] = pendingCrewAddAt[_candidates[_i]];
+    }
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingRemoves() external view returns (address[] memory _crew, uint256[] memory _executableAts) {
+    _crew = _pendingRemoves.values();
+    uint256 _n = _crew.length;
+    _executableAts = new uint256[](_n);
+    for (uint256 _i; _i < _n; ++_i) {
+      _executableAts[_i] = pendingCrewRemoveAt[_crew[_i]];
+    }
   }
 
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = _pendingAddCount == 0 && _pendingRemoveCount == 0 && !mutinyActive;
+    _quiet = pendingAddCount == 0 && pendingRemoveCount == 0 && !mutinyActive;
+  }
+
+  /// @inheritdoc IHatGated
+  function hats() public view override(IHatGated, HatGated) returns (IHats _hats) {
+    _hats = _HATS;
   }
 
   /*///////////////////////////////////////////////////////////////

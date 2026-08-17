@@ -348,6 +348,36 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
   }
 }
 
+contract UnitSquadAdminRoleCatalog is UnitSquadAdminBase {
+  function test_RoleCatalog_TracksCreateAndDelete() external {
+    assertEq(_admin.roleCount(), 2);
+    assertEq(_admin.FULL_PERMISSION(), _ROLE_FULL);
+    assertEq(_admin.PAUSE_PERMISSION(), _ROLE_PAUSE);
+    assertEq(address(_admin.hats()), _HATS_ADDRESS);
+
+    bytes32[] memory _catalog = _admin.roles();
+    assertEq(_catalog.length, 2);
+    assertEq(_admin.roleAt(0), _ROLE_APP);
+    assertEq(_admin.roleAt(1), _ROLE_OTHER);
+    assertEq(_catalog[0], _ROLE_APP);
+    assertEq(_catalog[1], _ROLE_OTHER);
+
+    vm.prank(_captain);
+    _admin.deleteRole(_ROLE_APP);
+
+    assertEq(_admin.roleCount(), 1);
+    assertEq(_admin.roleAt(0), _ROLE_OTHER);
+    bytes32[] memory _after = _admin.roles();
+    assertEq(_after.length, 1);
+    assertEq(_after[0], _ROLE_OTHER);
+  }
+
+  function test_RoleAt_RevertsOutOfBounds() external {
+    vm.expectRevert();
+    _admin.roleAt(2);
+  }
+}
+
 contract UnitSquadAdminExt is Test {
   address internal constant _HATS_ADDRESS = address(uint160(uint256(keccak256('pacto.squadadmin.ext.HATS'))));
 

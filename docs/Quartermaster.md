@@ -19,6 +19,8 @@ It also connects to **mutiny**: when the crew is voting to replace the captain, 
 3. **Cancel**  
    The captain can cancel a pending add or remove before it executes.
 
+The product API for “what is pending” is on-chain views, not events: `pendingAdds()` / `pendingRemoves()` (or `pendingAddAt` / `pendingRemoveAt` plus the counts). `pendingCrewAddAt(address)` / `pendingCrewRemoveAt(address)` remain the point-check for a known address. Immediate paths (`bootstrapCrew`, mutiny mint / handoff) never appear in those lists.
+
 ### During a mutiny
 
 - **Mutiny mode** is turned **on** by the **mutiny module** (only that module’s role can flip the switch).
