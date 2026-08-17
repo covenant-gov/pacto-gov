@@ -47,7 +47,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   mapping(uint256 _proposalId => mapping(address _voter => bool _voted)) internal _voted;
 
   /// @inheritdoc ITreasuryAuthority
-  uint256 public proposalCount;
+  uint256 public nextProposalId;
 
   /// @inheritdoc ITreasuryAuthority
   uint256 public maxDeadline;
@@ -97,7 +97,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     // forge-lint: disable-next-line(unsafe-typecast)
     uint64 _deadline = uint64(_deadline256);
 
-    _proposalId = ++proposalCount;
+    _proposalId = nextProposalId++;
 
     Proposal storage _np = _proposals[_proposalId];
     _np.proposer = msg.sender;
@@ -294,6 +294,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     proposalExpiry = _p.proposalExpiry;
     crewVoteMode = _p.crewVoteMode;
     quorumBps = _p.quorumBps;
+    nextProposalId = 1;
 
     setAvatar(_p.safe);
     setTarget(_p.safe);

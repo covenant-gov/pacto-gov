@@ -390,10 +390,10 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
   function treasuryAuthorityRoleHatId() external view returns (uint256 _treasuryAuthorityRoleHatId);
 
   /**
-   * @notice Highest proposal id ever issued (`0` before the first `propose`).
-   * @return _count Last issued id; clients iterate `1..=_count`.
+   * @notice Next unused proposal id. First issued id is 1. Zero proposals ⇒ 1.
+   * @return _id Exclusive bound; clients iterate `id = 1; id < nextProposalId()`.
    */
-  function proposalCount() external view returns (uint256 _count);
+  function nextProposalId() external view returns (uint256 _id);
 
   /**
    * @notice Latest proposal deadline ever assigned. Used by `isQuiet`.

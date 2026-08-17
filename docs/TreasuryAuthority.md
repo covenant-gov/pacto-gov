@@ -20,7 +20,7 @@ Only when the rule above is satisfied can the proposal **execute** as a transact
 - **Who can propose:** the **captain** or any **crew member** (same hat gates as elsewhere in the squad).
 - **What a proposal contains:** where to call, how much value to send, what data to send, and whether it’s a normal call or a delegate call (technical detail: the Safe still executes it; readers can think “what action on-chain”).  
 - **One open proposal per address:** if you already have a live proposal you haven’t finished or that hasn’t expired, you can’t open another until that situation clears (execute, captain veto, or expiry).
-- **Listing:** `proposalCount` is the highest id issued (`1` … `proposalCount`). Read `proposal(id)` and `isExecutable(id)` / `crewVotePassed(id)` per id. `maxDeadline` is the latest deadline ever assigned (used by `isQuiet`).
+- **Listing:** `nextProposalId` is the next unused id (1 when none exist). Clients loop `for (id = 1; id < nextProposalId(); id++)` and read `proposal(id)` / `isExecutable(id)` / `crewVotePassed(id)`. `maxDeadline` is the latest deadline ever assigned (used by `isQuiet`).
 
 ### Crew vote
 
