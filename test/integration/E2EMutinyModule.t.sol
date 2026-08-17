@@ -81,7 +81,7 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
   function _ensureVotesAboveMajority() internal {
     if (_fixtureHasVoteMajority) return;
 
-    (,, uint64 _snapshot,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,, uint64 _snapshot,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
 
     for (uint256 _i = 0; _i < _minYeas; _i++) {
@@ -267,7 +267,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _squadMutiny.startMutinyToCrewMember(_crewSuccessor);
 
     assertEq(_squadMutiny.activeMutinyId(), 1);
-    (address _proposed,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _crewSuccessor);
     assertTrue(_squadQuartermaster.mutinyActive());
   }
@@ -293,7 +293,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     vm.prank(_squadCrew[0]);
     _squadMutiny.startMutinyToCommittee(_squadSafe);
 
-    (address _proposed,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadSafe);
   }
 
@@ -323,9 +323,11 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     assertFalse(_squadMutiny.isQuiet());
     assertTrue(_squadQuartermaster.mutinyActive());
 
-    (address _proposed, uint64 _startedAt, uint64 _storedSnapshot, uint64 _yeas, bool _executed) =
+    (address _proposed, address _fromCaptain, uint64 _startedAt, uint64 _storedSnapshot, uint64 _yeas, bool _executed) =
       _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadProposedCaptain);
+    assertEq(_fromCaptain, _squadCaptain);
+    assertEq(_squadMutiny.mutinyCount(), 1);
     assertEq(_startedAt, uint64(block.timestamp));
     assertEq(_storedSnapshot, _snapshot);
     assertEq(_yeas, 0);
@@ -346,7 +348,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     vm.prank(_squadCrew[0]);
     _squadMutiny.startMutinyToArbitraryContract(_squadSafe);
 
-    (address _proposed,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadSafe);
     assertEq(_squadMutiny.activeMutinyId(), 1);
   }
@@ -396,7 +398,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _squadMutiny.castVote(_squadActiveMutinyId);
 
     assertTrue(_squadMutiny.hasVoted(_squadActiveMutinyId, _squadCrew[1]));
-    (,,, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     assertEq(_yeas, 1);
   }
 
@@ -433,7 +435,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   {
     _castVotes(_squadActiveMutinyId, 2);
 
-    (,, uint64 _snapshot, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,, uint64 _snapshot, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_ThresholdNotReached.selector, _yeas, _snapshot));
     _squadMutiny.executeMutiny(_squadActiveMutinyId);
   }
@@ -492,7 +494,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _mutiny.startMutinyToArbitraryEoa(_proposedCaptain);
     uint256 _id = _mutiny.activeMutinyId();
 
-    (,, uint64 _snapshot,,) = _mutiny.mutiny(_id);
+    (,,, uint64 _snapshot,,) = _mutiny.mutiny(_id);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
     for (uint256 _i = 0; _i < _minYeas; _i++) {
       vm.prank(_crew[_i]);
@@ -576,8 +578,13 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
   function test_e2e_isQuiet_trueWhenNoMutiny_falseWhenRoundOpen() public withDeployedNavePirataSquad {
     assertTrue(_squadMutiny.isQuiet());
+    assertEq(_squadMutiny.mutinyCount(), 0);
     _ensureOpenRound();
     assertFalse(_squadMutiny.isQuiet());
+    assertEq(_squadMutiny.mutinyCount(), 1);
+    (, address _fromCaptain,,,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    assertEq(_fromCaptain, _squadCaptain);
+    assertFalse(_squadMutiny.thresholdReached(_squadActiveMutinyId));
   }
 
   function test_e2e_isInSnapshot_reflectsCurrentCrewWearershipDuringActiveRound()

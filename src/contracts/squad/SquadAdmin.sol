@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {SquadAdminBase} from 'contracts/squad/SquadAdminBase.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
@@ -53,6 +54,15 @@ contract SquadAdmin is ISquadAdmin, SquadAdminBase, HatGated, Initializable {
   /// @inheritdoc ISquadAdmin
   function postInitialize(InitParams calldata _p) external virtual isAllowed {
     _squadAdminInit(_p);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                            VIEWS
+  //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IHatGated
+  function hats() public view virtual override(IHatGated, HatGated) returns (IHats _hats) {
+    _hats = _HATS;
   }
 
   /*///////////////////////////////////////////////////////////////

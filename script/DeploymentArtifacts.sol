@@ -9,13 +9,12 @@ import {VmSafe} from 'forge-std/Vm.sol';
 /**
  * @title DeploymentArtifacts
  * @author Pacto
- * @notice Writes human-readable JSON under `deployments/<chainId>/` when running `forge script` (not `forge test`).
- * @dev JSON files are written under `deployments/<chainId>/`, relative to the repo root.
+ * @notice Writes human-readable JSON under `deployments/<chainId>/` on `--broadcast` / `--resume` only.
+ * @dev Dry-run (`simulate-deploy:*`) and `forge test` do not write. Paths are relative to the repo root.
  */
 abstract contract DeploymentArtifacts is Script {
   function _shouldWriteDeploymentJson() internal view returns (bool) {
-    return vm.isContext(VmSafe.ForgeContext.ScriptDryRun) || vm.isContext(VmSafe.ForgeContext.ScriptBroadcast)
-      || vm.isContext(VmSafe.ForgeContext.ScriptResume);
+    return vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) || vm.isContext(VmSafe.ForgeContext.ScriptResume);
   }
 
   function _deploymentJsonPath(string memory filename) internal view returns (string memory) {

@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IAssetRescuer} from 'interfaces/utils/IAssetRescuer.sol';
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 /**
@@ -12,7 +13,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  *         before expiry. Sole module+owner on the Safe; param changes go through this role hat. `IAssetRescuer`
  *         sweeps stray balance to the Safe
  */
-interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
+interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
@@ -387,4 +388,30 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent {
    * @return _treasuryAuthorityRoleHatId The role hat id.
    */
   function treasuryAuthorityRoleHatId() external view returns (uint256 _treasuryAuthorityRoleHatId);
+
+  /**
+   * @notice Next unused proposal id. First issued id is 1. Zero proposals ⇒ 1.
+   * @return _id Exclusive bound; clients iterate `id = 1; id < nextProposalId()`.
+   */
+  function nextProposalId() external view returns (uint256 _id);
+
+  /**
+   * @notice Latest proposal deadline ever assigned. Used by `isQuiet`.
+   * @return _deadline Unix timestamp.
+   */
+  function maxDeadline() external view returns (uint256 _deadline);
+
+  /**
+   * @notice Whether crew support on `_id` meets the configured vote mode.
+   * @param _id Proposal identifier.
+   * @return _passed False if the proposal is missing.
+   */
+  function crewVotePassed(uint256 _id) external view returns (bool _passed);
+
+  /**
+   * @notice Whether `_id` can be executed now (alive, not vetoed, crew passed, captain path satisfied).
+   * @param _id Proposal identifier.
+   * @return _executable False if missing, expired, executed, vetoed, or thresholds unmet.
+   */
+  function isExecutable(uint256 _id) external view returns (bool _executable);
 }

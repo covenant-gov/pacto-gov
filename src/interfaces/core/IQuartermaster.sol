@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 /**
@@ -9,7 +10,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  * @notice Timelocked crew add/remove (bootstrap without delay); implements `IHatsEligibility` for the crew hat. Captain requests; anyone
  *         executes after `crewChangeDelay`. When `mutinyActive`, only mutiny hooks change crew. Delay changes: TA role + two-body
  */
-interface IQuartermaster is IQuiescent {
+interface IQuartermaster is IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
@@ -263,6 +264,55 @@ interface IQuartermaster is IQuiescent {
    * @return _executableAt Unix timestamp, or zero.
    */
   function pendingCrewRemoveAt(address _crew) external view returns (uint256 _executableAt);
+
+  /**
+   * @notice Number of outstanding scheduled crew adds.
+   * @return _count Set length; matches `pendingAdds` / `pendingAddAt`.
+   */
+  function pendingAddCount() external view returns (uint256 _count);
+
+  /**
+   * @notice Number of outstanding scheduled crew removes.
+   * @return _count Set length; matches `pendingRemoves` / `pendingRemoveAt`.
+   */
+  function pendingRemoveCount() external view returns (uint256 _count);
+
+  /**
+   * @notice Pending add at index `_index`. Reverts if `_index >= pendingAddCount()`.
+   * @param _index Zero-based index into the pending-add set.
+   * @return _candidate Address waiting to receive the crew hat.
+   * @return _executableAt Timestamp when `executeAddCrew` becomes valid.
+   */
+  function pendingAddAt(uint256 _index) external view returns (address _candidate, uint256 _executableAt);
+
+  /**
+   * @notice Pending remove at index `_index`. Reverts if `_index >= pendingRemoveCount()`.
+   * @param _index Zero-based index into the pending-remove set.
+   * @return _crew Address waiting to lose the crew hat.
+   * @return _executableAt Timestamp when `executeRemoveCrew` becomes valid.
+   */
+  function pendingRemoveAt(uint256 _index) external view returns (address _crew, uint256 _executableAt);
+
+  /**
+   * @notice All pending crew adds and their executable timestamps.
+   * @return _candidates Addresses waiting to receive the crew hat.
+   * @return _executableAts Matching `executeAddCrew` timestamps.
+   */
+  function pendingAdds() external view returns (address[] memory _candidates, uint256[] memory _executableAts);
+
+  /**
+   * @notice All pending crew removes and their executable timestamps.
+   * @return _crew Addresses waiting to lose the crew hat.
+   * @return _executableAts Matching `executeRemoveCrew` timestamps.
+   */
+  function pendingRemoves() external view returns (address[] memory _crew, uint256[] memory _executableAts);
+
+  /**
+   * @notice Local crew-hat eligibility flag for `_wearer` (same bit as `getWearerStatus`).
+   * @param _wearer Address to query.
+   * @return _eligible True if this contract treats `_wearer` as eligible crew.
+   */
+  function crewEligible(address _wearer) external view returns (bool _eligible);
 
   /**
    * @notice Captain hat id for access-control checks.

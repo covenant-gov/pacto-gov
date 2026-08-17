@@ -51,7 +51,7 @@ The gas review calls out several patterns worth preserving:
 |--------|----------------|
 | **`Proposal` packing** in TreasuryAuthority | Keeps per-proposal storage disciplined (`proposer`, `deadline`, `op`, flags packed; counts sized for on-chain voting). |
 | **`openProposalOf` + full `Proposal` store** | Enforces “at most one live proposal per proposer” without scanning; execution still needs full payload. |
-| **`_maxDeadline` for `isQuiet()`** | Small denormalization so quiet-window checks stay **O(1)** instead of iterating proposals. |
+| **`maxDeadline` for `isQuiet()`** | Small denormalization so quiet-window checks stay **O(1)** instead of iterating proposals. |
 | **Quartermaster pending maps + counters** | Same idea: **`isQuiet()`** without unbounded loops. |
 | **Same hat ids on each clone** | Each module keeps squad hat ids locally to avoid an extra registry hop and to keep **`onlyHatWearer`** paths independently verifiable from a single contract address. |
 

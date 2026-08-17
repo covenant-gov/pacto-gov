@@ -130,6 +130,11 @@ contract UnitTreasuryAuthorityInit is UnitTreasuryAuthorityBase {
     assertEq(_ta.avatar(), _SAFE_ADDRESS);
     assertEq(_ta.target(), _SAFE_ADDRESS);
     assertEq(_ta.owner(), address(0));
+    assertEq(_ta.nextProposalId(), 1);
+    assertEq(_ta.maxDeadline(), 0);
+    assertFalse(_ta.crewVotePassed(1));
+    assertFalse(_ta.isExecutable(1));
+    assertEq(address(_ta.hats()), _HATS_ADDRESS);
   }
 
   function test_Initialize_RevertsIfAlreadyInitialized() external {
@@ -241,6 +246,7 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
     uint256 _id = _ta.propose(_dest, 1 ether, hex'dead', ITreasuryAuthority.Operation.CALL);
 
     assertEq(_id, 1);
+    assertEq(_ta.nextProposalId(), 2);
     assertEq(_ta.openProposalOf(_captain), 1);
 
     (
@@ -278,6 +284,13 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
     uint256 _id = _ta.propose(_dest, 0, hex'', ITreasuryAuthority.Operation.CALL);
     assertEq(_id, 1);
     assertEq(_ta.openProposalOf(_crewA), 1);
+  }
+
+  function test_NextProposalId_ZeroThenTwoPropose() external {
+    assertEq(_ta.nextProposalId(), 1);
+    assertEq(_propose(_captain, true), 1);
+    assertEq(_propose(_crewA, false), 2);
+    assertEq(_ta.nextProposalId(), 3);
   }
 
   function test_Propose_RevertsIfNeitherCaptainNorCrew() external {
@@ -538,10 +551,14 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     vm.expectEmit();
     emit ITreasuryAuthority.ProposalExecuted(_id, true);
 
+    assertTrue(_ta.crewVotePassed(_id));
+    assertTrue(_ta.isExecutable(_id));
+
     _ta.execute(_id);
 
     (,,,,,,,,,,, bool _exec) = _ta.proposal(_id);
     assertTrue(_exec);
+    assertFalse(_ta.isExecutable(_id));
     assertEq(_ta.openProposalOf(_captain), 0);
   }
 
@@ -867,6 +884,7 @@ contract UnitTreasuryAuthorityQuiet is UnitTreasuryAuthorityBase {
     _mockCrewSupply(5);
     vm.prank(_crewA);
     _ta.propose(_dest, 0, hex'', ITreasuryAuthority.Operation.CALL);
+    assertEq(_ta.nextProposalId(), 3);
     assertFalse(_ta.isQuiet());
   }
 }

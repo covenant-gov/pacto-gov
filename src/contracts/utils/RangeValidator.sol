@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IRangeValidator} from 'interfaces/utils/IRangeValidator.sol';
+
 /**
  * @title RangeValidator
  * @author Pacto
  * @notice Shared min/max for delays and quorum bps, plus `RangeValidator_OutOfRange`. Consuming contracts emit their own events
  * @dev Mixed into TA / QM (and similar) for bounded setters; 1 minute min delay is intentional for testing
  */
-abstract contract RangeValidator {
-  /// @notice Minimum accepted value for any governance delay parameter (in seconds).
-  uint256 internal constant _MIN_GOV_DELAY = 1 minutes;
-  /// @notice Maximum accepted value for any governance delay parameter (in seconds).
-  uint256 internal constant _MAX_GOV_DELAY = 60 days;
-  /// @notice Minimum accepted quorum expressed in basis points (5%).
-  uint256 internal constant _MIN_QUORUM_BPS = 500;
-  /// @notice Maximum accepted quorum expressed in basis points (100%).
-  uint256 internal constant _MAX_QUORUM_BPS = 10_000;
+abstract contract RangeValidator is IRangeValidator {
+  /// @inheritdoc IRangeValidator
+  uint256 public constant MIN_GOV_DELAY = 1 minutes;
+  /// @inheritdoc IRangeValidator
+  uint256 public constant MAX_GOV_DELAY = 60 days;
+  /// @inheritdoc IRangeValidator
+  uint256 public constant MIN_QUORUM_BPS = 500;
+  /// @inheritdoc IRangeValidator
+  uint256 public constant MAX_QUORUM_BPS = 10_000;
 
   /**
    * @notice Value is outside the inclusive `min`–`max` range for a governance parameter.
@@ -30,8 +32,8 @@ abstract contract RangeValidator {
    * @param v Delay value in seconds.
    */
   function _validateDelay(uint256 v) internal pure {
-    if (v < _MIN_GOV_DELAY || v > _MAX_GOV_DELAY) {
-      revert RangeValidator_OutOfRange(v, _MIN_GOV_DELAY, _MAX_GOV_DELAY);
+    if (v < MIN_GOV_DELAY || v > MAX_GOV_DELAY) {
+      revert RangeValidator_OutOfRange(v, MIN_GOV_DELAY, MAX_GOV_DELAY);
     }
   }
 
@@ -40,8 +42,8 @@ abstract contract RangeValidator {
    * @param v Quorum value in basis points (1 bp = 0.01%).
    */
   function _validateQuorumBps(uint256 v) internal pure {
-    if (v < _MIN_QUORUM_BPS || v > _MAX_QUORUM_BPS) {
-      revert RangeValidator_OutOfRange(v, _MIN_QUORUM_BPS, _MAX_QUORUM_BPS);
+    if (v < MIN_QUORUM_BPS || v > MAX_QUORUM_BPS) {
+      revert RangeValidator_OutOfRange(v, MIN_QUORUM_BPS, MAX_QUORUM_BPS);
     }
   }
 }

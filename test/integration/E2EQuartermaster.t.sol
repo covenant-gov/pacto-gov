@@ -881,6 +881,42 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     assertEq(_squadQuartermaster.pendingCrewRemoveAt(_crew), _expectedEta);
   }
 
+  function test_e2e_pendingAddsAndRemoves_listWithoutLogs() public withDeployedNavePirataSquad {
+    address _addA = _qmCandidate('e2eQmPendingListA');
+    address _addB = _qmCandidate('e2eQmPendingListB');
+    address _remove = _squadCrew[3];
+
+    _captainRequestAddCrew(_squadQuartermaster, _squadCaptain, _addA);
+    _captainRequestAddCrew(_squadQuartermaster, _squadCaptain, _addB);
+    _captainRequestRemoveCrew(_squadQuartermaster, _squadCaptain, _remove);
+
+    assertEq(_squadQuartermaster.pendingAddCount(), 2);
+    assertEq(_squadQuartermaster.pendingRemoveCount(), 1);
+    assertFalse(_squadQuartermaster.isQuiet());
+
+    vm.prank(_squadCaptain);
+    _squadQuartermaster.cancelAddCrew(_addA);
+    assertEq(_squadQuartermaster.pendingAddCount(), 1);
+
+    _warpToPendingAddExecutable(_squadQuartermaster, _addB);
+    _squadQuartermaster.executeAddCrew(_addB);
+    assertEq(_squadQuartermaster.pendingAddCount(), 0);
+    assertTrue(_squadQuartermaster.crewEligible(_addB));
+
+    (address[] memory _rems,) = _squadQuartermaster.pendingRemoves();
+    assertEq(_rems.length, 1);
+    assertEq(_rems[0], _remove);
+
+    uint256 _firstEta = _squadQuartermaster.pendingCrewRemoveAt(_remove);
+    vm.warp(block.timestamp + 1 hours);
+    _captainRequestRemoveCrew(_squadQuartermaster, _squadCaptain, _remove);
+    assertEq(_squadQuartermaster.pendingRemoveCount(), 1);
+    assertGt(_squadQuartermaster.pendingCrewRemoveAt(_remove), _firstEta);
+
+    vm.expectRevert();
+    _squadQuartermaster.pendingAddAt(0);
+  }
+
   /*///////////////////////////////////////////////////////////////
                         integration wiring
   //////////////////////////////////////////////////////////////*/

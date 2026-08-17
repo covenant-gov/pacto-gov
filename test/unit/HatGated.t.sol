@@ -55,6 +55,7 @@ contract UnitHatGated is Test {
 
   function test_Constructor_StoresHats() external view {
     assertEq(_harness.hatsExposed(), _HATS_ADDRESS);
+    assertEq(address(_harness.hats()), _HATS_ADDRESS);
   }
 
   function test_OnlyHatWearer_AllowsWearer() external {

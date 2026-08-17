@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 /**
@@ -9,7 +10,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  * @notice 51% of snapshot crew (yeas) to replace the captain, or `captainResign` if no open mutiny. Captain hat
  *         `IHatsEligibility`; no tunable params. Drives `transferHat` and QM for crew
  */
-interface IMutinyModule is IQuiescent {
+interface IMutinyModule is IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
                             TYPES
   //////////////////////////////////////////////////////////////*/
@@ -221,9 +222,16 @@ interface IMutinyModule is IQuiescent {
   function activeMutinyId() external view returns (uint256 _id);
 
   /**
+   * @notice Highest mutiny id ever issued (`0` before the first round).
+   * @return _count Last issued id; clients iterate `1..=_count`.
+   */
+  function mutinyCount() external view returns (uint256 _count);
+
+  /**
    * @notice Read the state of a mutiny round.
    * @param _id Round identifier.
    * @return _proposedNewCaptain Successor if the round succeeds.
+   * @return _fromCaptain Captain when the round opened.
    * @return _startedAt Timestamp the round opened.
    * @return _snapshot Snapshot size of eligible crew.
    * @return _yeas Yea vote count.
@@ -232,7 +240,21 @@ interface IMutinyModule is IQuiescent {
   function mutiny(uint256 _id)
     external
     view
-    returns (address _proposedNewCaptain, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed);
+    returns (
+      address _proposedNewCaptain,
+      address _fromCaptain,
+      uint64 _startedAt,
+      uint64 _snapshot,
+      uint64 _yeas,
+      bool _executed
+    );
+
+  /**
+   * @notice Whether yeas already meet the 51% snapshot threshold for `_id`.
+   * @param _id Round identifier.
+   * @return _reached False if no round exists at `_id`.
+   */
+  function thresholdReached(uint256 _id) external view returns (bool _reached);
 
   /**
    * @notice Whether `_voter` has cast a vote in `_mutinyId`.

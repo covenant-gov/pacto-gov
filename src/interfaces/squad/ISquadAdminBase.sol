@@ -120,4 +120,35 @@ interface ISquadAdminBase {
    * @return _paused Whether the pause sentinel is set.
    */
   function isExecutorPaused(address _executor) external view returns (bool _paused);
+
+  /**
+   * @notice Sentinel role id that grants every registered role for `hasExecutorRole`.
+   * @return _full `bytes32("FULL")`.
+   */
+  function FULL_PERMISSION() external view returns (bytes32 _full);
+
+  /**
+   * @notice Sentinel role id that pauses an executor for every `hasExecutorRole` check.
+   * @return _pause `bytes32("PAUSE")`.
+   */
+  function PAUSE_PERMISSION() external view returns (bytes32 _pause);
+
+  /**
+   * @notice Number of app-defined roles in the catalog (excludes `FULL` / `PAUSE`).
+   * @return _count Catalog length.
+   */
+  function roleCount() external view returns (uint256 _count);
+
+  /**
+   * @notice Role id at catalog index `_index`. Reverts if `_index >= roleCount()`.
+   * @param _index Zero-based index.
+   * @return _role Registered role id.
+   */
+  function roleAt(uint256 _index) external view returns (bytes32 _role);
+
+  /**
+   * @notice Full app-defined role catalog (excludes `FULL` / `PAUSE`).
+   * @return _roles Registered role ids.
+   */
+  function roles() external view returns (bytes32[] memory _roles);
 }
