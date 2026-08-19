@@ -178,7 +178,9 @@ abstract contract IntegrationBase is PactoDeploy, Test {
       mutinyMasterCopy: _masters.mutinyModule,
       treasuryAuthorityMasterCopy: _masters.treasuryAuthority,
       squadAdminImplementation: _masters.squadAdminImpl,
-      saltNonce: _freshSquadSalt()
+      saltNonce: _freshSquadSalt(),
+      stackKind: INavePirataFactory.StackKind.Production,
+      squadId: bytes32(0)
     });
 
     _fund(address(this), 200 ether);

@@ -134,7 +134,9 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
       mutinyMasterCopy: _masters.mutinyModule,
       treasuryAuthorityMasterCopy: _masters.treasuryAuthority,
       squadAdminImplementation: _masters.squadAdminImpl,
-      saltNonce: _saltNonce
+      saltNonce: _saltNonce,
+      stackKind: INavePirataFactory.StackKind.Production,
+      squadId: bytes32(0)
     });
 
     _fund(address(this), 200 ether);

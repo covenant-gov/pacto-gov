@@ -27,6 +27,7 @@ library DeployTypes {
   struct InfraAddresses {
     address clonesFactory;
     address registry;
+    address warGameRegistry;
     address upgrader;
     address navePirataFactory;
   }

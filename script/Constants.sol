@@ -8,6 +8,10 @@ uint256 constant CREW_CHANGE_DELAY = 7 days;
 /// @dev Default `TreasuryAuthority.proposalExpiry` / `INavePirataFactory.SquadParams.proposalExpiry` for scripted deploys.
 ///      Also seeds `MutinyModule.mutinyExpiry` and `Quartermaster.crewOffboardExpiry` at factory init.
 uint256 constant PROPOSAL_EXPIRY = 7 days;
+/// @dev Default war-game `SquadParams.crewChangeDelay` (floor remains `RangeValidator.MIN_GOV_DELAY` = 1 minute).
+uint256 constant WAR_GAME_CREW_CHANGE_DELAY = 5 minutes;
+/// @dev Default war-game `SquadParams.proposalExpiry` (also seeds mutiny / crew-offboard expiry at factory init).
+uint256 constant WAR_GAME_PROPOSAL_EXPIRY = 5 minutes;
 /// @dev Default `INavePirataFactory.SquadParams.quorumBps` (basis points; TA `QUORUM_OF_CAST` and Quartermaster crew-led offboard).
 uint256 constant SQUAD_QUORUM_BPS = 3000;
 /// @dev Default `INavePirataFactory.SquadParams.crewVoteMode` for scripted deploys.

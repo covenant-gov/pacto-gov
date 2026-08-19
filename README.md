@@ -39,6 +39,6 @@ The system is built around **Hats-Pointer Upgradeability**: authority is a Hats 
 - `MutinyModule` — 51%-of-snapshot captain accountability, admin of the captain hat; also supports voluntary captain resignation.
 - `TreasuryAuthority` — **two-body democracy** (crew vote + captain approval for execution through the module; see docs for the Safe-wears-captain-hat case) over the squad's Safe. Both the Safe's sole owner *and* its sole Zodiac module. Inherits `AssetRescuer`.
 - `SquadAdmin` — EIP-1167 clone of application-level executor predicates; evolves via roles and new clones, not upgrades.
-- `NavePirataFactory` — one-shot bootstrap that atomically deploys the Safe, creates the hat tree, deploys clones, wires the Safe, and registers the deployment.
-- `NavePirataRegistry`, `RoleHatClonesFactory`, `RoleHatUpgrader` — infra for discovery and upgrade ceremonies.
+- `NavePirataFactory` — one-shot bootstrap that atomically deploys the Safe, creates the hat tree, deploys clones, wires the Safe, and registers the deployment (`stackKind`: Production → `NavePirataRegistry`, WarGame → `WarGameRegistry`).
+- `NavePirataRegistry`, `WarGameRegistry`, `RoleHatClonesFactory`, `RoleHatUpgrader` — infra for discovery (real-gov vs throwaway war-game stacks) and upgrade ceremonies.
 - `AssetRescuer` (abstract) — shared primitive; permissionless sweep of accidentally-received ETH / ERC-20 / ERC-721 / ERC-1155 to a fixed destination.

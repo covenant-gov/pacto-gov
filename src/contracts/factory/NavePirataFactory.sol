@@ -13,6 +13,7 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
+import {IWarGameRegistry} from 'interfaces/factory/IWarGameRegistry.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
@@ -26,7 +27,8 @@ import {ISafe, ISafeProxyFactory} from 'interfaces/utils/safe/ISafe141.sol';
 /**
  * @title NavePirataFactory
  * @author Pacto
- * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, squad-admin EIP-1167 clone, TA wiring, registry (see `INavePirataFactory`).
+ * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, squad-admin EIP-1167 clone, TA wiring, registry routing (see `INavePirataFactory`).
+ *         `stackKind` sends Production to `NavePirataRegistry` and WarGame to `WarGameRegistry` only.
  *         Standalone: `deploySquadAdminExtStandalone`, `deploySquadAdminStandaloneCaptainHat` (permissionless; no registry row).
  * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts = `(msg.sender, saltNonce, kind)`. Placeholder
  *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `RangeValidator` base
@@ -59,8 +61,10 @@ contract NavePirataFactory is INavePirataFactory {
   address internal immutable _SAFE_SINGLETON;
   /// @notice Role-hat clones factory used for Quartermaster / MutinyModule / TreasuryAuthority clones.
   IRoleHatClonesFactory internal immutable _CLONES_FACTORY;
-  /// @notice Registry receiving every squad's `Deployment` record.
+  /// @notice Production registry receiving real-gov `Deployment` records.
   INavePirataRegistry internal immutable _REGISTRY;
+  /// @notice War-game registry receiving throwaway stacks (`stackKind == WarGame`).
+  IWarGameRegistry internal immutable _WAR_GAME_REGISTRY;
   /// @notice Role-hat upgrader wired into each deployment's non-semantic hat slots.
   address internal immutable _UPGRADER;
 
@@ -73,7 +77,8 @@ contract NavePirataFactory is INavePirataFactory {
    * @param _safeProxyFactory Safe proxy factory used by `deployNavePirata` to spawn Safes.
    * @param _safeSingleton Safe singleton backing each proxy.
    * @param _clonesFactory Role-hat clones factory for clone deploys and address prediction.
-   * @param _registry Registry that this factory is authorised to `registerDeployment` into.
+   * @param _registry Production registry that this factory is authorised to `registerDeployment` into.
+   * @param _warGameRegistry War-game registry that this factory is authorised to `register` / `retire` into.
    * @param _upgrader Role-hat upgrader used as the non-semantic eligibility/toggle target.
    */
   constructor(
@@ -82,6 +87,7 @@ contract NavePirataFactory is INavePirataFactory {
     address _safeSingleton,
     address _clonesFactory,
     address _registry,
+    address _warGameRegistry,
     address _upgrader
   ) {
     if (_hats == address(0)) revert NavePirataFactory_ZeroAddress('hats');
@@ -89,6 +95,7 @@ contract NavePirataFactory is INavePirataFactory {
     if (_safeSingleton == address(0)) revert NavePirataFactory_ZeroAddress('safeSingleton');
     if (_clonesFactory == address(0)) revert NavePirataFactory_ZeroAddress('clonesFactory');
     if (_registry == address(0)) revert NavePirataFactory_ZeroAddress('registry');
+    if (_warGameRegistry == address(0)) revert NavePirataFactory_ZeroAddress('warGameRegistry');
     if (_upgrader == address(0)) revert NavePirataFactory_ZeroAddress('upgrader');
 
     _HATS = IHats(_hats);
@@ -96,6 +103,7 @@ contract NavePirataFactory is INavePirataFactory {
     _SAFE_SINGLETON = _safeSingleton;
     _CLONES_FACTORY = IRoleHatClonesFactory(_clonesFactory);
     _REGISTRY = INavePirataRegistry(_registry);
+    _WAR_GAME_REGISTRY = IWarGameRegistry(_warGameRegistry);
     _UPGRADER = _upgrader;
   }
 
@@ -140,28 +148,36 @@ contract NavePirataFactory is INavePirataFactory {
 
     _HATS.transferHat(_topHatId, address(this), _safe);
 
-    _REGISTRY.registerDeployment(
-      INavePirataRegistry.Deployment({
-        safe: _safe,
-        quartermaster: _quartermaster,
-        mutinyModule: _mutinyModule,
-        treasuryAuthority: _treasuryAuthority,
-        squadAdminProxy: _squadAdminProxy,
-        topHatId: _topHatId,
-        captainHatId: _hats.captainHatId,
-        crewHatId: _hats.crewHatId,
-        squadAdminHatId: _hats.squadAdminHatId,
-        mutinyRoleHatId: _hats.mutinyRoleHatId,
-        quartermasterRoleHatId: _hats.quartermasterRoleHatId,
-        treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-        deployedAt: uint64(block.timestamp),
-        deployer: msg.sender
-      })
-    );
+    INavePirataRegistry.Deployment memory _deployment = INavePirataRegistry.Deployment({
+      safe: _safe,
+      quartermaster: _quartermaster,
+      mutinyModule: _mutinyModule,
+      treasuryAuthority: _treasuryAuthority,
+      squadAdminProxy: _squadAdminProxy,
+      topHatId: _topHatId,
+      captainHatId: _hats.captainHatId,
+      crewHatId: _hats.crewHatId,
+      squadAdminHatId: _hats.squadAdminHatId,
+      mutinyRoleHatId: _hats.mutinyRoleHatId,
+      quartermasterRoleHatId: _hats.quartermasterRoleHatId,
+      treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+      deployedAt: uint64(block.timestamp),
+      deployer: msg.sender
+    });
+    if (_params.stackKind == StackKind.WarGame) {
+      _WAR_GAME_REGISTRY.register(_params.squadId, _deployment);
+    } else {
+      _REGISTRY.registerDeployment(_deployment);
+    }
 
     emit NavePirataDeployed(
       _topHatId, _params.captain, _safe, _quartermaster, _mutinyModule, _treasuryAuthority, _squadAdminProxy
     );
+  }
+
+  /// @inheritdoc INavePirataFactory
+  function retireWarGame(bytes32 _squadId) external {
+    _WAR_GAME_REGISTRY.retire(_squadId);
   }
 
   /// @inheritdoc INavePirataFactory
@@ -216,6 +232,11 @@ contract NavePirataFactory is INavePirataFactory {
   /// @inheritdoc INavePirataFactory
   function REGISTRY() external view returns (address _registry) {
     _registry = address(_REGISTRY);
+  }
+
+  /// @inheritdoc INavePirataFactory
+  function WAR_GAME_REGISTRY() external view returns (address _registry) {
+    _registry = address(_WAR_GAME_REGISTRY);
   }
 
   /// @inheritdoc INavePirataFactory
@@ -485,8 +506,8 @@ contract NavePirataFactory is INavePirataFactory {
   }
 
   /**
-   * @notice Validates non-zero-address preconditions on `DeployParams`. Delay / quorum bounds
-   *         are re-validated inside the role clones' initializers.
+   * @notice Validates non-zero-address preconditions on `DeployParams` and `stackKind` / `squadId` pairing.
+   *         Delay / quorum bounds are re-validated inside the role clones' initializers.
    * @param _params Deployment parameters.
    */
   function _validateParams(DeployParams calldata _params) internal pure {
@@ -498,6 +519,11 @@ contract NavePirataFactory is INavePirataFactory {
     }
     if (_params.squadAdminImplementation == address(0)) {
       revert NavePirataFactory_ZeroAddress('squadAdminImplementation');
+    }
+    if (_params.stackKind == StackKind.WarGame) {
+      if (_params.squadId == bytes32(0)) revert NavePirataFactory_InvalidSquadId();
+    } else if (_params.squadId != bytes32(0)) {
+      revert NavePirataFactory_InvalidSquadId();
     }
   }
 }

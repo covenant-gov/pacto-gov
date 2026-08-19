@@ -33,7 +33,9 @@ contract DeployNavePirata is DeploymentArtifacts, ScriptGovernanceParams {
       mutinyMasterCopy: MASTER_COPY_MUTINY_MODULE,
       treasuryAuthorityMasterCopy: MASTER_COPY_TREASURY_AUTHORITY,
       squadAdminImplementation: MASTER_COPY_SQUAD_ADMIN_IMPL,
-      saltNonce: DEPLOY_NAV_PIRATA_SALT_NONCE
+      saltNonce: DEPLOY_NAV_PIRATA_SALT_NONCE,
+      stackKind: INavePirataFactory.StackKind.Production,
+      squadId: bytes32(0)
     });
 
     INavePirataFactory _factory = INavePirataFactory(vm.envAddress('NAVE_PIRATA_FACTORY'));

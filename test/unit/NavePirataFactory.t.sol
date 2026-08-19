@@ -18,12 +18,13 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
+import {IWarGameRegistry} from 'interfaces/factory/IWarGameRegistry.sol';
 
 /**
  * @title UnitNavePirataFactoryBase
  * @author Pacto
  * @notice Shared fixture for `NavePirataFactory` unit tests. Every external contract (Hats,
- *         `RoleHatClonesFactory`, `NavePirataRegistry`, `SafeProxyFactory`, and deployed Safes)
+ *         `RoleHatClonesFactory`, `NavePirataRegistry`, `WarGameRegistry`, `SafeProxyFactory`, and deployed Safes)
  *         is stubbed with `vm.mockCall` per the project's no-mock-contract rule. The only real
  *         production code deployed is `SquadAdmin`, which backs the EIP-1167 clone the
  *         factory creates on the fly (`initialize` on the clone cannot be mocked meaningfully without bytecode).
@@ -35,6 +36,8 @@ abstract contract UnitNavePirataFactoryBase is Test {
   address internal constant _SAFE_SINGLETON = address(uint160(uint256(keccak256('pacto.factory.SAFE_SINGLETON'))));
   address internal constant _CLONES_ADDRESS = address(uint160(uint256(keccak256('pacto.factory.CLONES'))));
   address internal constant _REGISTRY_ADDRESS = address(uint160(uint256(keccak256('pacto.factory.REGISTRY'))));
+  address internal constant _WAR_GAME_REGISTRY_ADDRESS =
+    address(uint160(uint256(keccak256('pacto.factory.WAR_GAME_REGISTRY'))));
   address internal constant _UPGRADER_ADDRESS = address(uint160(uint256(keccak256('pacto.factory.UPGRADER'))));
 
   uint256 internal constant _TOP_HAT_ID = 0xff01;
@@ -66,6 +69,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
     vm.etch(_SAFE_SINGLETON, hex'00');
     vm.etch(_CLONES_ADDRESS, hex'00');
     vm.etch(_REGISTRY_ADDRESS, hex'00');
+    vm.etch(_WAR_GAME_REGISTRY_ADDRESS, hex'00');
     vm.etch(_UPGRADER_ADDRESS, hex'00');
     vm.etch(_safe, hex'00');
 
@@ -73,7 +77,13 @@ abstract contract UnitNavePirataFactoryBase is Test {
     _squadAdminExtImpl = new SquadAdminExt(IHats(_HATS_ADDRESS));
 
     _factory = new NavePirataFactory(
-      _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, _CLONES_ADDRESS, _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
+      _HATS_ADDRESS,
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      _SAFE_SINGLETON,
+      _CLONES_ADDRESS,
+      _REGISTRY_ADDRESS,
+      _WAR_GAME_REGISTRY_ADDRESS,
+      _UPGRADER_ADDRESS
     );
   }
 
@@ -95,7 +105,9 @@ abstract contract UnitNavePirataFactoryBase is Test {
       mutinyMasterCopy: _mmMasterCopy,
       treasuryAuthorityMasterCopy: _taMasterCopy,
       squadAdminImplementation: address(_squadAdminImpl),
-      saltNonce: 1
+      saltNonce: 1,
+      stackKind: INavePirataFactory.StackKind.Production,
+      squadId: bytes32(0)
     });
   }
 
@@ -178,6 +190,14 @@ abstract contract UnitNavePirataFactoryBase is Test {
     );
   }
 
+  function _mockWarGameRegister() internal {
+    vm.mockCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeWithSelector(IWarGameRegistry.register.selector), abi.encode());
+  }
+
+  function _mockWarGameRetire() internal {
+    vm.mockCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeWithSelector(IWarGameRegistry.retire.selector), abi.encode());
+  }
+
   /// @notice Primes every external call needed for a successful `deployNavePirata` happy path.
   function _primeHappyPath() internal {
     _mockSafeDeploy(_safe);
@@ -208,13 +228,20 @@ contract UnitNavePirataFactoryConstructor is UnitNavePirataFactoryBase {
     assertEq(_factory.SAFE_SINGLETON(), _SAFE_SINGLETON, 'SAFE_SINGLETON');
     assertEq(_factory.CLONES_FACTORY(), _CLONES_ADDRESS, 'CLONES_FACTORY');
     assertEq(_factory.REGISTRY(), _REGISTRY_ADDRESS, 'REGISTRY');
+    assertEq(_factory.WAR_GAME_REGISTRY(), _WAR_GAME_REGISTRY_ADDRESS, 'WAR_GAME_REGISTRY');
     assertEq(_factory.UPGRADER(), _UPGRADER_ADDRESS, 'UPGRADER');
   }
 
   function test_Constructor_RevertsIfHatsZero() public {
     vm.expectRevert(abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'hats'));
     new NavePirataFactory(
-      address(0), _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, _CLONES_ADDRESS, _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
+      address(0),
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      _SAFE_SINGLETON,
+      _CLONES_ADDRESS,
+      _REGISTRY_ADDRESS,
+      _WAR_GAME_REGISTRY_ADDRESS,
+      _UPGRADER_ADDRESS
     );
   }
 
@@ -223,35 +250,80 @@ contract UnitNavePirataFactoryConstructor is UnitNavePirataFactoryBase {
       abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'safeProxyFactory')
     );
     new NavePirataFactory(
-      _HATS_ADDRESS, address(0), _SAFE_SINGLETON, _CLONES_ADDRESS, _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
+      _HATS_ADDRESS,
+      address(0),
+      _SAFE_SINGLETON,
+      _CLONES_ADDRESS,
+      _REGISTRY_ADDRESS,
+      _WAR_GAME_REGISTRY_ADDRESS,
+      _UPGRADER_ADDRESS
     );
   }
 
   function test_Constructor_RevertsIfSafeSingletonZero() public {
     vm.expectRevert(abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'safeSingleton'));
     new NavePirataFactory(
-      _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, address(0), _CLONES_ADDRESS, _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
+      _HATS_ADDRESS,
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      address(0),
+      _CLONES_ADDRESS,
+      _REGISTRY_ADDRESS,
+      _WAR_GAME_REGISTRY_ADDRESS,
+      _UPGRADER_ADDRESS
     );
   }
 
   function test_Constructor_RevertsIfClonesFactoryZero() public {
     vm.expectRevert(abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'clonesFactory'));
     new NavePirataFactory(
-      _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, address(0), _REGISTRY_ADDRESS, _UPGRADER_ADDRESS
+      _HATS_ADDRESS,
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      _SAFE_SINGLETON,
+      address(0),
+      _REGISTRY_ADDRESS,
+      _WAR_GAME_REGISTRY_ADDRESS,
+      _UPGRADER_ADDRESS
     );
   }
 
   function test_Constructor_RevertsIfRegistryZero() public {
     vm.expectRevert(abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'registry'));
     new NavePirataFactory(
-      _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, _CLONES_ADDRESS, address(0), _UPGRADER_ADDRESS
+      _HATS_ADDRESS,
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      _SAFE_SINGLETON,
+      _CLONES_ADDRESS,
+      address(0),
+      _WAR_GAME_REGISTRY_ADDRESS,
+      _UPGRADER_ADDRESS
+    );
+  }
+
+  function test_Constructor_RevertsIfWarGameRegistryZero() public {
+    vm.expectRevert(
+      abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'warGameRegistry')
+    );
+    new NavePirataFactory(
+      _HATS_ADDRESS,
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      _SAFE_SINGLETON,
+      _CLONES_ADDRESS,
+      _REGISTRY_ADDRESS,
+      address(0),
+      _UPGRADER_ADDRESS
     );
   }
 
   function test_Constructor_RevertsIfUpgraderZero() public {
     vm.expectRevert(abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'upgrader'));
     new NavePirataFactory(
-      _HATS_ADDRESS, _SAFE_PROXY_FACTORY_ADDRESS, _SAFE_SINGLETON, _CLONES_ADDRESS, _REGISTRY_ADDRESS, address(0)
+      _HATS_ADDRESS,
+      _SAFE_PROXY_FACTORY_ADDRESS,
+      _SAFE_SINGLETON,
+      _CLONES_ADDRESS,
+      _REGISTRY_ADDRESS,
+      _WAR_GAME_REGISTRY_ADDRESS,
+      address(0)
     );
   }
 }
@@ -307,6 +379,23 @@ contract UnitNavePirataFactoryDeployValidation is UnitNavePirataFactoryBase {
     vm.expectRevert(
       abi.encodeWithSelector(INavePirataFactory.NavePirataFactory_ZeroAddress.selector, 'squadAdminImplementation')
     );
+    _factory.deployNavePirata(_params);
+  }
+
+  function test_Deploy_RevertsIfWarGameSquadIdZero() public {
+    INavePirataFactory.DeployParams memory _params = _defaultDeployParams();
+    _params.stackKind = INavePirataFactory.StackKind.WarGame;
+    _params.squadId = bytes32(0);
+    vm.prank(_caller);
+    vm.expectRevert(INavePirataFactory.NavePirataFactory_InvalidSquadId.selector);
+    _factory.deployNavePirata(_params);
+  }
+
+  function test_Deploy_RevertsIfProductionSquadIdNonZero() public {
+    INavePirataFactory.DeployParams memory _params = _defaultDeployParams();
+    _params.squadId = keccak256('squad');
+    vm.prank(_caller);
+    vm.expectRevert(INavePirataFactory.NavePirataFactory_InvalidSquadId.selector);
     _factory.deployNavePirata(_params);
   }
 }
@@ -501,6 +590,7 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
     });
 
     vm.expectCall(_REGISTRY_ADDRESS, abi.encodeCall(INavePirataRegistry.registerDeployment, (_expected)));
+    vm.expectCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeWithSelector(IWarGameRegistry.register.selector), 0);
 
     vm.prank(_caller);
     _factory.deployNavePirata(_defaultDeployParams());
@@ -516,6 +606,45 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
 
     vm.prank(_caller);
     _factory.deployNavePirata(_defaultDeployParams());
+  }
+
+  function test_Deploy_WarGameRegistersOnlyInWarGameRegistry() public {
+    _primeHappyPath();
+    _mockWarGameRegister();
+
+    INavePirataFactory.DeployParams memory _params = _defaultDeployParams();
+    _params.stackKind = INavePirataFactory.StackKind.WarGame;
+    _params.squadId = keccak256('squad');
+
+    INavePirataRegistry.Deployment memory _expected = INavePirataRegistry.Deployment({
+      safe: _safe,
+      quartermaster: _predQm,
+      mutinyModule: _predMm,
+      treasuryAuthority: _predTa,
+      squadAdminProxy: _expectedSquadAdminProxy(),
+      topHatId: _TOP_HAT_ID,
+      captainHatId: _CAPTAIN_HAT_ID,
+      crewHatId: _CREW_HAT_ID,
+      squadAdminHatId: _SQUAD_ADMIN_HAT_ID,
+      mutinyRoleHatId: _MUTINY_ROLE_HAT_ID,
+      quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT_ID,
+      treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT_ID,
+      deployedAt: uint64(block.timestamp),
+      deployer: _caller
+    });
+
+    vm.expectCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeCall(IWarGameRegistry.register, (_params.squadId, _expected)));
+    vm.expectCall(_REGISTRY_ADDRESS, abi.encodeWithSelector(INavePirataRegistry.registerDeployment.selector), 0);
+
+    vm.prank(_caller);
+    _factory.deployNavePirata(_params);
+  }
+
+  function test_RetireWarGame_ForwardsToRegistry() public {
+    _mockWarGameRetire();
+    bytes32 _squadId = keccak256('squad');
+    vm.expectCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeCall(IWarGameRegistry.retire, (_squadId)));
+    _factory.retireWarGame(_squadId);
   }
 
   /*///////////////////////////////////////////////////////////////
