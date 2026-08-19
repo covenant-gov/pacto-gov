@@ -16,7 +16,13 @@ import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
-import {CREW_CHANGE_DELAY, DEPLOY_NAV_PIRATA_SALT_NONCE, HATS_PROTOCOL_V1} from 'script/Constants.sol';
+import {
+  CREW_CHANGE_DELAY,
+  DEPLOY_NAV_PIRATA_SALT_NONCE,
+  HATS_PROTOCOL_V1,
+  PROPOSAL_EXPIRY,
+  SQUAD_QUORUM_BPS
+} from 'script/Constants.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
@@ -47,7 +53,9 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
       mutinyRoleHatId: _squadQuartermaster.mutinyRoleHatId(),
       quartermasterRoleHatId: _squadQuartermaster.quartermasterRoleHatId(),
       treasuryAuthorityRoleHatId: _squadQuartermaster.treasuryAuthorityRoleHatId(),
-      crewChangeDelay: _squadQuartermaster.crewChangeDelay()
+      crewChangeDelay: _squadQuartermaster.crewChangeDelay(),
+      crewOffboardExpiry: _squadQuartermaster.crewOffboardExpiry(),
+      crewOffboardQuorumBps: _squadQuartermaster.crewOffboardQuorumBps()
     });
   }
 
@@ -84,7 +92,9 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
       mutinyMasterCopy: _masters.mutinyModule,
       treasuryAuthorityMasterCopy: _masters.treasuryAuthority,
       squadAdminImplementation: _masters.squadAdminImpl,
-      saltNonce: _saltNonce
+      saltNonce: _saltNonce,
+      stackKind: INavePirataFactory.StackKind.Production,
+      squadId: bytes32(0)
     });
 
     _fund(address(this), 200 ether);
@@ -252,6 +262,8 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
 
   function test_e2e_quartermaster_crewChangeDelay_matchesProductionDefault() public withDeployedNavePirataSquad {
     assertEq(_squadQuartermaster.crewChangeDelay(), CREW_CHANGE_DELAY);
+    assertEq(_squadQuartermaster.crewOffboardExpiry(), PROPOSAL_EXPIRY);
+    assertEq(_squadQuartermaster.crewOffboardQuorumBps(), SQUAD_QUORUM_BPS);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -929,6 +941,54 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
 
   function test_integration_quartermasterCloneMatchesRegistryDeployment() public withDeployedNavePirataSquad {
     assertEq(address(_squadQuartermaster), NavePirataRegistry(_infra.registry).deployment(_squadTopHatId).quartermaster);
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                        crew-led offboard
+  //////////////////////////////////////////////////////////////*/
+
+  function test_e2e_proposeOffboard_execute_atQuorumYeasAhead() public withDeployedNavePirataSquad {
+    address _target = _squadCrew[4];
+    vm.prank(_squadCrew[0]);
+    uint256 _id = _squadQuartermaster.proposeOffboard(_target);
+
+    vm.prank(_squadCrew[0]);
+    _squadQuartermaster.crewOffboardVote(_id, true);
+    vm.prank(_squadCrew[1]);
+    _squadQuartermaster.crewOffboardVote(_id, true);
+
+    _squadQuartermaster.executeOffboard(_id);
+
+    assertEq(_squadQuartermaster.activeCrewOffboardId(), 0);
+    assertFalse(_squadQuartermaster.crewEligible(_target));
+    assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_target, _squadCrewHatId));
+  }
+
+  function test_e2e_proposeOffboard_reverts_whenMutinyActive() public withDeployedNavePirataSquad {
+    _ensureSquadMutinyActive();
+    vm.prank(_squadCrew[0]);
+    vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
+    _squadQuartermaster.proposeOffboard(_squadCrew[4]);
+  }
+
+  function test_e2e_expireOffboard_thenNewVote() public withDeployedNavePirataSquad {
+    vm.prank(_squadCrew[0]);
+    uint256 _id = _squadQuartermaster.proposeOffboard(_squadCrew[4]);
+    vm.warp(block.timestamp + _squadQuartermaster.crewOffboardExpiry());
+    _squadQuartermaster.expireOffboard(_id);
+    assertEq(_squadQuartermaster.activeCrewOffboardId(), 0);
+
+    vm.prank(_squadCrew[1]);
+    uint256 _id2 = _squadQuartermaster.proposeOffboard(_squadCrew[3]);
+    assertEq(_id2, 2);
+  }
+
+  function test_e2e_requestAddCrew_reverts_whenCrewOffboardActive() public withDeployedNavePirataSquad {
+    vm.prank(_squadCrew[0]);
+    _squadQuartermaster.proposeOffboard(_squadCrew[4]);
+    address _candidate = _qmCandidate('e2eQmAddDuringOffboard');
+    vm.expectRevert(IQuartermaster.Quartermaster_CrewOffboardActive.selector);
+    _captainRequestAddCrew(_squadQuartermaster, _squadCaptain, _candidate);
   }
 }
 

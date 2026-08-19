@@ -9,7 +9,8 @@ import {console} from 'forge-std/console.sol';
 /**
  * @title DeployInfra
  * @author Pacto
- * @notice Deploys `RoleHatClonesFactory`, `NavePirataRegistry`, `RoleHatUpgrader`, `NavePirataFactory` and wires registry.
+ * @notice Deploys `RoleHatClonesFactory`, `NavePirataRegistry`, `WarGameRegistry`, `RoleHatUpgrader`,
+ *         `NavePirataFactory` and wires both registries.
  * @dev Does **not** deploy role master copies — run `DeployMasterCopies` first if masters are not yet on chain.
  *      Uses `script/Constants.sol` + `block.chainid` for Hats / Safe singletons.
  */
@@ -23,6 +24,7 @@ contract DeployInfra is PactoDeploy {
     _writeInfraJson(_infra);
     console.log('RoleHatClonesFactory:', _infra.clonesFactory);
     console.log('NavePirataRegistry:', _infra.registry);
+    console.log('WarGameRegistry:', _infra.warGameRegistry);
     console.log('RoleHatUpgrader:', _infra.upgrader);
     console.log('NavePirataFactory:', _infra.navePirataFactory);
   }

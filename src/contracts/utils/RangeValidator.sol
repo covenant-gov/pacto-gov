@@ -7,7 +7,7 @@ import {IRangeValidator} from 'interfaces/utils/IRangeValidator.sol';
  * @title RangeValidator
  * @author Pacto
  * @notice Shared min/max for delays and quorum bps, plus `RangeValidator_OutOfRange`. Consuming contracts emit their own events
- * @dev Mixed into TA / QM (and similar) for bounded setters; 1 minute min delay is intentional for testing
+ * @dev Mixed into TA / QM / MM for bounded setters; 1 minute min delay is intentional for testing
  */
 abstract contract RangeValidator is IRangeValidator {
   /// @inheritdoc IRangeValidator

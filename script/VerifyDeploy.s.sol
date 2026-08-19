@@ -31,6 +31,7 @@ contract VerifyDeploy is Script {
   string internal constant _SA_EXT = 'src/contracts/squad/SquadAdminExt.sol:SquadAdminExt';
   string internal constant _CLONES = 'src/contracts/factory/RoleHatClonesFactory.sol:RoleHatClonesFactory';
   string internal constant _REGISTRY = 'src/contracts/factory/NavePirataRegistry.sol:NavePirataRegistry';
+  string internal constant _WAR_GAME_REGISTRY = 'src/contracts/factory/WarGameRegistry.sol:WarGameRegistry';
   string internal constant _UPGRADER = 'src/contracts/factory/RoleHatUpgrader.sol:RoleHatUpgrader';
   string internal constant _FACTORY = 'src/contracts/factory/NavePirataFactory.sol:NavePirataFactory';
 
@@ -44,10 +45,11 @@ contract VerifyDeploy is Script {
     address _safeSingle = _json.readAddress('.safeSingleton');
     address _clones = _json.readAddress('.roleHatClonesFactory');
     address _registry = _json.readAddress('.navePirataRegistry');
+    address _warGameRegistry = _json.readAddress('.warGameRegistry');
     address _upgrader = _json.readAddress('.roleHatUpgrader');
 
     bytes memory _encHats = abi.encode(_hats);
-    bytes memory _encFactory = abi.encode(_hats, _safePf, _safeSingle, _clones, _registry, _upgrader);
+    bytes memory _encFactory = abi.encode(_hats, _safePf, _safeSingle, _clones, _registry, _warGameRegistry, _upgrader);
 
     console.log('Verifying full-system contracts on', _chain);
 
@@ -58,6 +60,7 @@ contract VerifyDeploy is Script {
     _verify(_json.readAddress('.masterSquadAdminExtImpl'), _SA_EXT, _chain, _encHats);
     _verifyNoArgs(_json.readAddress('.roleHatClonesFactory'), _CLONES, _chain);
     _verifyNoArgs(_json.readAddress('.navePirataRegistry'), _REGISTRY, _chain);
+    _verifyNoArgs(_warGameRegistry, _WAR_GAME_REGISTRY, _chain);
     _verifyUpgrader(_json, _hats, _clones, _registry, _chain);
     _verify(_json.readAddress('.navePirataFactory'), _FACTORY, _chain, _encFactory);
   }

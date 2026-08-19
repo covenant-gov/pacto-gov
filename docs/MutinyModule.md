@@ -11,18 +11,21 @@ Together, this makes **leadership change** something the chain can enforce, inst
 ## What it does
 
 1. **Start a mutiny**  
-   A crew member proposes an address that should become the new captain (several entrypoints exist: another crew member, a committee contract, an arbitrary EOA or contract, etc.). There is also **`startMutinyToPauseCaptain`**, which targets the squad **Safe** — the same address the Treasury Authority uses as its Zodiac **avatar**. On success, the **captain hat moves to the Safe**, which shifts how treasury execution works (see [Treasury Authority](./TreasuryAuthority.md)). The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad. `mutiny(id)` returns that successor, the captain at open (`fromCaptain`), snapshot, yeas, and whether it executed. `mutinyCount` is the highest id issued; `thresholdReached(id)` is whether yeas already meet the 51% snapshot rule.
+   A crew member proposes an address that should become the new captain (several entrypoints exist: another crew member, a committee contract, an arbitrary EOA or contract, etc.). There is also **`startMutinyToPauseCaptain`**, which targets the squad **Safe** — the same address the Treasury Authority uses as its Zodiac **avatar**. On success, the **captain hat moves to the Safe**, which shifts how treasury execution works (see [Treasury Authority](./TreasuryAuthority.md)). The system records who the current captain was at that moment and takes a **snapshot** of crew size (how many crew hats exist). Only **one** mutiny can be active at a time for this squad, and a mutiny cannot start while a **crew-led offboard** vote is live on the Quartermaster. `mutiny(id)` returns that successor, the captain at open (`fromCaptain`), start time, **deadline**, snapshot, yeas, and whether it executed. `mutinyCount` is the highest id issued; `thresholdReached(id)` is whether yeas already meet the 51% snapshot rule. The deadline is `startedAt + mutinyExpiry` (`mutinyExpiry` is initialized from the same squad `proposalExpiry` as Treasury Authority, and can later be changed only via the Treasury Authority role hat).
 
 2. **Crew vote**  
-   Crew members who agree cast a vote. Each can vote once per mutiny.
+   Crew members who agree cast a vote. Each can vote once per mutiny. Votes are not accepted after the deadline.
 
 3. **Execute the mutiny**  
-   If **yes** votes pass a **majority-of-snapshot** threshold (more than half of the snapshot crew count), anyone can finalize the process. The **captain hat** is transferred from the old captain to the proposed new captain on **Hats Protocol** (the hat system this squad uses).
+   If **yes** votes pass a **majority-of-snapshot** threshold (more than half of the snapshot crew count) **and the deadline has not passed**, anyone can finalize the process. The **captain hat** is transferred from the old captain to the proposed new captain on **Hats Protocol** (the hat system this squad uses).
 
-4. **While a mutiny is active**  
-   The module tells the **Quartermaster** to turn on **“mutiny mode.”** That **freezes** the captain’s normal “hire and fire crew” flows so the roster can’t be changed casually during the vote. When the mutiny finishes, mutiny mode is turned off.
+4. **Expire a failed mutiny**  
+   If the deadline passes without a successful execute, **anyone** can call **`expireMutiny`**. That clears the active round and turns **mutiny mode** off on the Quartermaster, so a new mutiny (or captain resignation) can start. A winning vote that nobody executed before the deadline also dies this way.
 
-5. **After the captain changes (human ex-captains)**  
+5. **While a mutiny is active**  
+   The module tells the **Quartermaster** to turn on **“mutiny mode.”** That **freezes** the captain’s normal “hire and fire crew” flows **and** crew-led offboard so the roster can’t be changed casually during the vote. When the mutiny finishes or expires, mutiny mode is turned off.
+
+6. **After the captain changes (human ex-captains)**  
    If the old captain was an **EOA / personal wallet** (not a smart contract), the module may ask the Quartermaster to **seat the former captain as crew** again — either by minting them a crew hat or by **handing off** an existing crew hat from the new captain, depending on whether the new captain was already crew.
 
    If the old captain was a **contract**, this automatic “welcome back as crew” step is **skipped** by design.
@@ -33,7 +36,7 @@ Together, this makes **leadership change** something the chain can enforce, inst
 |--------|----------------|
 | **Quartermaster** | The mutiny module **calls** the Quartermaster to flip mutiny mode on/off and, when needed, to adjust crew membership after a successful mutiny. |
 | **Hats Protocol** | Captain and crew membership live in **hats**. The module is wired as **eligibility** for the captain hat so transfers stay consistent with stored captain state. |
-| **Treasury Authority** | **No direct calls**, but the module stores the squad **Safe** at init. A successful **pause-captain** mutiny moves the captain hat to that Safe, and Treasury Authority **execution rules** read whether the **avatar** wears the captain hat — so this path changes treasury from “crew + human captain” to “crew-only execute” until the hat moves again. |
+| **Treasury Authority** | **No direct calls**, but the module stores the squad **Safe** at init. Changing `mutinyExpiry` after deploy is gated by the **Treasury Authority role hat** (same two-body path as other params). A successful **pause-captain** mutiny moves the captain hat to that Safe, and Treasury Authority **execution rules** read whether the **avatar** wears the captain hat — so this path changes treasury from “crew + human captain” to “crew-only execute” until the hat moves again. |
 | **Squad Admin** | **No direct link.** Optional integrations use the squad-admin hat separately from mutiny. |
 | **“Quiet” checks elsewhere** | While a mutiny is active, this module reports the squad as **not quiet**, which other processes (like safe contract upgrades) may use to avoid risky changes during turmoil. |
 
@@ -41,7 +44,7 @@ Together, this makes **leadership change** something the chain can enforce, inst
 
 - It does **not** move money from the Safe by itself.
 - It does **not** replace the Quartermaster for day-to-day crew onboarding — it only **overrides** normal rules during mutiny and uses special **mutiny-only** crew paths when appropriate.
-- It does **not** allow two overlapping mutinies; a round must finish (successfully or not — note: failed mutinies may still require governance/product clarity on how the round ends) before another starts in the current design.
+- It does **not** allow two overlapping mutinies; a round must **execute** or **expire** before another starts.
 
 ## Mental model
 

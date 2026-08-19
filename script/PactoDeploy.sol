@@ -8,6 +8,7 @@ import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
 import {RoleHatClonesFactory} from 'contracts/factory/RoleHatClonesFactory.sol';
 import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
+import {WarGameRegistry} from 'contracts/factory/WarGameRegistry.sol';
 import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
 
@@ -90,6 +91,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   ) internal returns (DeployTypes.InfraAddresses memory _i) {
     _i.clonesFactory = address(new RoleHatClonesFactory());
     _i.registry = address(new NavePirataRegistry());
+    _i.warGameRegistry = address(new WarGameRegistry());
     _i.upgrader = address(
       new RoleHatUpgrader(
         IHats(_ext.hats), IRoleHatClonesFactory(_i.clonesFactory), INavePirataRegistry(_i.registry), _admin
@@ -97,10 +99,17 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     );
     _i.navePirataFactory = address(
       new NavePirataFactory(
-        _ext.hats, address(_ext.safeProxyFactory), _ext.safeSingleton, _i.clonesFactory, _i.registry, _i.upgrader
+        _ext.hats,
+        address(_ext.safeProxyFactory),
+        _ext.safeSingleton,
+        _i.clonesFactory,
+        _i.registry,
+        _i.warGameRegistry,
+        _i.upgrader
       )
     );
     NavePirataRegistry(_i.registry).initialize(_i.navePirataFactory, _i.upgrader);
+    WarGameRegistry(_i.warGameRegistry).initialize(_i.navePirataFactory);
     _infra = _i;
   }
 
@@ -123,6 +132,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     console.log('Master SquadAdminExt:', _masters.squadAdminExtImpl);
     console.log('RoleHatClonesFactory:', _infra.clonesFactory);
     console.log('NavePirataRegistry:', _infra.registry);
+    console.log('WarGameRegistry:', _infra.warGameRegistry);
     console.log('RoleHatUpgrader:', _infra.upgrader);
     console.log('NavePirataFactory:', _infra.navePirataFactory);
   }

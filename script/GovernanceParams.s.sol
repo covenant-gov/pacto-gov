@@ -2,7 +2,14 @@
 pragma solidity 0.8.30;
 
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
-import {CREW_CHANGE_DELAY, DEFAULT_CREW_VOTE_MODE, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
+import {
+  CREW_CHANGE_DELAY,
+  DEFAULT_CREW_VOTE_MODE,
+  PROPOSAL_EXPIRY,
+  SQUAD_QUORUM_BPS,
+  WAR_GAME_CREW_CHANGE_DELAY,
+  WAR_GAME_PROPOSAL_EXPIRY
+} from 'script/Constants.sol';
 
 /**
  * @title ScriptGovernanceParams
@@ -17,6 +24,16 @@ abstract contract ScriptGovernanceParams {
     _p = INavePirataFactory.SquadParams({
       crewChangeDelay: CREW_CHANGE_DELAY,
       proposalExpiry: PROPOSAL_EXPIRY,
+      crewVoteMode: DEFAULT_CREW_VOTE_MODE,
+      quorumBps: SQUAD_QUORUM_BPS
+    });
+  }
+
+  /// @notice War-game delays (5 minutes); same vote mode / quorum as production.
+  function _squadParamsWarGame() internal pure returns (INavePirataFactory.SquadParams memory _p) {
+    _p = INavePirataFactory.SquadParams({
+      crewChangeDelay: WAR_GAME_CREW_CHANGE_DELAY,
+      proposalExpiry: WAR_GAME_PROPOSAL_EXPIRY,
       crewVoteMode: DEFAULT_CREW_VOTE_MODE,
       quorumBps: SQUAD_QUORUM_BPS
     });

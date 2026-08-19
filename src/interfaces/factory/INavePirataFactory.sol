@@ -6,7 +6,8 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 /**
  * @title INavePirataFactory
  * @author Pacto
- * @notice Full squad: `deployNavePirata`. Standalone squad-admin helpers: `deploySquadAdminExtStandalone`,
+ * @notice Full squad: `deployNavePirata` (`stackKind` routes Production to `NavePirataRegistry` and WarGame to
+ *         `WarGameRegistry`). Standalone squad-admin helpers: `deploySquadAdminExtStandalone`,
  *         `deploySquadAdminStandaloneCaptainHat`. Governance migration after deploy uses `postInitialize` on the clone
  *         (called by the controller / captain), not the factory.
  */
@@ -15,11 +16,21 @@ interface INavePirataFactory {
                             TYPES
   //////////////////////////////////////////////////////////////*/
   /**
+   * @notice Which registry receives the deployment record.
+   * @param Production `NavePirataRegistry` (real-gov index). `squadId` must be zero.
+   * @param WarGame `WarGameRegistry` only. `squadId` must be non-zero; auto-retires the previous Active.
+   */
+  enum StackKind {
+    Production,
+    WarGame
+  }
+
+  /**
    * @notice Governance defaults for a new squad.
    * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
-   * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires.
-   * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast).
-   * @param quorumBps Quorum in basis points, only applied when `crewVoteMode == QUORUM_OF_CAST`.
+   * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires. Also seeds MutinyModule `mutinyExpiry` and Quartermaster `crewOffboardExpiry`.
+   * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast). Treasury Authority only; mutiny stays 51% snapshot; crew offboard always uses `QUORUM_OF_CAST`.
+   * @param quorumBps Quorum in basis points for TA `QUORUM_OF_CAST` and Quartermaster crew-led offboard.
    */
   struct SquadParams {
     uint256 crewChangeDelay;
@@ -38,6 +49,8 @@ interface INavePirataFactory {
    * @param treasuryAuthorityMasterCopy Approved TreasuryAuthority master copy to clone.
    * @param squadAdminImplementation `SquadAdmin` master copy to clone (EIP-1167).
    * @param saltNonce CREATE2 nonce for Safe + clone determinism.
+   * @param stackKind Production vs war-game registry routing.
+   * @param squadId MLS-parent key for war-game (`keccak256`); must be zero for Production.
    */
   struct DeployParams {
     address captain;
@@ -48,6 +61,8 @@ interface INavePirataFactory {
     address treasuryAuthorityMasterCopy;
     address squadAdminImplementation;
     uint256 saltNonce;
+    StackKind stackKind;
+    bytes32 squadId;
   }
 
   /**
@@ -123,6 +138,8 @@ interface INavePirataFactory {
   error NavePirataFactory_BootstrapTeardownFailed();
   /// @notice `deploySquadAdminStandaloneCaptainHat` requires a non-zero captain hat id.
   error NavePirataFactory_InvalidCaptainHat();
+  /// @notice Production requires zero `squadId`; WarGame requires a non-zero `squadId`.
+  error NavePirataFactory_InvalidSquadId();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -170,6 +187,12 @@ interface INavePirataFactory {
     uint256 captainHatId
   ) external returns (address clone);
 
+  /**
+   * @notice Permissionless: retire the Active war-game for `_squadId` without deploying a replacement.
+   * @param squadId Squad key currently Active in `WarGameRegistry`.
+   */
+  function retireWarGame(bytes32 squadId) external;
+
   /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
@@ -198,10 +221,16 @@ interface INavePirataFactory {
   function CLONES_FACTORY() external view returns (address _clones);
 
   /**
-   * @notice Registry recording each deployment.
-   * @return _registry The registry address.
+   * @notice Production registry recording real-gov deployments.
+   * @return _registry The production `NavePirataRegistry` address.
    */
   function REGISTRY() external view returns (address _registry);
+
+  /**
+   * @notice War-game registry for throwaway stacks (`stackKind == WarGame`).
+   * @return _registry The `WarGameRegistry` address.
+   */
+  function WAR_GAME_REGISTRY() external view returns (address _registry);
 
   /**
    * @notice Upgrader wired into each deployment.

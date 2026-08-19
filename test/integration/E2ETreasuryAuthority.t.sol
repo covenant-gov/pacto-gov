@@ -22,12 +22,35 @@ import {IERC1155} from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import {E2ERescueERC1155, E2ERescueERC20, E2ERescueERC721, IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
 /**
+ * @title E2ETreasuryAuthorityBase
+ * @author Pacto
+ * @notice Shared clone/init helpers for Treasury Authority E2E suites (split so solc via-IR stays under tag limits).
+ */
+abstract contract E2ETreasuryAuthorityBase is IntegrationBase {
+  function _newTaClone() internal returns (TreasuryAuthority _fresh) {
+    TreasuryAuthority _impl = TreasuryAuthority(payable(_masters.treasuryAuthority));
+    _fresh = TreasuryAuthority(payable(Clones.clone(address(_impl))));
+  }
+
+  function _baselineTaInit() internal view returns (ITreasuryAuthority.InitParams memory _p) {
+    _p = ITreasuryAuthority.InitParams({
+      safe: _squadSafe,
+      captainHatId: _squadTreasury.captainHatId(),
+      crewHatId: _squadTreasury.crewHatId(),
+      treasuryAuthorityRoleHatId: _squadTreasury.treasuryAuthorityRoleHatId(),
+      proposalExpiry: _squadTreasury.proposalExpiry(),
+      crewVoteMode: _squadTreasury.crewVoteMode(),
+      quorumBps: _squadTreasury.quorumBps()
+    });
+  }
+}
+
+/**
  * @title E2ETreasuryAuthorityTest
  * @author Pacto
- * @notice End-to-end scenarios for `TreasuryAuthority`; function names follow branching in `TreasuryAuthority`
- *         / `ITreasuryAuthority`; empty bodies are intentional for a follow-up pass.
+ * @notice End-to-end scenarios for `TreasuryAuthority` init, propose, and voting.
  */
-contract E2ETreasuryAuthorityTest is IntegrationBase {
+contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
   /*///////////////////////////////////////////////////////////////
                         initialize / setUp
   //////////////////////////////////////////////////////////////*/
@@ -486,7 +509,14 @@ contract E2ETreasuryAuthorityTest is IntegrationBase {
     assertEq(_next, _id + 1);
     assertEq(_squadTreasury.openProposalOf(_crewProposer), _next);
   }
+}
 
+/**
+ * @title E2ETreasuryAuthorityLifecycleTest
+ * @author Pacto
+ * @notice End-to-end scenarios for `TreasuryAuthority` execute, param setters, views, and rescue.
+ */
+contract E2ETreasuryAuthorityLifecycleTest is E2ETreasuryAuthorityBase {
   /*///////////////////////////////////////////////////////////////
                         execute
   //////////////////////////////////////////////////////////////*/
@@ -857,23 +887,6 @@ contract E2ETreasuryAuthorityTest is IntegrationBase {
 
   function test_integration_squadTreasuryMatchesRegistryDeployment() public withDeployedNavePirataSquad {
     assertEq(address(_squadTreasury), NavePirataRegistry(_infra.registry).deployment(_squadTopHatId).treasuryAuthority);
-  }
-
-  function _newTaClone() internal returns (TreasuryAuthority _fresh) {
-    TreasuryAuthority _impl = TreasuryAuthority(payable(_masters.treasuryAuthority));
-    _fresh = TreasuryAuthority(payable(Clones.clone(address(_impl))));
-  }
-
-  function _baselineTaInit() internal view returns (ITreasuryAuthority.InitParams memory _p) {
-    _p = ITreasuryAuthority.InitParams({
-      safe: _squadSafe,
-      captainHatId: _squadTreasury.captainHatId(),
-      crewHatId: _squadTreasury.crewHatId(),
-      treasuryAuthorityRoleHatId: _squadTreasury.treasuryAuthorityRoleHatId(),
-      proposalExpiry: _squadTreasury.proposalExpiry(),
-      crewVoteMode: _squadTreasury.crewVoteMode(),
-      quorumBps: _squadTreasury.quorumBps()
-    });
   }
 }
 

@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {RoleHatClonesFactory} from 'contracts/factory/RoleHatClonesFactory.sol';
 
-import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
+import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
@@ -39,7 +39,9 @@ abstract contract UnitRoleHatClonesFactoryBase is Test {
       mutinyRoleHatId: 3,
       quartermasterRoleHatId: 4,
       treasuryAuthorityRoleHatId: 5,
-      crewChangeDelay: CREW_CHANGE_DELAY
+      crewChangeDelay: CREW_CHANGE_DELAY,
+      crewOffboardExpiry: PROPOSAL_EXPIRY,
+      crewOffboardQuorumBps: SQUAD_QUORUM_BPS
     });
     _data = abi.encodeCall(Quartermaster.initialize, (_p));
   }
