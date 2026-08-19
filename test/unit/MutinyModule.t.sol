@@ -5,6 +5,10 @@ import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 import {MutinyModule} from 'contracts/core/MutinyModule.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
+import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
+
+import {PROPOSAL_EXPIRY} from 'script/Constants.sol';
+
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
@@ -25,6 +29,7 @@ abstract contract UnitMutinyModuleBase is Test {
   uint256 internal constant _CREW_HAT = 20;
   uint256 internal constant _MUTINY_ROLE_HAT = 30;
   uint256 internal constant _QM_ROLE_HAT = 40;
+  uint256 internal constant _TA_ROLE_HAT = 50;
 
   MutinyModule internal _master;
   MutinyModule internal _mm;
@@ -46,17 +51,25 @@ abstract contract UnitMutinyModuleBase is Test {
     _initDefault(_captain, _quartermaster);
   }
 
-  function _initDefault(address _initialCaptain, address _qmPeer) internal {
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
+  function _initParams(
+    address _initialCaptain,
+    address _qmPeer
+  ) internal view returns (IMutinyModule.InitParams memory _p) {
+    _p = IMutinyModule.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QM_ROLE_HAT,
       captain: _initialCaptain,
       quartermaster: _qmPeer,
-      safe: _squadSafe
+      safe: _squadSafe,
+      treasuryAuthorityRoleHatId: _TA_ROLE_HAT,
+      mutinyExpiry: PROPOSAL_EXPIRY
     });
-    _mm.initialize(_p);
+  }
+
+  function _initDefault(address _initialCaptain, address _qmPeer) internal {
+    _mm.initialize(_initParams(_initialCaptain, _qmPeer));
   }
 
   function _mockWearer(address _account, uint256 _hatId, bool _isWearer) internal {
@@ -75,6 +88,9 @@ abstract contract UnitMutinyModuleBase is Test {
 
   function _mockQmMutinyActive(bool _active) internal {
     vm.mockCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, _active), abi.encode());
+    vm.mockCall(
+      _quartermaster, abi.encodeWithSelector(IQuartermaster.activeCrewOffboardId.selector), abi.encode(uint256(0))
+    );
   }
 
   function _mockQmMintCrewFromMutiny(address _formerCaptain) internal {
@@ -115,17 +131,8 @@ abstract contract UnitMutinyModuleBase is Test {
 
 contract UnitMutinyModuleInit is UnitMutinyModuleBase {
   function test_Constructor_DisablesInitializersOnMaster() external {
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QM_ROLE_HAT,
-      captain: _captain,
-      quartermaster: _quartermaster,
-      safe: _squadSafe
-    });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    _master.initialize(_p);
+    _master.initialize(_initParams(_captain, _quartermaster));
   }
 
   function test_Initialize_SetsStorage() external view {
@@ -136,6 +143,8 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
     assertEq(_mm.captain(), _captain);
     assertEq(_mm.quartermaster(), _quartermaster);
     assertEq(_mm.safe(), _squadSafe);
+    assertEq(_mm.treasuryAuthorityRoleHatId(), _TA_ROLE_HAT);
+    assertEq(_mm.mutinyExpiry(), PROPOSAL_EXPIRY);
     assertEq(_mm.activeMutinyId(), 0);
     assertEq(_mm.mutinyCount(), 0);
     assertTrue(_mm.isQuiet());
@@ -144,61 +153,37 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
 
   function test_Initialize_RevertsOnZeroCaptain() external {
     MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QM_ROLE_HAT,
-      captain: address(0),
-      quartermaster: _quartermaster,
-      safe: _squadSafe
-    });
+    IMutinyModule.InitParams memory _p = _initParams(address(0), _quartermaster);
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     _fresh.initialize(_p);
   }
 
   function test_Initialize_RevertsOnZeroQuartermaster() external {
     MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QM_ROLE_HAT,
-      captain: _captain,
-      quartermaster: address(0),
-      safe: _squadSafe
-    });
+    IMutinyModule.InitParams memory _p = _initParams(_captain, address(0));
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     _fresh.initialize(_p);
   }
 
   function test_Initialize_RevertsOnZeroSafe() external {
     MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QM_ROLE_HAT,
-      captain: _captain,
-      quartermaster: _quartermaster,
-      safe: address(0)
-    });
+    IMutinyModule.InitParams memory _p = _initParams(_captain, _quartermaster);
+    _p.safe = address(0);
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     _fresh.initialize(_p);
   }
 
+  function test_Initialize_RevertsOnExpiryBelowMin() external {
+    MutinyModule _fresh = MutinyModule(Clones.clone(address(_master)));
+    IMutinyModule.InitParams memory _p = _initParams(_captain, _quartermaster);
+    _p.mutinyExpiry = 30;
+    vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 30, 60, 60 days));
+    _fresh.initialize(_p);
+  }
+
   function test_Initialize_RevertsIfAlreadyInitialized() external {
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QM_ROLE_HAT,
-      captain: _captain,
-      quartermaster: _quartermaster,
-      safe: _squadSafe
-    });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    _mm.initialize(_p);
+    _mm.initialize(_initParams(_captain, _quartermaster));
   }
 
   function test_GetWearerStatus_MatchesCachedCaptain() external view {
@@ -228,11 +213,19 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     assertEq(_mm.activeMutinyId(), 1);
     assertFalse(_mm.isQuiet());
 
-    (address _proposed, address _fromCaptain, uint64 _startedAt, uint64 _snapshot, uint64 _yeas, bool _executed) =
-      _mm.mutiny(1);
+    (
+      address _proposed,
+      address _fromCaptain,
+      uint64 _startedAt,
+      uint64 _deadline,
+      uint64 _snapshot,
+      uint64 _yeas,
+      bool _executed
+    ) = _mm.mutiny(1);
     assertEq(_proposed, _newCaptainEoa);
     assertEq(_fromCaptain, _captain);
     assertEq(_startedAt, uint64(block.timestamp));
+    assertEq(uint256(_deadline), block.timestamp + PROPOSAL_EXPIRY);
     assertEq(_snapshot, 5);
     assertEq(_yeas, 0);
     assertFalse(_executed);
@@ -307,7 +300,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     vm.prank(_alice);
     _mm.startMutinyToPauseCaptain();
 
-    (address _proposed,,,,,) = _mm.mutiny(1);
+    (address _proposed,,,,,,) = _mm.mutiny(1);
     assertEq(_proposed, _squadSafe);
     assertEq(_mm.safe(), _squadSafe);
   }
@@ -335,7 +328,7 @@ contract UnitMutinyModuleVote is UnitMutinyModuleBase {
     _mm.castVote(_mutinyId);
 
     assertTrue(_mm.hasVoted(_mutinyId, _bob));
-    (,,,, uint64 _yeas,) = _mm.mutiny(_mutinyId);
+    (,,,,, uint64 _yeas,) = _mm.mutiny(_mutinyId);
     assertEq(_yeas, 1);
     assertFalse(_mm.thresholdReached(_mutinyId));
   }
@@ -407,7 +400,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     assertEq(_mm.captain(), _newCaptainEoa);
     assertEq(_mm.activeMutinyId(), 0);
     assertTrue(_mm.isQuiet());
-    (,,,,, bool _executed) = _mm.mutiny(_id);
+    (,,,,,, bool _executed) = _mm.mutiny(_id);
     assertTrue(_executed);
 
     // Eligibility flipped to the new captain.
@@ -439,15 +432,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     MutinyModule _mm2 = MutinyModule(Clones.clone(address(_master)));
     address _contractCaptain = address(_master); // any address with bytecode
     _mockWearer(_quartermaster, _QM_ROLE_HAT, true);
-    IMutinyModule.InitParams memory _p = IMutinyModule.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QM_ROLE_HAT,
-      captain: _contractCaptain,
-      quartermaster: _quartermaster,
-      safe: _squadSafe
-    });
+    IMutinyModule.InitParams memory _p = _initParams(_contractCaptain, _quartermaster);
     _mm2.initialize(_p);
 
     _mockWearer(_contractCaptain, _CAPTAIN_HAT, true);
@@ -611,3 +596,120 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     _mm.captainResign(_newCaptainEoa);
   }
 }
+
+contract UnitMutinyModuleExpiry is UnitMutinyModuleBase {
+  function test_StartMutiny_RevertsIfCrewOffboardActive() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    vm.mockCall(
+      _quartermaster, abi.encodeWithSelector(IQuartermaster.activeCrewOffboardId.selector), abi.encode(uint256(1))
+    );
+
+    vm.prank(_alice);
+    vm.expectRevert(IMutinyModule.MutinyModule_CrewOffboardActive.selector);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
+  }
+
+  function test_ExecuteMutiny_RevertsAfterDeadline() external {
+    uint256 _id = _stageWinningMutiny(_newCaptainEoa);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
+
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_Expired.selector, _id));
+    _mm.executeMutiny(_id);
+  }
+
+  function test_CastVote_RevertsAfterDeadline() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockWearer(_bob, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmMutinyActive(true);
+    vm.prank(_alice);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
+    uint256 _id = _mm.activeMutinyId();
+
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
+    vm.prank(_bob);
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_Expired.selector, _id));
+    _mm.castVote(_id);
+  }
+
+  function test_ExpireMutiny_HappyPath_ClearsQmAndAllowsNewRound() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmMutinyActive(true);
+    vm.prank(_alice);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
+    uint256 _id = _mm.activeMutinyId();
+
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
+    _mockQmMutinyActive(false);
+    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, false));
+    vm.expectEmit(true, false, false, true, address(_mm));
+    emit IMutinyModule.MutinyExpired(_id);
+    _mm.expireMutiny(_id);
+
+    assertEq(_mm.activeMutinyId(), 0);
+    assertTrue(_mm.isQuiet());
+
+    _mockQmMutinyActive(true);
+    vm.prank(_alice);
+    _mm.startMutinyToArbitraryEoa(_bob);
+    assertEq(_mm.activeMutinyId(), 2);
+  }
+
+  function test_ExpireMutiny_RevertsBeforeDeadline() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmMutinyActive(true);
+    vm.prank(_alice);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
+    uint256 _id = _mm.activeMutinyId();
+    uint256 _deadline = uint256(block.timestamp) + PROPOSAL_EXPIRY;
+
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotExpired.selector, _id, _deadline));
+    _mm.expireMutiny(_id);
+  }
+
+  function test_CaptainResign_WorksAfterExpireMutiny() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmMutinyActive(true);
+    vm.prank(_alice);
+    _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
+    uint256 _id = _mm.activeMutinyId();
+
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
+    _mockQmMutinyActive(false);
+    _mm.expireMutiny(_id);
+
+    _mockTransferHat(_CAPTAIN_HAT, _captain, _bob);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockQmMintCrewFromMutiny(_captain);
+    vm.prank(_captain);
+    _mm.captainResign(_bob);
+    assertEq(_mm.captain(), _bob);
+  }
+
+  function test_SetMutinyExpiry_HappyPath() external {
+    address _ta = makeAddr('treasuryAuthority');
+    _mockWearer(_ta, _TA_ROLE_HAT, true);
+    vm.expectEmit(false, false, false, true, address(_mm));
+    emit IMutinyModule.MutinyExpiryUpdated(PROPOSAL_EXPIRY, 14 days);
+    vm.prank(_ta);
+    _mm.setMutinyExpiry(14 days);
+    assertEq(_mm.mutinyExpiry(), 14 days);
+  }
+
+  function test_SetMutinyExpiry_RevertsIfNotTreasuryAuthority() external {
+    _mockWearer(_stranger, _TA_ROLE_HAT, false);
+    vm.prank(_stranger);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _TA_ROLE_HAT, _stranger));
+    _mm.setMutinyExpiry(14 days);
+  }
+}
+

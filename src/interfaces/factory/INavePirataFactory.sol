@@ -17,9 +17,9 @@ interface INavePirataFactory {
   /**
    * @notice Governance defaults for a new squad.
    * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
-   * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires.
-   * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast).
-   * @param quorumBps Quorum in basis points, only applied when `crewVoteMode == QUORUM_OF_CAST`.
+   * @param proposalExpiry Seconds after creation before a TreasuryAuthority proposal expires. Also seeds MutinyModule `mutinyExpiry` and Quartermaster `crewOffboardExpiry`.
+   * @param crewVoteMode Crew vote counting mode (snapshot-majority or quorum-of-cast). Treasury Authority only; mutiny stays 51% snapshot; crew offboard always uses `QUORUM_OF_CAST`.
+   * @param quorumBps Quorum in basis points for TA `QUORUM_OF_CAST` and Quartermaster crew-led offboard.
    */
   struct SquadParams {
     uint256 crewChangeDelay;

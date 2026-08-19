@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {HatGated} from 'contracts/utils/HatGated.sol';
+import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 import {IHatGated} from 'interfaces/utils/IHatGated.sol';
@@ -15,9 +16,9 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  * @title MutinyModule
  * @author Pacto
  * @notice 51% snapshot mutiny or captain resignation; `IHatsEligibility` for the captain hat; `Quartermaster.setMutinyActive` while a round is live
- * @dev EIP-1167 master. Hats has no `wearerOfHat(hatId)` — store `quartermaster` and re-check `isWearerOfHat` on each call. A mutiny with no timeout can pin QM in mutiny until governance intervenes; see product notes on participation risk
+ * @dev EIP-1167 master. Hats has no `wearerOfHat(hatId)` — store `quartermaster` and re-check `isWearerOfHat` on each call. Failed rounds expire after `mutinyExpiry` via permissionless `expireMutiny`
  */
-contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializable {
+contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidator, Initializable {
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
@@ -41,6 +42,10 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
 
   /// @inheritdoc IMutinyModule
   uint256 public mutinyCount;
+  /// @inheritdoc IMutinyModule
+  uint256 public treasuryAuthorityRoleHatId;
+  /// @inheritdoc IMutinyModule
+  uint256 public mutinyExpiry;
 
   /// @notice Round state indexed by mutiny id.
   mapping(uint256 _mutinyId => MutinyRound _round) internal _rounds;
@@ -84,6 +89,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     if (_p.captain == address(0) || _p.quartermaster == address(0) || _p.safe == address(0)) {
       revert MutinyModule_ZeroAddress();
     }
+    _validateDelay(_p.mutinyExpiry);
     captainHatId = _p.captainHatId;
     crewHatId = _p.crewHatId;
     mutinyRoleHatId = _p.mutinyRoleHatId;
@@ -91,7 +97,10 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     captain = _p.captain;
     quartermaster = _p.quartermaster;
     safe = _p.safe;
+    treasuryAuthorityRoleHatId = _p.treasuryAuthorityRoleHatId;
+    mutinyExpiry = _p.mutinyExpiry;
     mutinyCount = 0;
+    emit MutinyExpiryUpdated(0, _p.mutinyExpiry);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -132,6 +141,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
 
   /// @inheritdoc IMutinyModule
   function castVote(uint256 _mutinyId) external onlyHatWearer(crewHatId) activeMutiny(_mutinyId) {
+    _requireNotExpired(_mutinyId);
     if (_hasVoted[_mutinyId][msg.sender]) revert MutinyModule_AlreadyVoted(msg.sender);
     // Roster is frozen for the round, so current crew wearership matches snapshot membership
     _hasVoted[_mutinyId][msg.sender] = true;
@@ -145,6 +155,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   function executeMutiny(uint256 _mutinyId) external activeMutiny(_mutinyId) {
     MutinyRound storage _r = _rounds[_mutinyId];
     if (_r.executed) revert MutinyModule_NoActiveMutiny();
+    _requireNotExpired(_mutinyId);
     if (_r.yeas * 2 <= _r.snapshot) revert MutinyModule_ThresholdNotReached(_r.yeas, _r.snapshot);
 
     address _from = _r.fromCaptain;
@@ -161,6 +172,17 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   }
 
   /// @inheritdoc IMutinyModule
+  function expireMutiny(uint256 _mutinyId) external activeMutiny(_mutinyId) {
+    MutinyRound storage _r = _rounds[_mutinyId];
+    if (_r.executed) revert MutinyModule_NoActiveMutiny();
+    if (block.timestamp < _r.deadline) revert MutinyModule_NotExpired(_mutinyId, _r.deadline);
+
+    activeMutinyId = 0;
+    IQuartermaster(_liveQuartermaster()).setMutinyActive(false);
+    emit MutinyExpired(_mutinyId);
+  }
+
+  /// @inheritdoc IMutinyModule
   function captainResign(address _newCaptain) external onlyHatWearer(captainHatId) {
     if (_newCaptain == address(0)) revert MutinyModule_ZeroAddress();
     if (_newCaptain == msg.sender) revert MutinyModule_SameCaptain(_newCaptain);
@@ -169,6 +191,14 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
 
     _succeedCaptain(msg.sender, _newCaptain);
     emit CaptainResigned(msg.sender, _newCaptain);
+  }
+
+  /// @inheritdoc IMutinyModule
+  function setMutinyExpiry(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
+    _validateDelay(_newValue);
+    uint256 _old = mutinyExpiry;
+    mutinyExpiry = _newValue;
+    emit MutinyExpiryUpdated(_old, _newValue);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -183,6 +213,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
       address _proposedNewCaptain,
       address _fromCaptain,
       uint64 _startedAt,
+      uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
       bool _executed
@@ -192,6 +223,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     _proposedNewCaptain = _r.proposedNewCaptain;
     _fromCaptain = _r.fromCaptain;
     _startedAt = _r.startedAt;
+    _deadline = _r.deadline;
     _snapshot = _r.snapshot;
     _yeas = _r.yeas;
     _executed = _r.executed;
@@ -247,6 +279,12 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
     onlyHatWearer(crewHatId)
     mutinyCheck(_proposedNewCaptain)
   {
+    address _qm = _liveQuartermaster();
+    if (IQuartermaster(_qm).activeCrewOffboardId() != 0) revert MutinyModule_CrewOffboardActive();
+
+    uint256 _deadline256 = block.timestamp + mutinyExpiry;
+    if (_deadline256 > type(uint64).max) revert MutinyModule_DeadlineOverflow();
+
     uint256 _id = ++mutinyCount;
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
 
@@ -254,13 +292,16 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
       proposedNewCaptain: _proposedNewCaptain,
       fromCaptain: captain,
       startedAt: uint64(block.timestamp),
+      // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
+      // forge-lint: disable-next-line(unsafe-typecast)
+      deadline: uint64(_deadline256),
       snapshot: _snapshot,
       yeas: 0,
       executed: false
     });
     activeMutinyId = _id;
 
-    IQuartermaster(_liveQuartermaster()).setMutinyActive(true);
+    IQuartermaster(_qm).setMutinyActive(true);
     emit MutinyStarted(_id, msg.sender, _proposedNewCaptain, _snapshot);
   }
 
@@ -312,6 +353,14 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, Initializabl
   function _activeMutinyId(uint256 _mutinyId) internal view {
     if (_mutinyId == 0) revert MutinyModule_NoActiveMutiny();
     if (_mutinyId != activeMutinyId) revert MutinyModule_NoActiveMutiny();
+  }
+
+  /**
+   * @notice Reverts if the active round at `_mutinyId` is at or past its deadline.
+   * @param _mutinyId Round that must still be inside its voting window.
+   */
+  function _requireNotExpired(uint256 _mutinyId) internal view {
+    if (block.timestamp >= _rounds[_mutinyId].deadline) revert MutinyModule_Expired(_mutinyId);
   }
 
   /**

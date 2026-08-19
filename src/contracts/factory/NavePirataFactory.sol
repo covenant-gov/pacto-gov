@@ -128,10 +128,8 @@ contract NavePirataFactory is INavePirataFactory {
       _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
       _topHatId = _hats.topHatId;
 
-      _quartermaster =
-        _deployQuartermasterClone(_params.quartermasterMasterCopy, _hats, _params.squadParams.crewChangeDelay, _qmSalt);
-      _mutinyModule =
-        _deployMutinyModuleClone(_params.mutinyMasterCopy, _hats, _params.captain, _quartermaster, _safe, _mmSalt);
+      _quartermaster = _deployQuartermasterClone(_params, _hats, _qmSalt);
+      _mutinyModule = _deployMutinyModuleClone(_params, _hats, _quartermaster, _safe, _mmSalt);
       _treasuryAuthority = _deployTreasuryAuthorityClone(_params, _safe, _hats, _taSalt);
       _squadAdminProxy = _deploySquadAdminProxy(_params.squadAdminImplementation, _hats);
     }
@@ -362,20 +360,18 @@ contract NavePirataFactory is INavePirataFactory {
 
   /**
    * @notice Creates the Quartermaster EIP-1167 clone and initializes it with hat ids from `_hats`.
-   * @param _masterCopy Quartermaster implementation to clone.
+   * @param _params Full deploy params (`quartermasterMasterCopy`, `squadParams`).
    * @param _hats Hat tree from `_createHatTree` (ids wired into `InitParams`).
-   * @param _crewChangeDelay Initial crew add/remove timelock (seconds).
    * @param _salt CREATE2 salt for this clone.
    * @return _clone Deployed Quartermaster clone address.
    */
   function _deployQuartermasterClone(
-    address _masterCopy,
+    DeployParams calldata _params,
     HatTree memory _hats,
-    uint256 _crewChangeDelay,
     bytes32 _salt
   ) internal returns (address _clone) {
     _clone = _CLONES_FACTORY.createClone(
-      _masterCopy,
+      _params.quartermasterMasterCopy,
       abi.encodeCall(
         Quartermaster.initialize,
         (IQuartermaster.InitParams({
@@ -384,7 +380,9 @@ contract NavePirataFactory is INavePirataFactory {
             mutinyRoleHatId: _hats.mutinyRoleHatId,
             quartermasterRoleHatId: _hats.quartermasterRoleHatId,
             treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            crewChangeDelay: _crewChangeDelay
+            crewChangeDelay: _params.squadParams.crewChangeDelay,
+            crewOffboardExpiry: _params.squadParams.proposalExpiry,
+            crewOffboardQuorumBps: _params.squadParams.quorumBps
           }))
       ),
       _salt
@@ -393,24 +391,22 @@ contract NavePirataFactory is INavePirataFactory {
 
   /**
    * @notice Creates the MutinyModule EIP-1167 clone and initializes it with `_hats`, captain, and Quartermaster.
-   * @param _masterCopy MutinyModule implementation to clone.
+   * @param _params Full deploy params (`mutinyMasterCopy`, `captain`, `squadParams.proposalExpiry`).
    * @param _hats Hat tree from `_createHatTree`.
-   * @param _captain Initial captain address.
    * @param _quartermaster Deployed Quartermaster clone (peer for init).
    * @param _safe Squad Safe (Zodiac `avatar`); stored on MutinyModule for pause-mutiny transfers.
    * @param _salt CREATE2 salt for this clone.
    * @return _clone Deployed MutinyModule clone address.
    */
   function _deployMutinyModuleClone(
-    address _masterCopy,
+    DeployParams calldata _params,
     HatTree memory _hats,
-    address _captain,
     address _quartermaster,
     address _safe,
     bytes32 _salt
   ) internal returns (address _clone) {
     _clone = _CLONES_FACTORY.createClone(
-      _masterCopy,
+      _params.mutinyMasterCopy,
       abi.encodeCall(
         MutinyModule.initialize,
         (IMutinyModule.InitParams({
@@ -418,9 +414,11 @@ contract NavePirataFactory is INavePirataFactory {
             crewHatId: _hats.crewHatId,
             mutinyRoleHatId: _hats.mutinyRoleHatId,
             quartermasterRoleHatId: _hats.quartermasterRoleHatId,
-            captain: _captain,
+            captain: _params.captain,
             quartermaster: _quartermaster,
-            safe: _safe
+            safe: _safe,
+            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+            mutinyExpiry: _params.squadParams.proposalExpiry
           }))
       ),
       _salt

@@ -6,8 +6,9 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
 /// @dev Default `Quartermaster.crewChangeDelay` / `INavePirataFactory.SquadParams.crewChangeDelay` for scripted deploys.
 uint256 constant CREW_CHANGE_DELAY = 7 days;
 /// @dev Default `TreasuryAuthority.proposalExpiry` / `INavePirataFactory.SquadParams.proposalExpiry` for scripted deploys.
+///      Also seeds `MutinyModule.mutinyExpiry` and `Quartermaster.crewOffboardExpiry` at factory init.
 uint256 constant PROPOSAL_EXPIRY = 7 days;
-/// @dev Default `INavePirataFactory.SquadParams.quorumBps` (basis points; used with `QUORUM_OF_CAST` on-chain).
+/// @dev Default `INavePirataFactory.SquadParams.quorumBps` (basis points; TA `QUORUM_OF_CAST` and Quartermaster crew-led offboard).
 uint256 constant SQUAD_QUORUM_BPS = 3000;
 /// @dev Default `INavePirataFactory.SquadParams.crewVoteMode` for scripted deploys.
 ITreasuryAuthority.CrewVoteMode constant DEFAULT_CREW_VOTE_MODE = ITreasuryAuthority.CrewVoteMode.MAJORITY_SNAPSHOT;

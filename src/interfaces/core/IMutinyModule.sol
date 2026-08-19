@@ -8,7 +8,8 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  * @title IMutinyModule
  * @author Pacto
  * @notice 51% of snapshot crew (yeas) to replace the captain, or `captainResign` if no open mutiny. Captain hat
- *         `IHatsEligibility`; no tunable params. Drives `transferHat` and QM for crew
+ *         `IHatsEligibility`. Each round has a deadline (`mutinyExpiry`, same bounds as TA `proposalExpiry`);
+ *         permissionless `expireMutiny` clears a failed round. Drives `transferHat` and QM for crew
  */
 interface IMutinyModule is IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
@@ -23,6 +24,8 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param captain Initial captain-hat wearer (must be marked eligible before the factory mints the hat).
    * @param quartermaster Peer Quartermaster clone address (verified at every outbound call).
    * @param safe Squad Safe (Zodiac `avatar` for TreasuryAuthority); successful `startMutinyToPauseCaptain` transfers the captain hat here.
+   * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id; gates `setMutinyExpiry`.
+   * @param mutinyExpiry Seconds from round start until the round can be expired (same range as TA `proposalExpiry`).
    */
   struct InitParams {
     uint256 captainHatId;
@@ -32,6 +35,8 @@ interface IMutinyModule is IQuiescent, IHatGated {
     address captain;
     address quartermaster;
     address safe;
+    uint256 treasuryAuthorityRoleHatId;
+    uint256 mutinyExpiry;
   }
 
   /**
@@ -39,6 +44,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param proposedNewCaptain Successor if the round passes.
    * @param fromCaptain Captain at the time the round opened (snapshot-locked).
    * @param startedAt Timestamp the round opened.
+   * @param deadline Unix timestamp after which `executeMutiny` reverts and `expireMutiny` is valid.
    * @param snapshot Size of the crew electorate at `startedAt`.
    * @param yeas Yea vote count.
    * @param executed Whether the round has been finalized.
@@ -47,6 +53,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
     address proposedNewCaptain;
     address fromCaptain;
     uint64 startedAt;
+    uint64 deadline;
     uint64 snapshot;
     uint64 yeas;
     bool executed;
@@ -87,6 +94,19 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param _newCaptain Address that received the captain hat.
    */
   event CaptainResigned(address indexed _formerCaptain, address indexed _newCaptain);
+
+  /**
+   * @notice The active mutiny round expired without execution; QM mutiny mode was cleared.
+   * @param _mutinyId Round identifier.
+   */
+  event MutinyExpired(uint256 indexed _mutinyId);
+
+  /**
+   * @notice Mutiny round lifetime was updated via a Treasury Authority proposal.
+   * @param _oldValue Previous expiry, in seconds.
+   * @param _newValue New expiry, in seconds.
+   */
+  event MutinyExpiryUpdated(uint256 _oldValue, uint256 _newValue);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
@@ -142,18 +162,35 @@ interface IMutinyModule is IQuiescent, IHatGated {
    */
   error MutinyModule_NotContract(address _proposedArbitraryContract);
 
+  /**
+   * @notice The mutiny round is past its deadline.
+   * @param _mutinyId Round identifier.
+   */
+  error MutinyModule_Expired(uint256 _mutinyId);
+
+  /**
+   * @notice `expireMutiny` was called before the round deadline.
+   * @param _mutinyId Round identifier.
+   * @param _deadline Timestamp after which expiry is valid.
+   */
+  error MutinyModule_NotExpired(uint256 _mutinyId, uint256 _deadline);
+
   /// @notice A mutiny round is already active.
   error MutinyModule_AlreadyActive();
   /// @notice No active mutiny exists for the requested id.
   error MutinyModule_NoActiveMutiny();
   /// @notice A required address argument was zero.
   error MutinyModule_ZeroAddress();
+  /// @notice `block.timestamp + mutinyExpiry` exceeds `type(uint64).max` (round `deadline` storage width).
+  error MutinyModule_DeadlineOverflow();
+  /// @notice A crew-led offboard vote is live on Quartermaster; mutiny cannot start until it ends.
+  error MutinyModule_CrewOffboardActive();
 
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice One-shot init: hat ids, `captain`, `quartermaster`, `safe`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
+   * @notice One-shot init: hat ids, `captain`, `quartermaster`, `safe`, `mutinyExpiry`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
    * @param _p Bootstrap parameters.
    */
   function initialize(InitParams calldata _p) external;
@@ -200,10 +237,16 @@ interface IMutinyModule is IQuiescent, IHatGated {
   function castVote(uint256 _mutinyId) external;
 
   /**
-   * @notice Finalize the mutiny if the 51% threshold is met. Permissionless.
+   * @notice Finalize the mutiny if the 51% threshold is met and the deadline has not passed. Permissionless.
    * @param _mutinyId Round to execute.
    */
   function executeMutiny(uint256 _mutinyId) external;
+
+  /**
+   * @notice Clear a failed active round after its deadline. Permissionless; turns off QM mutiny mode.
+   * @param _mutinyId Active mutiny id that has passed `deadline` without `executeMutiny`.
+   */
+  function expireMutiny(uint256 _mutinyId) external;
 
   /**
    * @notice Captain's voluntary succession — transfers the captain hat to `_newCaptain`. Captain-hat-gated.
@@ -211,6 +254,13 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param _newCaptain Address that receives the captain hat.
    */
   function captainResign(address _newCaptain) external;
+
+  /**
+   * @notice Update the mutiny round lifetime. TreasuryAuthorityRole-gated.
+   * @dev Must fall within the delay bounds enforced by `RangeValidator`. Does not rewrite a live round's `deadline`.
+   * @param _newValue New expiry in seconds.
+   */
+  function setMutinyExpiry(uint256 _newValue) external;
 
   /*///////////////////////////////////////////////////////////////
                             VIEWS
@@ -233,6 +283,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @return _proposedNewCaptain Successor if the round succeeds.
    * @return _fromCaptain Captain when the round opened.
    * @return _startedAt Timestamp the round opened.
+   * @return _deadline Timestamp after which the round can only be expired.
    * @return _snapshot Snapshot size of eligible crew.
    * @return _yeas Yea vote count.
    * @return _executed Whether the round has already been executed.
@@ -244,6 +295,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
       address _proposedNewCaptain,
       address _fromCaptain,
       uint64 _startedAt,
+      uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
       bool _executed
@@ -320,4 +372,16 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @return _safe The Safe address captured at `initialize`.
    */
   function safe() external view returns (address _safe);
+
+  /**
+   * @notice Role hat worn by the active TreasuryAuthority clone; gates `setMutinyExpiry`.
+   * @return _treasuryAuthorityRoleHatId The TreasuryAuthorityRole hat id.
+   */
+  function treasuryAuthorityRoleHatId() external view returns (uint256 _treasuryAuthorityRoleHatId);
+
+  /**
+   * @notice Seconds from mutiny start until the round may be expired.
+   * @return _expiry The current expiry value.
+   */
+  function mutinyExpiry() external view returns (uint256 _expiry);
 }

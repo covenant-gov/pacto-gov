@@ -7,7 +7,7 @@ import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 
-import {CREW_CHANGE_DELAY} from 'script/Constants.sol';
+import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Constants.sol';
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
@@ -50,16 +50,21 @@ abstract contract UnitQuartermasterBase is Test {
     _initDefault();
   }
 
-  function _initDefault() internal {
-    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
+  function _qmParams(uint256 _delay) internal pure returns (IQuartermaster.InitParams memory _p) {
+    _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: CREW_CHANGE_DELAY
+      crewChangeDelay: _delay,
+      crewOffboardExpiry: PROPOSAL_EXPIRY,
+      crewOffboardQuorumBps: SQUAD_QUORUM_BPS
     });
-    _qm.initialize(_p);
+  }
+
+  function _initDefault() internal {
+    _qm.initialize(_qmParams(CREW_CHANGE_DELAY));
   }
 
   function _mockWearer(address _account, uint256 _hatId, bool _isWearer) internal {
@@ -107,16 +112,8 @@ abstract contract UnitQuartermasterBase is Test {
 
 contract UnitQuartermasterInit is UnitQuartermasterBase {
   function test_Constructor_DisablesInitializersOnMaster() external {
-    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
-      treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: CREW_CHANGE_DELAY
-    });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    _master.initialize(_p);
+    _master.initialize(_qmParams(CREW_CHANGE_DELAY));
   }
 
   function test_Initialize_SetsHatIdsAndDelay() external view {
@@ -126,50 +123,45 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
     assertEq(_qm.quartermasterRoleHatId(), _QUARTERMASTER_ROLE_HAT);
     assertEq(_qm.treasuryAuthorityRoleHatId(), _TREASURY_AUTHORITY_ROLE_HAT);
     assertEq(_qm.crewChangeDelay(), CREW_CHANGE_DELAY);
+    assertEq(_qm.crewOffboardExpiry(), PROPOSAL_EXPIRY);
+    assertEq(_qm.crewOffboardQuorumBps(), SQUAD_QUORUM_BPS);
     assertFalse(_qm.mutinyActive());
+    assertEq(_qm.activeCrewOffboardId(), 0);
     assertEq(_qm.pendingAddCount(), 0);
     assertEq(_qm.pendingRemoveCount(), 0);
     assertEq(address(_qm.hats()), _HATS_ADDRESS);
   }
 
   function test_Initialize_RevertsIfAlreadyInitialized() external {
-    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
-      treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: CREW_CHANGE_DELAY
-    });
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    _qm.initialize(_p);
+    _qm.initialize(_qmParams(CREW_CHANGE_DELAY));
   }
 
   function test_Initialize_RevertsOnDelayBelowMin() external {
     Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
-    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
-      treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: 30
-    });
     vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 30, 60, 60 days));
-    _fresh.initialize(_p);
+    _fresh.initialize(_qmParams(30));
   }
 
   function test_Initialize_RevertsOnDelayAboveMax() external {
     Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
-    IQuartermaster.InitParams memory _p = IQuartermaster.InitParams({
-      captainHatId: _CAPTAIN_HAT,
-      crewHatId: _CREW_HAT,
-      mutinyRoleHatId: _MUTINY_ROLE_HAT,
-      quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
-      treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
-      crewChangeDelay: 61 days
-    });
     vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 61 days, 60, 60 days));
+    _fresh.initialize(_qmParams(61 days));
+  }
+
+  function test_Initialize_RevertsOnOffboardExpiryBelowMin() external {
+    Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
+    IQuartermaster.InitParams memory _p = _qmParams(CREW_CHANGE_DELAY);
+    _p.crewOffboardExpiry = 30;
+    vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 30, 60, 60 days));
+    _fresh.initialize(_p);
+  }
+
+  function test_Initialize_RevertsOnOffboardQuorumBelowMin() external {
+    Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
+    IQuartermaster.InitParams memory _p = _qmParams(CREW_CHANGE_DELAY);
+    _p.crewOffboardQuorumBps = 100;
+    vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 100, 500, 10_000));
     _fresh.initialize(_p);
   }
 }
@@ -903,3 +895,157 @@ contract UnitQuartermasterPendingViews is UnitQuartermasterBase {
     _qm.pendingRemoveAt(0);
   }
 }
+
+contract UnitQuartermasterCrewOffboard is UnitQuartermasterBase {
+  address internal _carol = makeAddr('carol');
+
+  function _stageOffboardElectorate() internal {
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockWearer(_bob, _CREW_HAT, true);
+    _mockWearer(_carol, _CREW_HAT, true);
+    _mockWearer(_alice, _CAPTAIN_HAT, false);
+    _mockWearer(_bob, _CAPTAIN_HAT, false);
+    _mockWearer(_carol, _CAPTAIN_HAT, false);
+    _mockCrewCapacity(5, _CREW_MAX);
+  }
+
+  function _passOffboardOnCarol() internal returns (uint256 _id) {
+    _stageOffboardElectorate();
+    vm.prank(_alice);
+    _id = _qm.proposeOffboard(_carol);
+    vm.prank(_alice);
+    _qm.crewOffboardVote(_id, true);
+    vm.prank(_bob);
+    _qm.crewOffboardVote(_id, true);
+  }
+
+  function test_ProposeOffboard_HappyPath_FreezesRoster() external {
+    _stageOffboardElectorate();
+    uint256 _deadline = block.timestamp + PROPOSAL_EXPIRY;
+
+    vm.expectEmit(true, true, true, true, address(_qm));
+    emit IQuartermaster.CrewOffboardProposed(1, _alice, _carol, _deadline, 5);
+    vm.prank(_alice);
+    uint256 _id = _qm.proposeOffboard(_carol);
+
+    assertEq(_id, 1);
+    assertEq(_qm.activeCrewOffboardId(), 1);
+    assertFalse(_qm.isQuiet());
+
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_stranger, _CAPTAIN_HAT, false);
+    _mockWearer(_stranger, _CREW_HAT, false);
+    vm.prank(_captain);
+    vm.expectRevert(IQuartermaster.Quartermaster_CrewOffboardActive.selector);
+    _qm.requestAddCrew(_stranger);
+  }
+
+  function test_ProposeOffboard_RevertsOnSelf() external {
+    _stageOffboardElectorate();
+    vm.prank(_alice);
+    vm.expectRevert(IQuartermaster.Quartermaster_SelfOffboard.selector);
+    _qm.proposeOffboard(_alice);
+  }
+
+  function test_ProposeOffboard_RevertsIfMutinyActive() external {
+    _stageOffboardElectorate();
+    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
+    vm.prank(_mutinyClone);
+    _qm.setMutinyActive(true);
+    vm.prank(_alice);
+    vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
+    _qm.proposeOffboard(_carol);
+  }
+
+  function test_ProposeOffboard_RevertsIfPendingCaptainRemove() external {
+    _stageOffboardElectorate();
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    vm.prank(_captain);
+    _qm.requestRemoveCrew(_carol);
+    vm.prank(_alice);
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_PendingCaptainRemove.selector, _carol));
+    _qm.proposeOffboard(_carol);
+  }
+
+  function test_ProposeOffboard_RevertsIfAnotherLive() external {
+    _stageOffboardElectorate();
+    vm.prank(_alice);
+    _qm.proposeOffboard(_carol);
+    vm.prank(_bob);
+    vm.expectRevert(IQuartermaster.Quartermaster_CrewOffboardActive.selector);
+    _qm.proposeOffboard(_alice);
+  }
+
+  function test_ExecuteOffboard_HappyPath_AtQuorumYeasAhead() external {
+    uint256 _id = _passOffboardOnCarol();
+    _mockWearer(_carol, _CREW_HAT, true);
+    _mockCheckHatWearerStatus(_CREW_HAT, _carol, true);
+
+    vm.expectEmit(true, true, false, true, address(_qm));
+    emit IQuartermaster.CrewOffboardExecuted(_id, _carol);
+    _qm.executeOffboard(_id);
+
+    assertEq(_qm.activeCrewOffboardId(), 0);
+    assertTrue(_qm.isQuiet());
+    (bool _eligible,) = _qm.getWearerStatus(_carol, _CREW_HAT);
+    assertFalse(_eligible);
+  }
+
+  function test_ExecuteOffboard_RevertsIfTurnoutShort() external {
+    _stageOffboardElectorate();
+    vm.prank(_alice);
+    uint256 _id = _qm.proposeOffboard(_carol);
+    vm.prank(_alice);
+    _qm.crewOffboardVote(_id, true);
+
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_OffboardNotPassed.selector, 1, 0, 5));
+    _qm.executeOffboard(_id);
+  }
+
+  function test_ExecuteOffboard_RevertsIfYeasNotAhead() external {
+    _stageOffboardElectorate();
+    vm.prank(_alice);
+    uint256 _id = _qm.proposeOffboard(_carol);
+    vm.prank(_alice);
+    _qm.crewOffboardVote(_id, true);
+    vm.prank(_bob);
+    _qm.crewOffboardVote(_id, false);
+
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_OffboardNotPassed.selector, 1, 1, 5));
+    _qm.executeOffboard(_id);
+  }
+
+  function test_ExpireOffboard_HappyPath_ThenNewVote() external {
+    _stageOffboardElectorate();
+    vm.prank(_alice);
+    uint256 _id = _qm.proposeOffboard(_carol);
+    vm.warp(block.timestamp + PROPOSAL_EXPIRY);
+
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewOffboardExpired(_id);
+    _qm.expireOffboard(_id);
+    assertEq(_qm.activeCrewOffboardId(), 0);
+
+    vm.prank(_bob);
+    uint256 _id2 = _qm.proposeOffboard(_alice);
+    assertEq(_id2, 2);
+  }
+
+  function test_CrewOffboardVote_RevertsOnDoubleVote() external {
+    uint256 _id = _passOffboardOnCarol();
+    vm.prank(_alice);
+    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_AlreadyVoted.selector, _alice));
+    _qm.crewOffboardVote(_id, true);
+  }
+
+  function test_SetCrewOffboardParams_HappyPath() external {
+    _mockWearer(_treasuryClone, _TREASURY_AUTHORITY_ROLE_HAT, true);
+    vm.prank(_treasuryClone);
+    _qm.setCrewOffboardExpiry(14 days);
+    vm.prank(_treasuryClone);
+    _qm.setCrewOffboardQuorumBps(4000);
+    assertEq(_qm.crewOffboardExpiry(), 14 days);
+    assertEq(_qm.crewOffboardQuorumBps(), 4000);
+  }
+}
+

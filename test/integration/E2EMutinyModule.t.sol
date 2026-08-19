@@ -13,7 +13,7 @@ import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 
-import {DEPLOY_NAV_PIRATA_SALT_NONCE, HATS_PROTOCOL_V1} from 'script/Constants.sol';
+import {DEPLOY_NAV_PIRATA_SALT_NONCE, HATS_PROTOCOL_V1, PROPOSAL_EXPIRY} from 'script/Constants.sol';
 
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 
@@ -63,7 +63,9 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
       quartermasterRoleHatId: _squadMutiny.quartermasterRoleHatId(),
       captain: _squadCaptain,
       quartermaster: address(_squadQuartermaster),
-      safe: _squadSafe
+      safe: _squadSafe,
+      treasuryAuthorityRoleHatId: _squadMutiny.treasuryAuthorityRoleHatId(),
+      mutinyExpiry: _squadMutiny.mutinyExpiry()
     });
   }
 
@@ -81,7 +83,7 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
   function _ensureVotesAboveMajority() internal {
     if (_fixtureHasVoteMajority) return;
 
-    (,,, uint64 _snapshot,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,, uint64 _snapshot,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
 
     for (uint256 _i = 0; _i < _minYeas; _i++) {
@@ -267,7 +269,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _squadMutiny.startMutinyToCrewMember(_crewSuccessor);
 
     assertEq(_squadMutiny.activeMutinyId(), 1);
-    (address _proposed,,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _crewSuccessor);
     assertTrue(_squadQuartermaster.mutinyActive());
   }
@@ -293,7 +295,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     vm.prank(_squadCrew[0]);
     _squadMutiny.startMutinyToCommittee(_squadSafe);
 
-    (address _proposed,,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadSafe);
   }
 
@@ -323,12 +325,20 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     assertFalse(_squadMutiny.isQuiet());
     assertTrue(_squadQuartermaster.mutinyActive());
 
-    (address _proposed, address _fromCaptain, uint64 _startedAt, uint64 _storedSnapshot, uint64 _yeas, bool _executed) =
-      _squadMutiny.mutiny(1);
+    (
+      address _proposed,
+      address _fromCaptain,
+      uint64 _startedAt,
+      uint64 _deadline,
+      uint64 _storedSnapshot,
+      uint64 _yeas,
+      bool _executed
+    ) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadProposedCaptain);
     assertEq(_fromCaptain, _squadCaptain);
     assertEq(_squadMutiny.mutinyCount(), 1);
-    assertEq(_startedAt, uint64(block.timestamp));
+    assertEq(uint256(_startedAt), block.timestamp);
+    assertEq(uint256(_deadline), block.timestamp + _squadMutiny.mutinyExpiry());
     assertEq(_storedSnapshot, _snapshot);
     assertEq(_yeas, 0);
     assertFalse(_executed);
@@ -348,7 +358,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     vm.prank(_squadCrew[0]);
     _squadMutiny.startMutinyToArbitraryContract(_squadSafe);
 
-    (address _proposed,,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadSafe);
     assertEq(_squadMutiny.activeMutinyId(), 1);
   }
@@ -398,7 +408,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _squadMutiny.castVote(_squadActiveMutinyId);
 
     assertTrue(_squadMutiny.hasVoted(_squadActiveMutinyId, _squadCrew[1]));
-    (,,,, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,,, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     assertEq(_yeas, 1);
   }
 
@@ -435,7 +445,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   {
     _castVotes(_squadActiveMutinyId, 2);
 
-    (,,, uint64 _snapshot, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,, uint64 _snapshot, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_ThresholdNotReached.selector, _yeas, _snapshot));
     _squadMutiny.executeMutiny(_squadActiveMutinyId);
   }
@@ -494,7 +504,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _mutiny.startMutinyToArbitraryEoa(_proposedCaptain);
     uint256 _id = _mutiny.activeMutinyId();
 
-    (,,, uint64 _snapshot,,) = _mutiny.mutiny(_id);
+    (,,,, uint64 _snapshot,,) = _mutiny.mutiny(_id);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
     for (uint256 _i = 0; _i < _minYeas; _i++) {
       vm.prank(_crew[_i]);
@@ -582,9 +592,61 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _ensureOpenRound();
     assertFalse(_squadMutiny.isQuiet());
     assertEq(_squadMutiny.mutinyCount(), 1);
-    (, address _fromCaptain,,,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (, address _fromCaptain,,,,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     assertEq(_fromCaptain, _squadCaptain);
     assertFalse(_squadMutiny.thresholdReached(_squadActiveMutinyId));
+  }
+
+  /*///////////////////////////////////////////////////////////////
+                        expireMutiny
+  //////////////////////////////////////////////////////////////*/
+
+  function test_e2e_mutinyExpiry_matchesProductionProposalExpiry() public withDeployedNavePirataSquad {
+    assertEq(_squadMutiny.mutinyExpiry(), PROPOSAL_EXPIRY);
+  }
+
+  function test_e2e_executeMutiny_reverts_afterDeadline()
+    public
+    withDeployedNavePirataSquad
+    withOpenMutinyRound
+    withMutinyVotesAboveMajority
+  {
+    vm.warp(block.timestamp + _squadMutiny.mutinyExpiry());
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_Expired.selector, _squadActiveMutinyId));
+    _squadMutiny.executeMutiny(_squadActiveMutinyId);
+  }
+
+  function test_e2e_expireMutiny_clearsQmAndAllowsNewRoundAndResign() public withDeployedNavePirataSquad {
+    vm.prank(_squadCrew[0]);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    uint256 _id = _squadMutiny.activeMutinyId();
+    assertTrue(_squadQuartermaster.mutinyActive());
+
+    vm.warp(block.timestamp + _squadMutiny.mutinyExpiry());
+    _squadMutiny.expireMutiny(_id);
+
+    assertEq(_squadMutiny.activeMutinyId(), 0);
+    assertFalse(_squadQuartermaster.mutinyActive());
+    assertTrue(_squadMutiny.isQuiet());
+
+    vm.prank(_squadCrew[1]);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    uint256 _id2 = _squadMutiny.activeMutinyId();
+    vm.warp(block.timestamp + _squadMutiny.mutinyExpiry());
+    _squadMutiny.expireMutiny(_id2);
+
+    vm.prank(_squadCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain);
+    assertEq(_squadMutiny.captain(), _squadProposedCaptain);
+  }
+
+  function test_e2e_mutinyStart_reverts_whenCrewOffboardActive() public withDeployedNavePirataSquad {
+    vm.prank(_squadCrew[0]);
+    _squadQuartermaster.proposeOffboard(_squadCrew[4]);
+
+    vm.expectRevert(IMutinyModule.MutinyModule_CrewOffboardActive.selector);
+    vm.prank(_squadCrew[1]);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
   }
 
   function test_e2e_isInSnapshot_reflectsCurrentCrewWearershipDuringActiveRound()
