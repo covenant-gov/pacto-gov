@@ -96,4 +96,9 @@ contract WarGameRegistry is IWarGameRegistry {
   function record(uint256 _topHatId) external view returns (Record memory _record) {
     _record = _records[_topHatId];
   }
+
+  /// @inheritdoc IWarGameRegistry
+  function deployment(uint256 _topHatId) external view returns (INavePirataRegistry.Deployment memory _deployment) {
+    _deployment = _records[_topHatId].deployment;
+  }
 }

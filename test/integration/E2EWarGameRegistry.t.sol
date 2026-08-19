@@ -46,6 +46,10 @@ contract E2EWarGameRegistryTest is IntegrationBase {
     assertEq(_record.squadId, _SQUAD_ID);
     assertEq(uint8(_record.status), uint8(IWarGameRegistry.Status.Active));
 
+    INavePirataRegistry.Deployment memory _byTopHat = _games.deployment(_topHat);
+    assertEq(_byTopHat.captainHatId, _record.deployment.captainHatId);
+    assertEq(_byTopHat.crewHatId, _record.deployment.crewHatId);
+
     uint256[] memory _history = _games.history(_SQUAD_ID);
     assertEq(_history.length, 1);
     assertEq(_history[0], _topHat);
