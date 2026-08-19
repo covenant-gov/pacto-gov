@@ -197,3 +197,26 @@ contract UnitWarGameRegistryRetire is UnitWarGameRegistryBase {
     _registry.retire(_unknown);
   }
 }
+
+contract UnitWarGameRegistryDeployment is UnitWarGameRegistryBase {
+  function setUp() public override {
+    super.setUp();
+    _wire();
+  }
+
+  function test_Deployment_ReturnsCaptainAndCrewForActiveStack() external {
+    INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
+
+    vm.prank(_factory);
+    _registry.register(_SQUAD_ID, _d);
+
+    INavePirataRegistry.Deployment memory _stored = _registry.deployment(1);
+    assertEq(_stored.topHatId, 1);
+    assertEq(_stored.captainHatId, _d.captainHatId);
+    assertEq(_stored.crewHatId, _d.crewHatId);
+  }
+
+  function test_Deployment_UnknownIdReturnsZeroTopHatId() external view {
+    assertEq(_registry.deployment(99).topHatId, 0);
+  }
+}

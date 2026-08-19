@@ -24,7 +24,7 @@ For a non-technical overview of the main modules, see the **[docs guidebook](./d
 
 ## Nave Pirata contracts
 
-The system is built around **Hats-Pointer Upgradeability**: authority is a Hats Protocol hat, and upgrading a role contract is a `transferHat` call rather than a proxy migration. Implementation detail lives under `src/contracts/` and `src/interfaces/` (each with `core/`, `squad/`, `factory/`, and `abstracts/` where applicable) and in tests; governance behavior is summarized in the **Docs** list below.
+The system is built around **Hats-Pointer Upgradeability**: authority is a Hats Protocol hat, and upgrading a role contract is a `transferHat` call rather than a proxy migration. Implementation detail lives under `src/contracts/` and `src/interfaces/` (each with `core/`, `squad/`, `factory/`, and `utils/` where applicable) and in tests; governance behavior is summarized in the **Docs** list below.
 
 **Docs** (governance contracts — plain language):
 - **[Guidebook](./docs/README.md)** — how Mutiny, Quartermaster, Treasury Authority, and Squad Admin fit together.
@@ -33,12 +33,27 @@ The system is built around **Hats-Pointer Upgradeability**: authority is a Hats 
 - **[Treasury Authority](./docs/TreasuryAuthority.md)** — Safe actions: two-body democracy, execution, captain veto.
 - **[Squad Admin](./docs/SquadAdmin.md)** — captain-gated on-chain executor roles for integrations.
 - **[Governance parameter bounds](./docs/technical/governance-param-bounds.md)** — `RangeValidator` delay/quorum limits and `SquadParams` for client UIs.
+- **[Hats tree and pointer architecture](./docs/technical/hats-tree-and-pointer-architecture.md)** — hat tree, who admins whom, and Hats-pointer upgrades.
+- **[Gas, proxies, and Hats integration](./docs/technical/gas-proxies-and-hats-integration.md)** — why EIP-1167 clones and hat transfer instead of UUPS-per-role.
 
 **Contracts (v1)**:
 - `Quartermaster` — timelocked crew roster, admin of the crew hat.
 - `MutinyModule` — 51%-of-snapshot captain accountability, admin of the captain hat; also supports voluntary captain resignation.
 - `TreasuryAuthority` — **two-body democracy** (crew vote + captain approval for execution through the module; see docs for the Safe-wears-captain-hat case) over the squad's Safe. Both the Safe's sole owner *and* its sole Zodiac module. Inherits `AssetRescuer`.
 - `SquadAdmin` — EIP-1167 clone of application-level executor predicates; evolves via roles and new clones, not upgrades.
+- `SquadAdminExt` — standalone / extension path: owner bootstrap, then `postInitialize` to captain-hat gating (`deploySquadAdminExtStandalone`).
 - `NavePirataFactory` — one-shot bootstrap that atomically deploys the Safe, creates the hat tree, deploys clones, wires the Safe, and registers the deployment (`stackKind`: Production → `NavePirataRegistry`, WarGame → `WarGameRegistry`).
 - `NavePirataRegistry`, `WarGameRegistry`, `RoleHatClonesFactory`, `RoleHatUpgrader` — infra for discovery (real-gov vs throwaway war-game stacks) and upgrade ceremonies.
 - `AssetRescuer` (abstract) — shared primitive; permissionless sweep of accidentally-received ETH / ERC-20 / ERC-721 / ERC-1155 to a fixed destination.
+
+## Develop / deploy
+
+Solidity **0.8.30**, Foundry, pnpm. Copy `.env.example` and set the RPC / deployer names you need (integration tests require `MAINNET_RPC`).
+
+```bash
+pnpm install
+pnpm test:unit
+pnpm test:integration
+```
+
+Chain bootstrap (master copies + infra + registry wiring) is `forge script Deploy` — `pnpm deploy:sepolia`, `pnpm deploy:mainnet`, or `pnpm deploy:arbitrum`. Per-squad bootstrap is `DeployNavePirata` (`NAVE_PIRATA_FACTORY`, `CAPTAIN`, `SQUAD_METADATA_URI`). Default `STACK_KIND` is `Production` (`squadId` 0). For a throwaway war-game stack, set `STACK_KIND=WarGame` and `SQUAD_ID` to the already-hashed key (`0x` + `keccak256(parentId)`); that path uses 5-minute delay/expiry. Standalone Squad Admin helpers are `pnpm deploy:squad-admin-ext:<chain>` and `pnpm deploy:squad-admin-standalone-captain:<chain>`. Scripts live under `script/`; npm aliases are in `package.json`.

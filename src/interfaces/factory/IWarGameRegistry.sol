@@ -144,4 +144,11 @@ interface IWarGameRegistry {
    * @return _record Stored row.
    */
   function record(uint256 _topHatId) external view returns (Record memory _record);
+
+  /**
+   * @notice Nested production deployment for a tophat (zeroed if unknown). Same ABI as `INavePirataRegistry.deployment`.
+   * @param _topHatId Tophat id.
+   * @return _deployment Nested production deployment of that stack.
+   */
+  function deployment(uint256 _topHatId) external view returns (INavePirataRegistry.Deployment memory _deployment);
 }
