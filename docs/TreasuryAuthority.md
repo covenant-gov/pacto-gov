@@ -56,4 +56,4 @@ Think of the Treasury Authority as **“crew sign-off before the vault acts,”*
 
 ## Note for readers
 
-Exact vote math (majority vs quorum) and timing are **parameters** set for each deployment. For precise numbers, your squad’s deployment docs or on-chain readouts are the source of truth; this page is the **shape** of the rules, not every constant.
+Exact vote math (majority vs quorum) and timing are **parameters** set for each deployment. Inclusive on-chain bounds, `CrewVoteMode`, and what `proposalExpiry` / `quorumBps` seed at factory init are in **[governance parameter bounds](./technical/governance-param-bounds.md)**. A live squad’s stored values remain the source of truth for that squad; this page is the **shape** of the rules.

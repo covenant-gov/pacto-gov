@@ -32,6 +32,7 @@ The system is built around **Hats-Pointer Upgradeability**: authority is a Hats 
 - **[Mutiny module](./docs/MutinyModule.md)** — replacing or resigning the captain (including pause-captain → Safe).
 - **[Treasury Authority](./docs/TreasuryAuthority.md)** — Safe actions: two-body democracy, execution, captain veto.
 - **[Squad Admin](./docs/SquadAdmin.md)** — captain-gated on-chain executor roles for integrations.
+- **[Governance parameter bounds](./docs/technical/governance-param-bounds.md)** — `RangeValidator` delay/quorum limits and `SquadParams` for client UIs.
 
 **Contracts (v1)**:
 - `Quartermaster` — timelocked crew roster, admin of the crew hat.

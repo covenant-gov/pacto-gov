@@ -104,7 +104,7 @@ These are enforced in contracts and tests; this list is the committed summary (n
 
 ---
 
-Governance parameters (Treasury-tunable delays, quorum, vote mode) are set per deployment via **Treasury Authority** proposals, within on-chain bounds. **Mutiny** threshold is **not** in that bucket — it is fixed in code. On-chain names may use enums such as `CrewVoteMode` (`MAJORITY_SNAPSHOT`, `QUORUM_OF_CAST`) in `ITreasuryAuthority`.
+Governance parameters (Treasury-tunable delays, quorum, vote mode, mutiny round lifetime) are set per deployment via **Treasury Authority** proposals, within on-chain bounds. **Mutiny pass threshold** is **not** in that bucket — it is fixed 51% of snapshot. Numbers, `SquadParams` mapping, and `CrewVoteMode` for clients: **[governance parameter bounds](./governance-param-bounds.md)**.
 
 ---
 
