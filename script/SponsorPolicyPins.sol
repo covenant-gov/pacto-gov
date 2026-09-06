@@ -25,7 +25,7 @@ library SponsorPolicyPins {
   error SponsorPolicyPins_UnsetFactory(uint256 chainId);
 
   /// @dev pacto-gov `NavePirataFactory` on Sepolia; set after `pnpm deploy:infra:sepolia`.
-  address internal constant NAVE_PIRATA_FACTORY_SEPOLIA = address(0);
+  address internal constant NAVE_PIRATA_FACTORY_SEPOLIA = address(0xd540B03A83d3Fc78922cAb9742e67B8B272bC2b9);
 
   /// @notice Resolves the username-nft policy registry for `chainId`.
   function sponsorPolicyRegistry(uint256 chainId) internal pure returns (address registry) {

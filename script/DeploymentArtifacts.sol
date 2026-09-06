@@ -48,7 +48,7 @@ abstract contract DeploymentArtifacts is Script {
     _writeDeploymentJson(json, 'master-copies.json');
   }
 
-  function _writeInfraJson(DeployTypes.InfraAddresses memory i) internal {
+  function _writeInfraJson(DeployTypes.InfraAddresses memory i, address deployer) internal {
     if (!_shouldWriteDeploymentJson()) return;
     string memory k = 'pacto_infra';
     vm.serializeUint(k, 'chainId', block.chainid);
@@ -57,7 +57,8 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'warGameRegistry', i.warGameRegistry);
     vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
     vm.serializeAddress(k, 'sponsorPolicyRegistry', i.sponsorPolicyRegistry);
-    string memory json = vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
+    vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
+    string memory json = vm.serializeAddress(k, 'deployer', deployer);
     _writeDeploymentJson(json, 'infra.json');
   }
 
