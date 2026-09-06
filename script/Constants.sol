@@ -34,6 +34,9 @@ address constant SAFE_PROXY_FACTORY_141 = 0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820
 /// @dev Safe v1.4.1 `Safe` singleton (canonical cross-chain deployment; matches `safe-global/safe-deployments` v1.4.1).
 address constant SAFE_SINGLETON_141 = 0x41675C099F32341bf84BFc5382aF534df5C7461a;
 
+/// @dev pacto-username-nft `SponsorPolicyRegistry` on Sepolia (`deployments/11155111/full-system.json`). Zero on other chains until pinned.
+address constant SPONSOR_POLICY_REGISTRY_SEPOLIA = 0x1350F096FA383e0D73C02fc13797F207295ef248;
+
 /// @dev EIP-1167 master copies for `INavePirataFactory.deployNavePirata` and standalone squad-admin helpers. Replace
 ///      with addresses from the same chain’s bootstrap (`DeployMasterCopies` / `master-copies.json`) before production;
 ///      `address(0)` is unset (standalone scripts may read implementation from env instead).

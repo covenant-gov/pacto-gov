@@ -21,11 +21,12 @@ contract DeployInfra is PactoDeploy {
     _deployInfra(_ext, _broadcastDeployer());
     vm.stopBroadcast();
     _writeExternalAddressesJson(_ext);
-    _writeInfraJson(_infra);
+    _writeInfraJson(_infra, _broadcastDeployer());
     console.log('RoleHatClonesFactory:', _infra.clonesFactory);
     console.log('NavePirataRegistry:', _infra.registry);
     console.log('WarGameRegistry:', _infra.warGameRegistry);
     console.log('RoleHatUpgrader:', _infra.upgrader);
+    console.log('SponsorPolicyRegistry:', _infra.sponsorPolicyRegistry);
     console.log('NavePirataFactory:', _infra.navePirataFactory);
   }
 }

@@ -12,6 +12,7 @@ import {
 } from 'script/Constants.sol';
 import {DeploymentArtifacts} from 'script/DeploymentArtifacts.sol';
 import {ScriptGovernanceParams} from 'script/GovernanceParams.s.sol';
+import {SponsorPolicyPins} from 'script/SponsorPolicyPins.sol';
 
 /**
  * @title DeployNavePirata
@@ -24,7 +25,8 @@ import {ScriptGovernanceParams} from 'script/GovernanceParams.s.sol';
  *      by default; each master copy can be overridden via environment variables:
  *      `MASTER_COPY_QUARTERMASTER`, `MASTER_COPY_MUTINY_MODULE`, `MASTER_COPY_TREASURY_AUTHORITY`,
  *      and `MASTER_COPY_SQUAD_ADMIN_IMPL`.
- *      Requires forge environment variables: `NAVE_PIRATA_FACTORY`, `CAPTAIN`, `SQUAD_METADATA_URI`.
+ *      Requires forge environment variables: `CAPTAIN`, `SQUAD_METADATA_URI`.
+ *      `NAVE_PIRATA_FACTORY` defaults to `SponsorPolicyPins` for `block.chainid`.
  */
 contract DeployNavePirata is DeploymentArtifacts, ScriptGovernanceParams {
   /// @notice `STACK_KIND` was neither `Production` nor `WarGame`.
@@ -51,7 +53,7 @@ contract DeployNavePirata is DeploymentArtifacts, ScriptGovernanceParams {
       squadId: _squadId
     });
 
-    INavePirataFactory _factory = INavePirataFactory(vm.envAddress('NAVE_PIRATA_FACTORY'));
+    INavePirataFactory _factory = INavePirataFactory(_resolveFactory());
 
     vm.startBroadcast();
     (
@@ -90,5 +92,13 @@ contract DeployNavePirata is DeploymentArtifacts, ScriptGovernanceParams {
       return (INavePirataFactory.StackKind.WarGame, _squadParamsWarGame(), _squadId);
     }
     revert DeployNavePirata_InvalidStackKind(_raw);
+  }
+
+  function _resolveFactory() internal view returns (address factory) {
+    try vm.envAddress('NAVE_PIRATA_FACTORY') returns (address _fromEnv) {
+      return _fromEnv;
+    } catch {
+      return SponsorPolicyPins.navePirataFactory(block.chainid);
+    }
   }
 }

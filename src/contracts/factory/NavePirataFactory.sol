@@ -10,6 +10,7 @@ import {SquadAdminExt} from 'contracts/squad/SquadAdminExt.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
+import {ISponsorPolicyRegistry} from 'interfaces/external/ISponsorPolicyRegistry.sol';
 import {INavePirataFactory} from 'interfaces/factory/INavePirataFactory.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
@@ -67,6 +68,8 @@ contract NavePirataFactory is INavePirataFactory {
   IWarGameRegistry internal immutable _WAR_GAME_REGISTRY;
   /// @notice Role-hat upgrader wired into each deployment's non-semantic hat slots.
   address internal immutable _UPGRADER;
+  /// @notice Username global sponsor policy registry; zero skips `registerTopHat` / `registerModulesForTopHat`.
+  ISponsorPolicyRegistry internal immutable _SPONSOR_POLICY_REGISTRY;
 
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -80,6 +83,7 @@ contract NavePirataFactory is INavePirataFactory {
    * @param _registry Production registry that this factory is authorised to `registerDeployment` into.
    * @param _warGameRegistry War-game registry that this factory is authorised to `register` / `retire` into.
    * @param _upgrader Role-hat upgrader used as the non-semantic eligibility/toggle target.
+   * @param _sponsorPolicyRegistry Optional `SponsorPolicyRegistry` for topHat + module index; zero skips.
    */
   constructor(
     address _hats,
@@ -88,7 +92,8 @@ contract NavePirataFactory is INavePirataFactory {
     address _clonesFactory,
     address _registry,
     address _warGameRegistry,
-    address _upgrader
+    address _upgrader,
+    address _sponsorPolicyRegistry
   ) {
     if (_hats == address(0)) revert NavePirataFactory_ZeroAddress('hats');
     if (_safeProxyFactory == address(0)) revert NavePirataFactory_ZeroAddress('safeProxyFactory');
@@ -105,6 +110,7 @@ contract NavePirataFactory is INavePirataFactory {
     _REGISTRY = INavePirataRegistry(_registry);
     _WAR_GAME_REGISTRY = IWarGameRegistry(_warGameRegistry);
     _UPGRADER = _upgrader;
+    _SPONSOR_POLICY_REGISTRY = ISponsorPolicyRegistry(_sponsorPolicyRegistry);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -168,6 +174,17 @@ contract NavePirataFactory is INavePirataFactory {
       _WAR_GAME_REGISTRY.register(_params.squadId, _deployment);
     } else {
       _REGISTRY.registerDeployment(_deployment);
+    }
+
+    if (address(_SPONSOR_POLICY_REGISTRY) != address(0)) {
+      _SPONSOR_POLICY_REGISTRY.registerTopHat(_topHatId);
+      address[] memory _modules = new address[](5);
+      _modules[0] = _safe;
+      _modules[1] = _quartermaster;
+      _modules[2] = _mutinyModule;
+      _modules[3] = _treasuryAuthority;
+      _modules[4] = _squadAdminProxy;
+      _SPONSOR_POLICY_REGISTRY.registerModulesForTopHat(_topHatId, _modules);
     }
 
     emit NavePirataDeployed(
@@ -242,6 +259,11 @@ contract NavePirataFactory is INavePirataFactory {
   /// @inheritdoc INavePirataFactory
   function UPGRADER() external view returns (address _upgrader) {
     _upgrader = _UPGRADER;
+  }
+
+  /// @inheritdoc INavePirataFactory
+  function SPONSOR_POLICY_REGISTRY() external view returns (address _registry) {
+    _registry = address(_SPONSOR_POLICY_REGISTRY);
   }
 
   /*///////////////////////////////////////////////////////////////
