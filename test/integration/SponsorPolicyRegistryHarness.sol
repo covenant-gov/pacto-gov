@@ -8,9 +8,22 @@ contract SponsorPolicyRegistryHarness is ISponsorPolicyRegistry {
   mapping(uint256 topHatId => bool sponsored) internal _topHats;
   mapping(address module => uint256 topHatId) internal _moduleToTopHat;
   mapping(address registrar => bool authorized) internal _authorizedRegistrars;
+  mapping(address target => bool allowed) internal _allowedTargets;
 
   function setAuthorizedRegistrar(address registrar, bool authorized) external {
     _authorizedRegistrars[registrar] = authorized;
+  }
+
+  function authorizedRegistrars(address registrar) external view returns (bool authorized) {
+    authorized = _authorizedRegistrars[registrar];
+  }
+
+  function registerTarget(address target) external {
+    _allowedTargets[target] = true;
+  }
+
+  function isContractAllowed(address target) external view returns (bool allowed) {
+    allowed = _allowedTargets[target];
   }
 
   function registerTopHat(uint256 topHatId) external {

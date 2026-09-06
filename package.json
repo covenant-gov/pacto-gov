@@ -15,7 +15,9 @@
     "commit": "pnpm lint:fix && pnpm lint:natspec && pnpm test:unit && pnpm test:integration",
     "coverage": "forge coverage --ir-minimum --report summary --report lcov --match-path 'test/unit/*' --no-match-coverage 'script/|test/integration/'",
     "deploy:arbitrum": "bash -c 'source .env && forge script Deploy --rpc-url arbitrum --account $ARBITRUM_DEPLOYER_NAME --broadcast --chain arbitrum -vvvvv && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain arbitrum -vvvv'",
+    "deploy:infra:sepolia": "bash -c 'source .env && forge script DeployInfra --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvv'",
     "deploy:mainnet": "bash -c 'source .env && forge script Deploy --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --chain mainnet -vvvvv && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain mainnet -vvvv'",
+    "deploy:nave-pirata:sepolia": "bash -c 'source .env && forge script DeployNavePirata --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvv'",
     "deploy:sepolia": "bash -c 'source .env && forge script Deploy --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvvv && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain sepolia -vvvv'",
     "deploy:squad-admin-ext:mainnet": "bash -c 'source .env && forge script DeploySquadAdminExtStandalone --rpc-url mainnet --account $MAINNET_DEPLOYER_NAME --broadcast --chain mainnet -vvvv'",
     "deploy:squad-admin-ext:sepolia": "bash -c 'source .env && forge script DeploySquadAdminExtStandalone --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvv'",
@@ -36,7 +38,8 @@
     "test:unit:deep": "FOUNDRY_FUZZ_RUNS=5000 pnpm test:unit",
     "verify:arbitrum": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain arbitrum -vvvv'",
     "verify:mainnet": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain mainnet -vvvv'",
-    "verify:sepolia": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain sepolia -vvvv'"
+    "verify:sepolia": "bash -c 'source .env && FOUNDRY_PROFILE=verify forge script VerifyDeploy --chain sepolia -vvvv'",
+    "wire-sponsor-policy:sepolia": "bash -c 'source .env && forge script WireSponsorPolicyFactory --rpc-url sepolia --account $SEPOLIA_DEPLOYER_NAME --broadcast --chain sepolia -vvvv'"
   },
   "lint-staged": {
     "*.{js,css,md,ts,sol}": "forge fmt",

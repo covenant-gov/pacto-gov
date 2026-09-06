@@ -45,4 +45,31 @@ interface ISponsorPolicyRegistry {
    * @return sponsored True when the tree is registered for sponsorship.
    */
   function isTopHatSponsored(uint256 topHatId) external view returns (bool sponsored);
+
+  /**
+   * @notice Returns whether a protocol factory may register topHats and module indexes.
+   * @param registrar Factory address.
+   * @return authorized True when the registrar is authorized.
+   */
+  function authorizedRegistrars(address registrar) external view returns (bool authorized);
+
+  /**
+   * @notice Returns whether a target allows any call under target-tier policy.
+   * @param target Contract address.
+   * @return allowed True when contract-wide sponsorship is enabled.
+   */
+  function isContractAllowed(address target) external view returns (bool allowed);
+
+  /**
+   * @notice Sets whether a protocol factory may register topHats and module indexes.
+   * @param registrar Factory address.
+   * @param authorized True to authorize the registrar.
+   */
+  function setAuthorizedRegistrar(address registrar, bool authorized) external;
+
+  /**
+   * @notice Registers contract-wide sponsorship for a target (e.g. `NavePirataFactory`).
+   * @param target Target contract address.
+   */
+  function registerTarget(address target) external;
 }
