@@ -12,6 +12,7 @@ library DeployTypes {
     address hats;
     address safeProxyFactory;
     address safeSingleton;
+    address sponsorPolicyRegistry;
   }
 
   /// @notice EIP-1167 master copies deployed once per chain.
@@ -30,5 +31,6 @@ library DeployTypes {
     address warGameRegistry;
     address upgrader;
     address navePirataFactory;
+    address sponsorPolicyRegistry;
   }
 }

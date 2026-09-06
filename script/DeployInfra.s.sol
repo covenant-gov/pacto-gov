@@ -26,6 +26,7 @@ contract DeployInfra is PactoDeploy {
     console.log('NavePirataRegistry:', _infra.registry);
     console.log('WarGameRegistry:', _infra.warGameRegistry);
     console.log('RoleHatUpgrader:', _infra.upgrader);
+    console.log('SponsorPolicyRegistry:', _infra.sponsorPolicyRegistry);
     console.log('NavePirataFactory:', _infra.navePirataFactory);
   }
 }

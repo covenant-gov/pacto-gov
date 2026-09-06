@@ -56,6 +56,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'navePirataRegistry', i.registry);
     vm.serializeAddress(k, 'warGameRegistry', i.warGameRegistry);
     vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
+    vm.serializeAddress(k, 'sponsorPolicyRegistry', i.sponsorPolicyRegistry);
     string memory json = vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
     _writeDeploymentJson(json, 'infra.json');
   }
@@ -81,6 +82,7 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'navePirataRegistry', i.registry);
     vm.serializeAddress(k, 'warGameRegistry', i.warGameRegistry);
     vm.serializeAddress(k, 'roleHatUpgrader', i.upgrader);
+    vm.serializeAddress(k, 'sponsorPolicyRegistry', i.sponsorPolicyRegistry);
     vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
     string memory json = vm.serializeAddress(k, 'deployer', deployer);
     _writeDeploymentJson(json, 'full-system.json');

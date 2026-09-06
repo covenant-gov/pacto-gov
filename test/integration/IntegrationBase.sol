@@ -23,6 +23,8 @@ import {
 import {DeployTypes} from 'script/DeployTypes.sol';
 import {PactoDeploy} from 'script/PactoDeploy.sol';
 
+import {SponsorPolicyRegistryHarness} from 'test/integration/SponsorPolicyRegistryHarness.sol';
+
 import {ERC1155} from '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import {IERC1155Receiver} from '@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol';
 import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -50,6 +52,8 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   using stdStorage for StdStorage;
 
   error IntegrationBase_NoMainnetFork();
+
+  SponsorPolicyRegistryHarness internal _policyHarness;
 
   bool internal _integrationForkActive;
 
@@ -80,8 +84,15 @@ abstract contract IntegrationBase is PactoDeploy, Test {
   }
 
   /// @dev Resolves `{hats,safe singleton,factory}` for `block.chainid`; override only for forks with different infra.
-  function _loadExternalAddresses() internal view returns (DeployTypes.ExternalAddresses memory) {
-    return _externalAddressesForCurrentChain();
+  function _loadExternalAddresses() internal returns (DeployTypes.ExternalAddresses memory) {
+    DeployTypes.ExternalAddresses memory _ext = _externalAddressesForCurrentChain();
+    _policyHarness = new SponsorPolicyRegistryHarness();
+    _ext.sponsorPolicyRegistry = address(_policyHarness);
+    return _ext;
+  }
+
+  function _authorizeSponsorPolicyFactory(address _registry, address _factory) internal override {
+    SponsorPolicyRegistryHarness(_registry).setAuthorizedRegistrar(_factory, true);
   }
 
   /// @dev Selects Forge CLI fork (`HATS` already has code) or `vm.createSelectFork` + `_integrationForkActive`; otherwise reverts.

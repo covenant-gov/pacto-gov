@@ -7,9 +7,10 @@ import {ITreasuryAuthority} from 'interfaces/core/ITreasuryAuthority.sol';
  * @title INavePirataFactory
  * @author Pacto
  * @notice Full squad: `deployNavePirata` (`stackKind` routes Production to `NavePirataRegistry` and WarGame to
- *         `WarGameRegistry`). Standalone squad-admin helpers: `deploySquadAdminExtStandalone`,
- *         `deploySquadAdminStandaloneCaptainHat`. Governance migration after deploy uses `postInitialize` on the clone
- *         (called by the controller / captain), not the factory.
+ *         `WarGameRegistry`). When a sponsor policy registry is wired, the same tx registers `topHatId` and indexes
+ *         deployed module addresses for global paymaster sponsorship. Standalone squad-admin helpers:
+ *         `deploySquadAdminExtStandalone`, `deploySquadAdminStandaloneCaptainHat`. Governance migration after deploy
+ *         uses `postInitialize` on the clone (called by the controller / captain), not the factory.
  */
 interface INavePirataFactory {
   /*///////////////////////////////////////////////////////////////
@@ -237,4 +238,10 @@ interface INavePirataFactory {
    * @return _upgrader The upgrader address.
    */
   function UPGRADER() external view returns (address _upgrader);
+
+  /**
+   * @notice Optional username global sponsor policy registry.
+   * @return _registry The policy registry address (zero when unwired).
+   */
+  function SPONSOR_POLICY_REGISTRY() external view returns (address _registry);
 }

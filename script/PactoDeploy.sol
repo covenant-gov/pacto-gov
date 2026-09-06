@@ -25,7 +25,8 @@ import {
   CHAIN_ID_SEPOLIA,
   HATS_PROTOCOL_V1,
   SAFE_PROXY_FACTORY_141,
-  SAFE_SINGLETON_141
+  SAFE_SINGLETON_141,
+  SPONSOR_POLICY_REGISTRY_SEPOLIA
 } from 'script/Constants.sol';
 import {DeployTypes} from 'script/DeployTypes.sol';
 import {DeploymentArtifacts} from 'script/DeploymentArtifacts.sol';
@@ -56,14 +57,20 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   /// @dev Breadchain-style chain → infra map; every supported id currently shares the same public singletons.
   function _initExternalByChain() internal {
     DeployTypes.ExternalAddresses memory _e = DeployTypes.ExternalAddresses({
-      hats: HATS_PROTOCOL_V1, safeProxyFactory: SAFE_PROXY_FACTORY_141, safeSingleton: SAFE_SINGLETON_141
+      hats: HATS_PROTOCOL_V1,
+      safeProxyFactory: SAFE_PROXY_FACTORY_141,
+      safeSingleton: SAFE_SINGLETON_141,
+      sponsorPolicyRegistry: address(0)
     });
     _externalByChain[CHAIN_ID_ETHEREUM] = _e;
     _externalByChain[CHAIN_ID_OPTIMISM] = _e;
     _externalByChain[CHAIN_ID_BASE] = _e;
     _externalByChain[CHAIN_ID_ARBITRUM_ONE] = _e;
-    _externalByChain[CHAIN_ID_SEPOLIA] = _e;
     _externalByChain[CHAIN_ID_ANVIL] = _e;
+
+    DeployTypes.ExternalAddresses memory _sepolia = _e;
+    _sepolia.sponsorPolicyRegistry = SPONSOR_POLICY_REGISTRY_SEPOLIA;
+    _externalByChain[CHAIN_ID_SEPOLIA] = _sepolia;
   }
 
   /// @notice Squad params for `deployNavePirata` call sites; same on all chains (use `vm.warp` in tests).
@@ -85,6 +92,8 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     _masters = _m;
   }
 
+  function _authorizeSponsorPolicyFactory(address _registry, address _factory) internal virtual {}
+
   function _deployInfra(
     DeployTypes.ExternalAddresses memory _ext,
     address _admin
@@ -97,6 +106,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
         IHats(_ext.hats), IRoleHatClonesFactory(_i.clonesFactory), INavePirataRegistry(_i.registry), _admin
       )
     );
+    _i.sponsorPolicyRegistry = _ext.sponsorPolicyRegistry;
     _i.navePirataFactory = address(
       new NavePirataFactory(
         _ext.hats,
@@ -105,11 +115,15 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
         _i.clonesFactory,
         _i.registry,
         _i.warGameRegistry,
-        _i.upgrader
+        _i.upgrader,
+        _i.sponsorPolicyRegistry
       )
     );
     NavePirataRegistry(_i.registry).initialize(_i.navePirataFactory, _i.upgrader);
     WarGameRegistry(_i.warGameRegistry).initialize(_i.navePirataFactory);
+    if (_i.sponsorPolicyRegistry != address(0)) {
+      _authorizeSponsorPolicyFactory(_i.sponsorPolicyRegistry, _i.navePirataFactory);
+    }
     _infra = _i;
   }
 
@@ -134,6 +148,7 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     console.log('NavePirataRegistry:', _infra.registry);
     console.log('WarGameRegistry:', _infra.warGameRegistry);
     console.log('RoleHatUpgrader:', _infra.upgrader);
+    console.log('SponsorPolicyRegistry:', _infra.sponsorPolicyRegistry);
     console.log('NavePirataFactory:', _infra.navePirataFactory);
   }
 }
