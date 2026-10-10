@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
+import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
@@ -16,7 +17,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  * @title Quartermaster
  * @author Pacto
  * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard (`QUORUM_OF_CAST`); crew-hat `IHatsEligibility` (always eligible); `QuartermasterRole` admin. Revokes via Hats `setHatWearerStatus`
- * @dev EIP-1167 master; `initialize` for clones. Access = hats only
+ * @dev EIP-1167 master; `initialize` for clones. Mutiny freeze reads wired `mutinyModule.activeMutinyId`. Access = hats only
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValidator, Initializable {
   using EnumerableSet for EnumerableSet.AddressSet;
@@ -42,7 +43,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuartermaster
   uint256 public crewOffboardQuorumBps;
   /// @inheritdoc IQuartermaster
-  bool public mutinyActive;
+  address public mutinyModule;
   /// @inheritdoc IQuartermaster
   uint256 public activeCrewOffboardId;
   /// @inheritdoc IQuartermaster
@@ -308,12 +309,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     emit CrewHandoffForMutiny(_formerCaptain, _newCaptain);
   }
 
-  /// @inheritdoc IQuartermaster
-  function setMutinyActive(bool _active) external onlyHatWearer(mutinyRoleHatId) {
-    mutinyActive = _active;
-    emit MutinyActiveSet(_active);
-  }
-
   /*///////////////////////////////////////////////////////////////
                         PARAMETER SETTERS
   //////////////////////////////////////////////////////////////*/
@@ -353,6 +348,11 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
+  function mutinyActive() public view returns (bool _active) {
+    _active = IMutinyModule(mutinyModule).activeMutinyId() != 0;
+  }
+
+  /// @inheritdoc IQuartermaster
   function pendingAddAt(uint256 _index) external view returns (address _candidate, uint256 _executableAt) {
     _candidate = _pendingAdds.at(_index);
     _executableAt = pendingCrewAddAt[_candidate];
@@ -386,7 +386,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
 
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = pendingAddCount == 0 && pendingRemoveCount == 0 && !mutinyActive && activeCrewOffboardId == 0;
+    _quiet = pendingAddCount == 0 && pendingRemoveCount == 0 && !mutinyActive() && activeCrewOffboardId == 0;
   }
 
   /// @inheritdoc IHatGated
@@ -448,7 +448,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
    * @notice Reverts if mutiny mode is on or a crew-led offboard vote is live.
    */
   function _requireRosterUnlocked() internal view {
-    if (mutinyActive) revert Quartermaster_MutinyActive();
+    if (mutinyActive()) revert Quartermaster_MutinyActive();
     if (activeCrewOffboardId != 0) revert Quartermaster_CrewOffboardActive();
   }
 

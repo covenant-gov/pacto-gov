@@ -53,6 +53,7 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
       mutinyRoleHatId: _squadQuartermaster.mutinyRoleHatId(),
       quartermasterRoleHatId: _squadQuartermaster.quartermasterRoleHatId(),
       treasuryAuthorityRoleHatId: _squadQuartermaster.treasuryAuthorityRoleHatId(),
+      mutinyModule: _squadQuartermaster.mutinyModule(),
       crewChangeDelay: _squadQuartermaster.crewChangeDelay(),
       crewOffboardExpiry: _squadQuartermaster.crewOffboardExpiry(),
       crewOffboardQuorumBps: _squadQuartermaster.crewOffboardQuorumBps()
@@ -158,10 +159,9 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
     _mutinyId = _squadMutiny.activeMutinyId();
   }
 
-  /// @dev MutinyRole-gated toggle without going through vote flow (fresh squads with no crew yet).
-  function _setMutinyActiveViaModule(MutinyModule _mutiny, Quartermaster _qm, bool _active) internal {
-    vm.prank(address(_mutiny));
-    _qm.setMutinyActive(_active);
+  /// @dev Force MutinyModule `activeMutinyId` (slot 7) without a crew vote — for empty-roster freeze tests.
+  function _forceMutinyActiveId(MutinyModule _mutiny, uint256 _id) internal {
+    vm.store(address(_mutiny), bytes32(uint256(7)), bytes32(_id));
   }
 
   function _isCrewWearer(uint256 _crewHatId, address _who) internal view returns (bool _wears) {
@@ -258,6 +258,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     assertEq(_squadQuartermaster.mutinyRoleHatId(), _d.mutinyRoleHatId);
     assertEq(_squadQuartermaster.quartermasterRoleHatId(), _d.quartermasterRoleHatId);
     assertEq(_squadQuartermaster.treasuryAuthorityRoleHatId(), _d.treasuryAuthorityRoleHatId);
+    assertEq(_squadQuartermaster.mutinyModule(), _d.mutinyModule);
   }
 
   function test_e2e_quartermaster_crewChangeDelay_matchesProductionDefault() public withDeployedNavePirataSquad {
@@ -479,7 +480,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
   function test_e2e_bootstrapCrew_reverts_whenMutinyActive() public {
     (Quartermaster _qm, MutinyModule _mutiny,, address _captain,,) =
       _deployFreshSquadWithoutBootstrap(_FRESH_SQUAD_SALT + 1);
-    _setMutinyActiveViaModule(_mutiny, _qm, true);
+    _forceMutinyActiveId(_mutiny, 1);
 
     address _candidate = _qmCandidate('e2eQmBootstrapMutiny');
     address[] memory _batch = new address[](1);
@@ -770,30 +771,25 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _squadQuartermaster.crewHandoffForMutiny(_squadCrew[1], _squadCrew[0]);
   }
 
-  function test_e2e_setMutinyActive_succeeds_togglesFlagAndEmits() public withDeployedNavePirataSquad {
-    vm.expectEmit(false, false, false, true, address(_squadQuartermaster));
-    emit IQuartermaster.MutinyActiveSet(true);
-    vm.prank(address(_squadMutiny));
-    _squadQuartermaster.setMutinyActive(true);
+  function test_e2e_mutinyActive_tracksMutinyModuleActiveMutinyId() public withDeployedNavePirataSquad {
+    assertEq(_squadQuartermaster.mutinyModule(), address(_squadMutiny));
+    assertFalse(_squadQuartermaster.mutinyActive());
+    assertTrue(_squadQuartermaster.isQuiet());
+
+    uint256 _id = _ensureSquadMutinyActive();
     assertTrue(_squadQuartermaster.mutinyActive());
     assertFalse(_squadQuartermaster.isQuiet());
 
-    vm.expectEmit(false, false, false, true, address(_squadQuartermaster));
-    emit IQuartermaster.MutinyActiveSet(false);
-    vm.prank(address(_squadMutiny));
-    _squadQuartermaster.setMutinyActive(false);
+    (,,,, uint64 _snapshot,,) = _squadMutiny.mutiny(_id);
+    uint256 _minYeas = uint256(_snapshot) / 2 + 1;
+    for (uint256 _i = 0; _i < _minYeas; _i++) {
+      vm.prank(_squadCrew[_i]);
+      _squadMutiny.castVote(_id);
+    }
+    _squadMutiny.executeMutiny(_id);
+
     assertFalse(_squadQuartermaster.mutinyActive());
     assertTrue(_squadQuartermaster.isQuiet());
-  }
-
-  function test_e2e_setMutinyActive_reverts_whenCallerDoesNotWearMutinyRoleHat() public withDeployedNavePirataSquad {
-    address _stranger = _qmLabeledAddr('e2eQmSetMutinyNotRole');
-
-    vm.expectRevert(
-      abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadQuartermaster.mutinyRoleHatId(), _stranger)
-    );
-    vm.prank(_stranger);
-    _squadQuartermaster.setMutinyActive(true);
   }
 
   /*///////////////////////////////////////////////////////////////

@@ -15,7 +15,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title MutinyModule
  * @author Pacto
- * @notice 51% snapshot mutiny or captain resignation; `IHatsEligibility` for the captain hat; `Quartermaster.setMutinyActive` while a round is live
+ * @notice 51% snapshot mutiny or captain resignation; `IHatsEligibility` for the captain hat; QM reads `activeMutinyId` to freeze captain HR
  * @dev EIP-1167 master. Hats has no `wearerOfHat(hatId)` — store `quartermaster` and re-check `isWearerOfHat` on each call. Failed rounds expire after `mutinyExpiry` via permissionless `expireMutiny`
  */
 contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidator, Initializable {
@@ -166,7 +166,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     activeMutinyId = 0;
 
     _succeedCaptain(_from, _to);
-    IQuartermaster(_liveQuartermaster()).setMutinyActive(false);
 
     emit MutinyExecuted(_mutinyId, _from, _to);
   }
@@ -178,7 +177,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     if (block.timestamp < _r.deadline) revert MutinyModule_NotExpired(_mutinyId, _r.deadline);
 
     activeMutinyId = 0;
-    IQuartermaster(_liveQuartermaster()).setMutinyActive(false);
     emit MutinyExpired(_mutinyId);
   }
 
@@ -301,7 +299,6 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     });
     activeMutinyId = _id;
 
-    IQuartermaster(_qm).setMutinyActive(true);
     emit MutinyStarted(_id, msg.sender, _proposedNewCaptain, _snapshot);
   }
 

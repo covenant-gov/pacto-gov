@@ -11,6 +11,7 @@ import {CREW_CHANGE_DELAY, PROPOSAL_EXPIRY, SQUAD_QUORUM_BPS} from 'script/Const
 
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
+import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
 import {IQuartermaster} from 'interfaces/core/IQuartermaster.sol';
 
 /**
@@ -45,18 +46,21 @@ abstract contract UnitQuartermasterBase is Test {
 
   function setUp() public {
     vm.etch(_HATS_ADDRESS, hex'00');
+    vm.etch(_mutinyClone, hex'00');
     _master = new Quartermaster(IHats(_HATS_ADDRESS));
     _qm = Quartermaster(Clones.clone(address(_master)));
+    _mockMutinyActiveId(0);
     _initDefault();
   }
 
-  function _qmParams(uint256 _delay) internal pure returns (IQuartermaster.InitParams memory _p) {
+  function _qmParams(uint256 _delay) internal view returns (IQuartermaster.InitParams memory _p) {
     _p = IQuartermaster.InitParams({
       captainHatId: _CAPTAIN_HAT,
       crewHatId: _CREW_HAT,
       mutinyRoleHatId: _MUTINY_ROLE_HAT,
       quartermasterRoleHatId: _QUARTERMASTER_ROLE_HAT,
       treasuryAuthorityRoleHatId: _TREASURY_AUTHORITY_ROLE_HAT,
+      mutinyModule: _mutinyClone,
       crewChangeDelay: _delay,
       crewOffboardExpiry: PROPOSAL_EXPIRY,
       crewOffboardQuorumBps: SQUAD_QUORUM_BPS
@@ -65,6 +69,10 @@ abstract contract UnitQuartermasterBase is Test {
 
   function _initDefault() internal {
     _qm.initialize(_qmParams(CREW_CHANGE_DELAY));
+  }
+
+  function _mockMutinyActiveId(uint256 _id) internal {
+    vm.mockCall(_mutinyClone, abi.encodeWithSelector(IMutinyModule.activeMutinyId.selector), abi.encode(_id));
   }
 
   function _mockWearer(address _account, uint256 _hatId, bool _isWearer) internal {
@@ -127,6 +135,7 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
     assertEq(_qm.crewChangeDelay(), CREW_CHANGE_DELAY);
     assertEq(_qm.crewOffboardExpiry(), PROPOSAL_EXPIRY);
     assertEq(_qm.crewOffboardQuorumBps(), SQUAD_QUORUM_BPS);
+    assertEq(_qm.mutinyModule(), _mutinyClone);
     assertFalse(_qm.mutinyActive());
     assertEq(_qm.activeCrewOffboardId(), 0);
     assertEq(_qm.pendingAddCount(), 0);
@@ -166,6 +175,14 @@ contract UnitQuartermasterInit is UnitQuartermasterBase {
     vm.expectRevert(abi.encodeWithSelector(RangeValidator.RangeValidator_OutOfRange.selector, 100, 500, 10_000));
     _fresh.initialize(_p);
   }
+
+  function test_Initialize_RevertsOnZeroMutinyModule() external {
+    Quartermaster _fresh = Quartermaster(Clones.clone(address(_master)));
+    IQuartermaster.InitParams memory _p = _qmParams(CREW_CHANGE_DELAY);
+    _p.mutinyModule = address(0);
+    vm.expectRevert(IQuartermaster.Quartermaster_ZeroAddress.selector);
+    _fresh.initialize(_p);
+  }
 }
 
 contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
@@ -198,9 +215,7 @@ contract UnitQuartermasterAddRequest is UnitQuartermasterBase {
   }
 
   function test_RequestAddCrew_RevertsIfMutinyActive() external {
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
 
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     vm.prank(_captain);
@@ -364,9 +379,7 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestAddCrew(_alice);
 
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
 
     vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
     _qm.executeAddCrew(_alice);
@@ -403,9 +416,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
   }
 
   function test_RequestRemoveCrew_RevertsIfMutinyActive() external {
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
 
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     vm.prank(_captain);
@@ -496,9 +507,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
     vm.prank(_captain);
     _qm.requestRemoveCrew(_alice);
 
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
 
     vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
@@ -608,29 +617,17 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
     _qm.crewHandoffForMutiny(_alice, _bob);
   }
 
-  function test_SetMutinyActive_TogglesAndEmits() external {
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
+  function test_MutinyActive_ReadsPeerActiveMutinyId() external {
+    assertFalse(_qm.mutinyActive());
+    assertTrue(_qm.isQuiet());
 
-    vm.expectEmit(false, false, false, true, address(_qm));
-    emit IQuartermaster.MutinyActiveSet(true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
     assertTrue(_qm.mutinyActive());
     assertFalse(_qm.isQuiet());
 
-    vm.expectEmit(false, false, false, true, address(_qm));
-    emit IQuartermaster.MutinyActiveSet(false);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(false);
+    _mockMutinyActiveId(0);
     assertFalse(_qm.mutinyActive());
     assertTrue(_qm.isQuiet());
-  }
-
-  function test_SetMutinyActive_RevertsIfNotMutinyRole() external {
-    _mockWearer(_stranger, _MUTINY_ROLE_HAT, false);
-    vm.prank(_stranger);
-    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _MUTINY_ROLE_HAT, _stranger));
-    _qm.setMutinyActive(true);
   }
 }
 
@@ -675,9 +672,7 @@ contract UnitQuartermasterBootstrap is UnitQuartermasterBase {
 
   function test_BootstrapCrew_RevertsIfMutinyActive() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
 
     address[] memory _c = new address[](1);
     _c[0] = _alice;
@@ -951,9 +946,7 @@ contract UnitQuartermasterCrewOffboard is UnitQuartermasterBase {
 
   function test_ProposeOffboard_RevertsIfMutinyActive() external {
     _stageOffboardElectorate();
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    vm.prank(_mutinyClone);
-    _qm.setMutinyActive(true);
+    _mockMutinyActiveId(1);
     vm.prank(_alice);
     vm.expectRevert(IQuartermaster.Quartermaster_MutinyActive.selector);
     _qm.proposeOffboard(_carol);

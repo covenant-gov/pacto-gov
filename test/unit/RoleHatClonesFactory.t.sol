@@ -39,6 +39,7 @@ abstract contract UnitRoleHatClonesFactoryBase is Test {
       mutinyRoleHatId: 3,
       quartermasterRoleHatId: 4,
       treasuryAuthorityRoleHatId: 5,
+      mutinyModule: address(0xBEEF),
       crewChangeDelay: CREW_CHANGE_DELAY,
       crewOffboardExpiry: PROPOSAL_EXPIRY,
       crewOffboardQuorumBps: SQUAD_QUORUM_BPS

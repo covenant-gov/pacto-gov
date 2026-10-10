@@ -8,7 +8,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  * @title IQuartermaster
  * @author Pacto
  * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard vote (`QUORUM_OF_CAST`); implements `IHatsEligibility` for the crew hat (always eligible; revoke via Hats `setHatWearerStatus`). Captain requests; anyone
- *         executes after `crewChangeDelay`. Crew may offboard one member at a time without the captain. When `mutinyActive` or an offboard is live, captain HR is frozen. Delay / offboard params: TA role + two-body
+ *         executes after `crewChangeDelay`. Crew may offboard one member at a time without the captain. When the wired MutinyModule has an active round or an offboard is live, captain HR is frozen. Delay / offboard params: TA role + two-body
  */
 interface IQuartermaster is IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
@@ -21,6 +21,7 @@ interface IQuartermaster is IQuiescent, IHatGated {
    * @param mutinyRoleHatId MutinyRole hat id; mutiny hooks require this gate.
    * @param quartermasterRoleHatId QuartermasterRole hat id worn by this clone.
    * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id; gates parameter setters.
+   * @param mutinyModule Authoritative MutinyModule peer (`activeMutinyId` freezes captain HR).
    * @param crewChangeDelay Initial timelock in seconds for requested crew adds / removes.
    * @param crewOffboardExpiry Initial voting window in seconds for crew-led offboard (same range as TA `proposalExpiry`).
    * @param crewOffboardQuorumBps Initial quorum bps for crew-led offboard (`QUORUM_OF_CAST`).
@@ -31,6 +32,7 @@ interface IQuartermaster is IQuiescent, IHatGated {
     uint256 mutinyRoleHatId;
     uint256 quartermasterRoleHatId;
     uint256 treasuryAuthorityRoleHatId;
+    address mutinyModule;
     uint256 crewChangeDelay;
     uint256 crewOffboardExpiry;
     uint256 crewOffboardQuorumBps;
@@ -109,12 +111,6 @@ interface IQuartermaster is IQuiescent, IHatGated {
    * @param _newCaptain Address whose crew hat was transferred.
    */
   event CrewHandoffForMutiny(address indexed _formerCaptain, address indexed _newCaptain);
-
-  /**
-   * @notice Mutiny mode toggled (disables captain-driven onboarding while active).
-   * @param _active True when a mutiny is in progress.
-   */
-  event MutinyActiveSet(bool _active);
 
   /**
    * @notice The crew change delay parameter was updated via a Treasury Authority proposal.
@@ -366,13 +362,6 @@ interface IQuartermaster is IQuiescent, IHatGated {
   function crewHandoffForMutiny(address _formerCaptain, address _newCaptain) external;
 
   /**
-   * @notice Toggle mutiny mode to guard captain-driven onboarding.
-   * @dev Only callable by the MutinyRole hat wearer.
-   * @param _active True to block captain onboarding while a mutiny runs.
-   */
-  function setMutinyActive(bool _active) external;
-
-  /**
    * @notice Update the crew change delay. TreasuryAuthorityRole-gated.
    * @dev Must fall within the delay bounds enforced by the inherited `RangeValidator` base contract.
    * @param _newValue New delay in seconds.
@@ -425,10 +414,16 @@ interface IQuartermaster is IQuiescent, IHatGated {
   function crewOffboardCount() external view returns (uint256 _count);
 
   /**
-   * @notice Whether a mutiny is currently active.
+   * @notice Whether the wired MutinyModule currently has an active round (`activeMutinyId != 0`).
    * @return _active True if mutiny is active.
    */
   function mutinyActive() external view returns (bool _active);
+
+  /**
+   * @notice Authoritative MutinyModule peer wired at init.
+   * @return _mutinyModule Peer address.
+   */
+  function mutinyModule() external view returns (address _mutinyModule);
 
   /**
    * @notice Timestamp after which `executeAddCrew` succeeds, or zero if none.

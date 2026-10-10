@@ -86,8 +86,7 @@ abstract contract UnitMutinyModuleBase is Test {
     vm.mockCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _hatId, _from, _to), abi.encode());
   }
 
-  function _mockQmMutinyActive(bool _active) internal {
-    vm.mockCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, _active), abi.encode());
+  function _mockQmNoActiveOffboard() internal {
     vm.mockCall(
       _quartermaster, abi.encodeWithSelector(IQuartermaster.activeCrewOffboardId.selector), abi.encode(uint256(0))
     );
@@ -114,7 +113,7 @@ abstract contract UnitMutinyModuleBase is Test {
     _mockWearer(_bob, _CREW_HAT, true);
     _mockWearer(_carol, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
 
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_proposedNewCaptain);
@@ -197,13 +196,12 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
 }
 
 contract UnitMutinyModuleStart is UnitMutinyModuleBase {
-  function test_StartMutiny_HappyPath_EmitsAndFreezesQM() external {
+  function test_StartMutiny_HappyPath_EmitsAndSetsActiveId() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, true));
     vm.expectEmit(true, true, true, true, address(_mm));
     emit IMutinyModule.MutinyStarted(1, _alice, _newCaptainEoa, 5);
 
@@ -258,7 +256,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
 
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
@@ -273,8 +271,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_alice, _CREW_HAT, true);
     _mockWearer(_quartermaster, _QM_ROLE_HAT, false);
     _mockHatSupply(_CREW_HAT, 5);
-    // setMutinyActive is attempted *after* _requireLiveCaptain passes; it calls _liveQuartermaster
-    // which reverts due to the stale role hat.
+    // `_startMutiny` calls `_liveQuartermaster` for the crew-offboard check; stale role hat reverts.
     vm.prank(_alice);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleQuartermaster.selector, _quartermaster));
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
@@ -292,7 +289,7 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
 
     vm.expectEmit(true, true, true, true, address(_mm));
     emit IMutinyModule.MutinyStarted(1, _alice, _squadSafe, 5);
@@ -314,7 +311,7 @@ contract UnitMutinyModuleVote is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     _mutinyId = _mm.activeMutinyId();
@@ -385,13 +382,12 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
     _mockWearer(_newCaptainEoa, _CREW_HAT, false);
     _mockQmMintCrewFromMutiny(_captain);
-    _mockQmMutinyActive(false);
+    _mockQmNoActiveOffboard();
 
     vm.expectCall(
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _CAPTAIN_HAT, _captain, _newCaptainEoa)
     );
     vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _captain));
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, false));
     vm.expectEmit(true, true, true, true, address(_mm));
     emit IMutinyModule.MutinyExecuted(_id, _captain, _newCaptainEoa);
 
@@ -417,7 +413,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockTransferHat(_CAPTAIN_HAT, _captain, _crewSuccessor);
     _mockWearer(_crewSuccessor, _CREW_HAT, true);
     _mockQmCrewHandoffForMutiny(_captain, _crewSuccessor);
-    _mockQmMutinyActive(false);
+    _mockQmNoActiveOffboard();
 
     vm.expectCall(
       _quartermaster, abi.encodeWithSelector(IQuartermaster.crewHandoffForMutiny.selector, _captain, _crewSuccessor)
@@ -440,7 +436,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockWearer(_bob, _CREW_HAT, true);
     _mockWearer(_carol, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
 
     vm.prank(_alice);
     _mm2.startMutinyToArbitraryEoa(_newCaptainEoa);
@@ -454,11 +450,10 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mm2.castVote(_id);
 
     _mockTransferHat(_CAPTAIN_HAT, _contractCaptain, _newCaptainEoa);
-    _mockQmMutinyActive(false);
+    _mockQmNoActiveOffboard();
 
     // NOTE: We don't mock mintCrewFromMutiny — if it's called, the test will fail because the
-    // call returns empty bytes but the mock is absent. vm.expectCall negation is not a feature,
-    // so we rely on the Quartermaster mock specifically targeting setMutinyActive(false).
+    // call returns empty bytes but the mock is absent.
     _mm2.executeMutiny(_id);
     assertEq(_mm2.captain(), _newCaptainEoa);
   }
@@ -478,7 +473,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
     _mockWearer(_newCaptainEoa, _CREW_HAT, false);
     _mockQmMintCrewFromMutiny(_captain);
-    _mockQmMutinyActive(false);
+    _mockQmNoActiveOffboard();
     _mm.executeMutiny(_id);
 
     vm.expectRevert(IMutinyModule.MutinyModule_NoActiveMutiny.selector);
@@ -490,7 +485,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     _mockWearer(_alice, _CREW_HAT, true);
     _mockWearer(_bob, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
 
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
@@ -579,7 +574,7 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
 
@@ -624,7 +619,7 @@ contract UnitMutinyModuleExpiry is UnitMutinyModuleBase {
     _mockWearer(_alice, _CREW_HAT, true);
     _mockWearer(_bob, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     uint256 _id = _mm.activeMutinyId();
@@ -639,14 +634,13 @@ contract UnitMutinyModuleExpiry is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     uint256 _id = _mm.activeMutinyId();
 
     vm.warp(block.timestamp + PROPOSAL_EXPIRY);
-    _mockQmMutinyActive(false);
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.setMutinyActive.selector, false));
+    _mockQmNoActiveOffboard();
     vm.expectEmit(true, false, false, true, address(_mm));
     emit IMutinyModule.MutinyExpired(_id);
     _mm.expireMutiny(_id);
@@ -654,7 +648,7 @@ contract UnitMutinyModuleExpiry is UnitMutinyModuleBase {
     assertEq(_mm.activeMutinyId(), 0);
     assertTrue(_mm.isQuiet());
 
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_bob);
     assertEq(_mm.activeMutinyId(), 2);
@@ -664,7 +658,7 @@ contract UnitMutinyModuleExpiry is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     uint256 _id = _mm.activeMutinyId();
@@ -678,13 +672,13 @@ contract UnitMutinyModuleExpiry is UnitMutinyModuleBase {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_alice, _CREW_HAT, true);
     _mockHatSupply(_CREW_HAT, 5);
-    _mockQmMutinyActive(true);
+    _mockQmNoActiveOffboard();
     vm.prank(_alice);
     _mm.startMutinyToArbitraryEoa(_newCaptainEoa);
     uint256 _id = _mm.activeMutinyId();
 
     vm.warp(block.timestamp + PROPOSAL_EXPIRY);
-    _mockQmMutinyActive(false);
+    _mockQmNoActiveOffboard();
     _mm.expireMutiny(_id);
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _bob);

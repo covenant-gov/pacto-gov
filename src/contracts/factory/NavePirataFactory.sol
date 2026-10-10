@@ -142,7 +142,7 @@ contract NavePirataFactory is INavePirataFactory {
       _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
       _topHatId = _hats.topHatId;
 
-      _quartermaster = _deployQuartermasterClone(_params, _hats, _qmSalt);
+      _quartermaster = _deployQuartermasterClone(_params, _hats, _predMutinyModule, _qmSalt);
       _mutinyModule = _deployMutinyModuleClone(_params, _hats, _quartermaster, _safe, _mmSalt);
       _treasuryAuthority = _deployTreasuryAuthorityClone(_params, _safe, _hats, _taSalt);
       _squadAdminProxy = _deploySquadAdminProxy(_params.squadAdminImplementation, _hats);
@@ -405,12 +405,14 @@ contract NavePirataFactory is INavePirataFactory {
    * @notice Creates the Quartermaster EIP-1167 clone and initializes it with hat ids from `_hats`.
    * @param _params Full deploy params (`quartermasterMasterCopy`, `squadParams`).
    * @param _hats Hat tree from `_createHatTree` (ids wired into `InitParams`).
+   * @param _predMutinyModule Predicted MutinyModule clone (authoritative peer for mutiny freeze).
    * @param _salt CREATE2 salt for this clone.
    * @return _clone Deployed Quartermaster clone address.
    */
   function _deployQuartermasterClone(
     DeployParams calldata _params,
     HatTree memory _hats,
+    address _predMutinyModule,
     bytes32 _salt
   ) internal returns (address _clone) {
     _clone = _CLONES_FACTORY.createClone(
@@ -423,6 +425,7 @@ contract NavePirataFactory is INavePirataFactory {
             mutinyRoleHatId: _hats.mutinyRoleHatId,
             quartermasterRoleHatId: _hats.quartermasterRoleHatId,
             treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+            mutinyModule: _predMutinyModule,
             crewChangeDelay: _params.squadParams.crewChangeDelay,
             crewOffboardExpiry: _params.squadParams.proposalExpiry,
             crewOffboardQuorumBps: _params.squadParams.quorumBps
