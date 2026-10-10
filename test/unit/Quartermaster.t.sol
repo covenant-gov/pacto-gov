@@ -82,9 +82,11 @@ abstract contract UnitQuartermasterBase is Test {
     vm.mockCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.mintHat.selector, _hatId, _wearer), abi.encode(_ok));
   }
 
-  function _mockCheckHatWearerStatus(uint256 _hatId, address _wearer, bool _updated) internal {
+  function _mockSetHatWearerStatus(uint256 _hatId, address _wearer, bool _updated) internal {
     vm.mockCall(
-      _HATS_ADDRESS, abi.encodeWithSelector(IHats.checkHatWearerStatus.selector, _hatId, _wearer), abi.encode(_updated)
+      _HATS_ADDRESS,
+      abi.encodeWithSelector(IHats.setHatWearerStatus.selector, _hatId, _wearer, false, false),
+      abi.encode(_updated)
     );
   }
 
@@ -447,7 +449,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
     _qm.cancelRemoveCrew(_alice);
   }
 
-  function test_ExecuteRemoveCrew_HappyPath_FlipsEligibilityAndPokesHats() external {
+  function test_ExecuteRemoveCrew_HappyPath_RevokesViaSetHatWearerStatus() external {
     _seedCrew(_alice);
 
     _mockWearer(_alice, _CREW_HAT, true);
@@ -456,16 +458,19 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
 
     vm.warp(block.timestamp + CREW_CHANGE_DELAY);
     _mockWearer(_alice, _CREW_HAT, true);
-    _mockCheckHatWearerStatus(_CREW_HAT, _alice, true);
+    _mockSetHatWearerStatus(_CREW_HAT, _alice, true);
 
-    vm.expectCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.checkHatWearerStatus.selector, _CREW_HAT, _alice));
+    vm.expectCall(
+      _HATS_ADDRESS, abi.encodeWithSelector(IHats.setHatWearerStatus.selector, _CREW_HAT, _alice, false, false)
+    );
     vm.expectEmit(true, false, false, true, address(_qm));
     emit IQuartermaster.CrewRemoveExecuted(_alice);
 
     _qm.executeRemoveCrew(_alice);
 
-    (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
-    assertFalse(_eligible);
+    (bool _eligible, bool _standing) = _qm.getWearerStatus(_alice, _CREW_HAT);
+    assertTrue(_eligible);
+    assertTrue(_standing);
     assertEq(_qm.pendingCrewRemoveAt(_alice), 0);
     assertTrue(_qm.isQuiet());
   }
@@ -527,7 +532,6 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
 
     (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
     assertTrue(_eligible);
-    assertTrue(_qm.crewEligible(_alice));
     assertEq(_qm.pendingAddCount(), 0);
   }
 
@@ -577,7 +581,6 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
 
     (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
     assertTrue(_eligible);
-    assertTrue(_qm.crewEligible(_alice));
     assertEq(_qm.pendingAddCount(), 0);
   }
 
@@ -657,7 +660,6 @@ contract UnitQuartermasterBootstrap is UnitQuartermasterBase {
     (bool _bOk,) = _qm.getWearerStatus(_bob, _CREW_HAT);
     assertTrue(_aOk);
     assertTrue(_bOk);
-    assertTrue(_qm.crewEligible(_alice));
     assertEq(_qm.pendingAddCount(), 0);
     assertTrue(_qm.isQuiet());
   }
@@ -777,13 +779,13 @@ contract UnitQuartermasterParameterSetters is UnitQuartermasterBase {
 }
 
 contract UnitQuartermasterEligibility is UnitQuartermasterBase {
-  function test_GetWearerStatus_DefaultsIneligibleTrueStanding() external view {
+  function test_GetWearerStatus_AlwaysEligibleAndStanding() external view {
     (bool _eligible, bool _standing) = _qm.getWearerStatus(_alice, _CREW_HAT);
-    assertFalse(_eligible);
+    assertTrue(_eligible);
     assertTrue(_standing);
   }
 
-  function test_GetWearerStatus_ReflectsMintRevokeCycle() external {
+  function test_GetWearerStatus_RemainsEligibleAfterRevokeReport() external {
     _seedCrew(_alice);
     (bool _eligible, bool _standing) = _qm.getWearerStatus(_alice, _CREW_HAT);
     assertTrue(_eligible);
@@ -795,11 +797,12 @@ contract UnitQuartermasterEligibility is UnitQuartermasterBase {
 
     vm.warp(_qm.pendingCrewRemoveAt(_alice));
     _mockWearer(_alice, _CREW_HAT, true);
-    _mockCheckHatWearerStatus(_CREW_HAT, _alice, true);
+    _mockSetHatWearerStatus(_CREW_HAT, _alice, true);
     _qm.executeRemoveCrew(_alice);
 
-    (bool _eligibleAfter,) = _qm.getWearerStatus(_alice, _CREW_HAT);
-    assertFalse(_eligibleAfter);
+    (bool _eligibleAfter, bool _standingAfter) = _qm.getWearerStatus(_alice, _CREW_HAT);
+    assertTrue(_eligibleAfter);
+    assertTrue(_standingAfter);
   }
 }
 
@@ -860,7 +863,6 @@ contract UnitQuartermasterPendingViews is UnitQuartermasterBase {
 
     assertEq(_qm.pendingAddCount(), 0);
     assertEq(_qm.pendingRemoveCount(), 1);
-    assertTrue(_qm.crewEligible(_carol));
     assertFalse(_qm.isQuiet());
   }
 
@@ -979,8 +981,11 @@ contract UnitQuartermasterCrewOffboard is UnitQuartermasterBase {
   function test_ExecuteOffboard_HappyPath_AtQuorumYeasAhead() external {
     uint256 _id = _passOffboardOnCarol();
     _mockWearer(_carol, _CREW_HAT, true);
-    _mockCheckHatWearerStatus(_CREW_HAT, _carol, true);
+    _mockSetHatWearerStatus(_CREW_HAT, _carol, true);
 
+    vm.expectCall(
+      _HATS_ADDRESS, abi.encodeWithSelector(IHats.setHatWearerStatus.selector, _CREW_HAT, _carol, false, false)
+    );
     vm.expectEmit(true, true, false, true, address(_qm));
     emit IQuartermaster.CrewOffboardExecuted(_id, _carol);
     _qm.executeOffboard(_id);
@@ -988,7 +993,7 @@ contract UnitQuartermasterCrewOffboard is UnitQuartermasterBase {
     assertEq(_qm.activeCrewOffboardId(), 0);
     assertTrue(_qm.isQuiet());
     (bool _eligible,) = _qm.getWearerStatus(_carol, _CREW_HAT);
-    assertFalse(_eligible);
+    assertTrue(_eligible);
   }
 
   function test_ExecuteOffboard_RevertsIfTurnoutShort() external {

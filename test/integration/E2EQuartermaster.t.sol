@@ -632,8 +632,9 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _squadQuartermaster.executeRemoveCrew(_crew);
 
     assertFalse(_isCrewWearer(_squadCrewHatId, _crew));
-    (bool _eligible,) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
-    assertFalse(_eligible);
+    (bool _eligible, bool _standing) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
+    assertTrue(_eligible);
+    assertTrue(_standing);
     assertEq(_squadQuartermaster.pendingCrewRemoveAt(_crew), 0);
   }
 
@@ -835,15 +836,15 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
                         views / eligibility / isQuiet
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_getWearerStatus_defaultsIneligibleForNonCrew() public withDeployedNavePirataSquad {
+  function test_e2e_getWearerStatus_alwaysEligibleAndStanding() public withDeployedNavePirataSquad {
     address _stranger = _qmLabeledAddr('e2eQmEligibilityDefault');
 
     (bool _eligible, bool _standing) = _squadQuartermaster.getWearerStatus(_stranger, _squadCrewHatId);
-    assertFalse(_eligible);
+    assertTrue(_eligible);
     assertTrue(_standing);
   }
 
-  function test_e2e_getWearerStatus_reflectsCrewMintAndRemoveCycle() public withDeployedNavePirataSquad {
+  function test_e2e_getWearerStatus_remainsEligibleAfterRemove() public withDeployedNavePirataSquad {
     address _crew = _squadCrew[4];
 
     (bool _eligibleBefore,) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
@@ -853,8 +854,9 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _warpToPendingRemoveExecutable(_squadQuartermaster, _crew);
     _squadQuartermaster.executeRemoveCrew(_crew);
 
+    assertFalse(_isCrewWearer(_squadCrewHatId, _crew));
     (bool _eligibleAfter,) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
-    assertFalse(_eligibleAfter);
+    assertTrue(_eligibleAfter);
   }
 
   function test_e2e_isQuiet_falseWhenPendingAddOrRemove() public withDeployedNavePirataSquad {
@@ -913,7 +915,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _warpToPendingAddExecutable(_squadQuartermaster, _addB);
     _squadQuartermaster.executeAddCrew(_addB);
     assertEq(_squadQuartermaster.pendingAddCount(), 0);
-    assertTrue(_squadQuartermaster.crewEligible(_addB));
+    assertTrue(_isCrewWearer(_squadCrewHatId, _addB));
 
     (address[] memory _rems,) = _squadQuartermaster.pendingRemoves();
     assertEq(_rems.length, 1);
@@ -960,7 +962,6 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _squadQuartermaster.executeOffboard(_id);
 
     assertEq(_squadQuartermaster.activeCrewOffboardId(), 0);
-    assertFalse(_squadQuartermaster.crewEligible(_target));
     assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_target, _squadCrewHatId));
   }
 

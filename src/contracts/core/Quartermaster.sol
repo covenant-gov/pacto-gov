@@ -15,7 +15,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title Quartermaster
  * @author Pacto
- * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard (`QUORUM_OF_CAST`); crew-hat `IHatsEligibility`; `QuartermasterRole` admin. Revokes via local flags + Hats re-checks
+ * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard (`QUORUM_OF_CAST`); crew-hat `IHatsEligibility` (always eligible); `QuartermasterRole` admin. Revokes via Hats `setHatWearerStatus`
  * @dev EIP-1167 master; `initialize` for clones. Access = hats only
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValidator, Initializable {
@@ -54,9 +54,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   mapping(address _crew => uint256 _executableAt) public pendingCrewRemoveAt;
 
   /// @inheritdoc IQuartermaster
-  mapping(address _wearer => bool _eligible) public crewEligible;
-
-  /// @inheritdoc IQuartermaster
   uint256 public pendingAddCount;
   /// @inheritdoc IQuartermaster
   uint256 public pendingRemoveCount;
@@ -84,6 +81,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
 
   /// @inheritdoc IQuartermaster
   function initialize(InitParams calldata _p) external initializer {
+    if (_p.mutinyModule == address(0)) revert Quartermaster_ZeroAddress();
     _validateDelay(_p.crewChangeDelay);
     _validateDelay(_p.crewOffboardExpiry);
     _validateQuorumBps(_p.crewOffboardQuorumBps);
@@ -92,6 +90,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     mutinyRoleHatId = _p.mutinyRoleHatId;
     quartermasterRoleHatId = _p.quartermasterRoleHatId;
     treasuryAuthorityRoleHatId = _p.treasuryAuthorityRoleHatId;
+    mutinyModule = _p.mutinyModule;
     crewChangeDelay = _p.crewChangeDelay;
     crewOffboardExpiry = _p.crewOffboardExpiry;
     crewOffboardQuorumBps = _p.crewOffboardQuorumBps;
@@ -132,7 +131,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     for (uint256 _i = 0; _i < _n; _i++) {
       address _c = _candidates[_i];
       _validateAddCandidate(_c);
-      crewEligible[_c] = true;
       _HATS.mintHat(crewHatId, _c);
       emit CrewAddExecuted(_c);
     }
@@ -158,7 +156,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     delete pendingCrewAddAt[_candidate];
     pendingAddCount--;
     _pendingAdds.remove(_candidate);
-    crewEligible[_candidate] = true;
     _HATS.mintHat(crewHatId, _candidate);
     emit CrewAddExecuted(_candidate);
   }
@@ -202,8 +199,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     delete pendingCrewRemoveAt[_crew];
     pendingRemoveCount--;
     _pendingRemoves.remove(_crew);
-    crewEligible[_crew] = false;
-    _HATS.checkHatWearerStatus(crewHatId, _crew);
+    _HATS.setHatWearerStatus(crewHatId, _crew, false, false);
     emit CrewRemoveExecuted(_crew);
   }
 
@@ -271,8 +267,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
 
     _o.executed = true;
     activeCrewOffboardId = 0;
-    crewEligible[_o.target] = false;
-    _HATS.checkHatWearerStatus(crewHatId, _o.target);
+    _HATS.setHatWearerStatus(crewHatId, _o.target, false, false);
     emit CrewOffboardExecuted(_offboardId, _o.target);
   }
 
@@ -297,7 +292,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    crewEligible[_formerCaptain] = true;
     _HATS.mintHat(crewHatId, _formerCaptain);
     emit CrewMintedFromMutiny(_formerCaptain);
   }
@@ -310,7 +304,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (!_HATS.isWearerOfHat(_newCaptain, crewHatId)) revert Quartermaster_NotCrew(_newCaptain);
     if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
 
-    crewEligible[_formerCaptain] = true;
     _HATS.transferHat(crewHatId, _newCaptain, _formerCaptain);
     emit CrewHandoffForMutiny(_formerCaptain, _newCaptain);
   }
@@ -354,11 +347,8 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IHatsEligibility
-  function getWearerStatus(
-    address _wearer,
-    uint256 /*_hatId*/
-  ) external view returns (bool _eligible, bool _standing) {
-    _eligible = crewEligible[_wearer];
+  function getWearerStatus(address, uint256) external pure returns (bool _eligible, bool _standing) {
+    _eligible = true;
     _standing = true;
   }
 

@@ -7,7 +7,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 /**
  * @title IQuartermaster
  * @author Pacto
- * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard vote (`QUORUM_OF_CAST`); implements `IHatsEligibility` for the crew hat. Captain requests; anyone
+ * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard vote (`QUORUM_OF_CAST`); implements `IHatsEligibility` for the crew hat (always eligible; revoke via Hats `setHatWearerStatus`). Captain requests; anyone
  *         executes after `crewChangeDelay`. Crew may offboard one member at a time without the captain. When `mutinyActive` or an offboard is live, captain HR is frozen. Delay / offboard params: TA role + two-body
  */
 interface IQuartermaster is IQuiescent, IHatGated {
@@ -485,13 +485,6 @@ interface IQuartermaster is IQuiescent, IHatGated {
    * @return _executableAts Matching `executeRemoveCrew` timestamps.
    */
   function pendingRemoves() external view returns (address[] memory _crew, uint256[] memory _executableAts);
-
-  /**
-   * @notice Local crew-hat eligibility flag for `_wearer` (same bit as `getWearerStatus`).
-   * @param _wearer Address to query.
-   * @return _eligible True if this contract treats `_wearer` as eligible crew.
-   */
-  function crewEligible(address _wearer) external view returns (bool _eligible);
 
   /**
    * @notice Captain hat id for access-control checks.
