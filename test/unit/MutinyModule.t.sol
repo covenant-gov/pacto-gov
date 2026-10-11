@@ -185,13 +185,14 @@ contract UnitMutinyModuleInit is UnitMutinyModuleBase {
     _mm.initialize(_initParams(_captain, _quartermaster));
   }
 
-  function test_GetWearerStatus_MatchesCachedCaptain() external view {
+  function test_GetWearerStatus_AlwaysEligibleAndStanding() external view {
     (bool _eligible, bool _standing) = _mm.getWearerStatus(_captain, _CAPTAIN_HAT);
     assertTrue(_eligible);
     assertTrue(_standing);
 
-    (bool _eligibleAlt,) = _mm.getWearerStatus(_alice, _CAPTAIN_HAT);
-    assertFalse(_eligibleAlt);
+    (bool _eligibleAlt, bool _standingAlt) = _mm.getWearerStatus(_alice, _CAPTAIN_HAT);
+    assertTrue(_eligibleAlt);
+    assertTrue(_standingAlt);
   }
 }
 
@@ -399,10 +400,10 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     (,,,,,, bool _executed) = _mm.mutiny(_id);
     assertTrue(_executed);
 
-    // Eligibility flipped to the new captain.
+    // Captain-hat eligibility stays always-true; identity cache moves to the successor.
     (bool _oldElig,) = _mm.getWearerStatus(_captain, _CAPTAIN_HAT);
     (bool _newElig,) = _mm.getWearerStatus(_newCaptainEoa, _CAPTAIN_HAT);
-    assertFalse(_oldElig);
+    assertTrue(_oldElig);
     assertTrue(_newElig);
   }
 

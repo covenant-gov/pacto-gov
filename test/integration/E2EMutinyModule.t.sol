@@ -558,9 +558,8 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_captainResign_reverts_whenCaptainCacheNotMsgSender() public withDeployedNavePirataSquad {
     vm.store(address(_squadMutiny), bytes32(uint256(4)), bytes32(uint256(uint160(_squadCrew[2]))));
 
-    vm.expectRevert(
-      abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadMutiny.captainHatId(), _squadCaptain)
-    );
+    // Hat wearer check passes (eligibility always true + still holds captain hat); identity cache rejects.
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleCaptain.selector, _squadCrew[2]));
     vm.prank(_squadCaptain);
     _squadMutiny.captainResign(_squadProposedCaptain);
   }
@@ -578,14 +577,15 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
                         views / eligibility / isQuiet
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_getWearerStatus_eligibleOnlyForTrackedCaptain() public withDeployedNavePirataSquad {
+  function test_e2e_getWearerStatus_alwaysEligibleAndStanding() public withDeployedNavePirataSquad {
     (bool _captainEligible, bool _captainStanding) =
       _squadMutiny.getWearerStatus(_squadCaptain, _squadMutiny.captainHatId());
     assertTrue(_captainEligible);
     assertTrue(_captainStanding);
 
-    (bool _crewEligible,) = _squadMutiny.getWearerStatus(_squadCrew[0], _squadMutiny.captainHatId());
-    assertFalse(_crewEligible);
+    (bool _crewEligible, bool _crewStanding) = _squadMutiny.getWearerStatus(_squadCrew[0], _squadMutiny.captainHatId());
+    assertTrue(_crewEligible);
+    assertTrue(_crewStanding);
   }
 
   function test_e2e_isQuiet_trueWhenNoMutiny_falseWhenRoundOpen() public withDeployedNavePirataSquad {

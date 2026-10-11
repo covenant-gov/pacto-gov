@@ -8,7 +8,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  * @title IMutinyModule
  * @author Pacto
  * @notice 51% of snapshot crew (yeas) to replace the captain, or `captainResign` if no open mutiny. Captain hat
- *         `IHatsEligibility`. Each round has a deadline (`mutinyExpiry`, same bounds as TA `proposalExpiry`);
+ *         `IHatsEligibility` (always eligible). Each round has a deadline (`mutinyExpiry`, same bounds as TA `proposalExpiry`);
  *         permissionless `expireMutiny` clears a failed round. Drives `transferHat` and QM for crew
  */
 interface IMutinyModule is IQuiescent, IHatGated {
@@ -190,7 +190,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
                         CONSTRUCTOR / INITIALIZER
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice One-shot init: hat ids, `captain`, `quartermaster`, `safe`, `mutinyExpiry`. Eligibility for factory `mintHat` flows through `getWearerStatus` on the module.
+   * @notice One-shot init: hat ids, `captain`, `quartermaster`, `safe`, `mutinyExpiry`. Captain-hat eligibility is always true; `captain` is protocol identity for mutiny logic.
    * @param _p Bootstrap parameters.
    */
   function initialize(InitParams calldata _p) external;

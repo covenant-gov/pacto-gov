@@ -15,7 +15,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title MutinyModule
  * @author Pacto
- * @notice 51% snapshot mutiny or captain resignation; `IHatsEligibility` for the captain hat; QM reads `activeMutinyId` to freeze captain HR
+ * @notice 51% snapshot mutiny or captain resignation; captain-hat `IHatsEligibility` (always eligible); QM reads `activeMutinyId` to freeze captain HR
  * @dev EIP-1167 master. Hats has no `wearerOfHat(hatId)` — store `quartermaster` and re-check `isWearerOfHat` on each call. Failed rounds expire after `mutinyExpiry` via permissionless `expireMutiny`
  */
 contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidator, Initializable {
@@ -247,11 +247,8 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   }
 
   /// @inheritdoc IHatsEligibility
-  function getWearerStatus(
-    address _wearer,
-    uint256 /*_hatId*/
-  ) external view returns (bool _eligible, bool _standing) {
-    _eligible = _wearer == captain;
+  function getWearerStatus(address, uint256) external pure returns (bool _eligible, bool _standing) {
+    _eligible = true;
     _standing = true;
   }
 
@@ -303,7 +300,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   }
 
   /**
-   * @notice Transfers captain hat; updates `captain` before `transferHat` so `getWearerStatus` accepts the new wearer. EOA ex-captain: QM mint or crew handoff
+   * @notice Transfers captain hat and updates the `captain` identity cache. EOA ex-captain: QM mint or crew handoff
    * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`
    * @param _from Outgoing captain
    * @param _to Incoming captain
