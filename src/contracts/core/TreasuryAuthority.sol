@@ -32,12 +32,9 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   uint256 public crewHatId;
   /// @inheritdoc ITreasuryAuthority
   uint256 public treasuryAuthorityRoleHatId;
-  /// @inheritdoc ITreasuryAuthority
-  uint256 public proposalExpiry;
-  /// @inheritdoc ITreasuryAuthority
-  CrewVoteMode public crewVoteMode;
-  /// @inheritdoc ITreasuryAuthority
-  uint256 public quorumBps;
+
+  /// @notice Packed `proposalExpiry`, `crewVoteMode`, `quorumBps`, `nextProposalId`, `maxDeadline`.
+  GovConfig internal _gov;
 
   /// @inheritdoc ITreasuryAuthority
   mapping(address _proposer => uint256 _openProposalId) public openProposalOf;
@@ -45,12 +42,6 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   mapping(uint256 _proposalId => Proposal _proposal) internal _proposals;
   /// @notice Per-proposal vote registry; `true` iff `_voter` has cast a vote on `_proposalId`.
   mapping(uint256 _proposalId => mapping(address _voter => bool _voted)) internal _voted;
-
-  /// @inheritdoc ITreasuryAuthority
-  uint256 public nextProposalId;
-
-  /// @inheritdoc ITreasuryAuthority
-  uint256 public maxDeadline;
 
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR / INITIALIZER
@@ -90,15 +81,21 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
       }
     }
 
+    GovConfig memory _cfg = _gov;
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
-    uint256 _deadline256 = block.timestamp + proposalExpiry;
+    uint256 _deadline256 = block.timestamp + _cfg.proposalExpiry;
     if (_deadline256 > type(uint64).max) revert TreasuryAuthority_DeadlineOverflow();
     // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
     // forge-lint: disable-next-line(unsafe-typecast)
     uint64 _deadline = uint64(_deadline256);
 
-    _proposalId = nextProposalId++;
+    uint64 _id = _cfg.nextProposalId;
+    _proposalId = _id;
+    _cfg.nextProposalId = _id + 1;
+    if (_deadline > _cfg.maxDeadline) _cfg.maxDeadline = _deadline;
+    _gov = _cfg;
 
+    bytes32 _dataHash = keccak256(_data);
     Proposal storage _np = _proposals[_proposalId];
     _np.proposer = msg.sender;
     _np.deadline = _deadline;
@@ -106,11 +103,10 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     _np.to = _to;
     _np.snapshot = _snapshot;
     _np.value = _value;
-    _np.data = _data;
+    _np.dataHash = _dataHash;
 
     openProposalOf[msg.sender] = _proposalId;
-    if (_deadline > maxDeadline) maxDeadline = _deadline;
-    emit ProposalCreated(_proposalId, msg.sender, _to, _value, _op, _data, _deadline, _snapshot);
+    emit ProposalCreated(_proposalId, msg.sender, _to, _value, _op, _dataHash, _deadline, _snapshot);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -141,20 +137,20 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc ITreasuryAuthority
-  function execute(uint256 _proposalId) external {
+  function execute(uint256 _proposalId, bytes calldata _data) external {
     Proposal storage _p = _requireAlive(_proposalId);
     _rejectIfCaptainVetoed(_proposalId, _p);
     bool _captainOk = _p.captainApproved || _HATS.isWearerOfHat(avatar, captainHatId);
     if (!_crewVotePassed(_p) || !_captainOk) revert TreasuryAuthority_NotExecutable(_proposalId);
+    if (keccak256(_data) != _p.dataHash) revert TreasuryAuthority_DataHashMismatch();
 
     _p.executed = true;
     delete openProposalOf[_p.proposer];
 
-    bool _ok =
-      exec(_p.to, _p.value, _p.data, _p.op == Operation.CALL ? Enum.Operation.Call : Enum.Operation.DelegateCall);
+    bool _ok = exec(_p.to, _p.value, _data, _p.op == Operation.CALL ? Enum.Operation.Call : Enum.Operation.DelegateCall);
     if (!_ok) revert TreasuryAuthority_SafeExecutionFailed();
 
-    emit ProposalExecuted(_proposalId, _ok);
+    emit ProposalExecuted(_proposalId);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -164,23 +160,27 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
   /// @inheritdoc ITreasuryAuthority
   function setProposalExpiry(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
-    uint256 _old = proposalExpiry;
-    proposalExpiry = _newValue;
+    uint256 _old = _gov.proposalExpiry;
+    // casting to 'uint64' is safe because `_validateDelay` caps at `MAX_GOV_DELAY` (60 days).
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.proposalExpiry = uint64(_newValue);
     emit ProposalExpiryUpdated(_old, _newValue);
   }
 
   /// @inheritdoc ITreasuryAuthority
   function setCrewVoteMode(CrewVoteMode _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
-    CrewVoteMode _old = crewVoteMode;
-    crewVoteMode = _newValue;
+    CrewVoteMode _old = _gov.crewVoteMode;
+    _gov.crewVoteMode = _newValue;
     emit CrewVoteModeUpdated(_old, _newValue);
   }
 
   /// @inheritdoc ITreasuryAuthority
   function setQuorumBps(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateQuorumBps(_newValue);
-    uint256 _old = quorumBps;
-    quorumBps = _newValue;
+    uint256 _old = _gov.quorumBps;
+    // casting to 'uint16' is safe because `_validateQuorumBps` caps at `MAX_QUORUM_BPS` (10_000).
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.quorumBps = uint16(_newValue);
     emit QuorumBpsUpdated(_old, _newValue);
   }
 
@@ -197,7 +197,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
       address _to,
       uint256 _value,
       Operation _op,
-      bytes memory _data,
+      bytes32 _dataHash,
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
@@ -212,7 +212,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     _to = _p.to;
     _value = _p.value;
     _op = _p.op;
-    _data = _p.data;
+    _dataHash = _p.dataHash;
     _deadline = _p.deadline;
     _snapshot = _p.snapshot;
     _yeas = _p.yeas;
@@ -220,6 +220,31 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     _captainApproved = _p.captainApproved;
     _captainDefeated = _p.captainDefeated;
     _executed = _p.executed;
+  }
+
+  /// @inheritdoc ITreasuryAuthority
+  function proposalExpiry() external view returns (uint256 _expiry) {
+    _expiry = _gov.proposalExpiry;
+  }
+
+  /// @inheritdoc ITreasuryAuthority
+  function crewVoteMode() external view returns (CrewVoteMode _mode) {
+    _mode = _gov.crewVoteMode;
+  }
+
+  /// @inheritdoc ITreasuryAuthority
+  function quorumBps() external view returns (uint256 _bps) {
+    _bps = _gov.quorumBps;
+  }
+
+  /// @inheritdoc ITreasuryAuthority
+  function nextProposalId() external view returns (uint256 _id) {
+    _id = _gov.nextProposalId;
+  }
+
+  /// @inheritdoc ITreasuryAuthority
+  function maxDeadline() external view returns (uint256 _deadline) {
+    _deadline = _gov.maxDeadline;
   }
 
   /// @inheritdoc ITreasuryAuthority
@@ -251,7 +276,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
 
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = block.timestamp >= maxDeadline;
+    _quiet = block.timestamp >= _gov.maxDeadline;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -291,10 +316,13 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
     captainHatId = _p.captainHatId;
     crewHatId = _p.crewHatId;
     treasuryAuthorityRoleHatId = _p.treasuryAuthorityRoleHatId;
-    proposalExpiry = _p.proposalExpiry;
-    crewVoteMode = _p.crewVoteMode;
-    quorumBps = _p.quorumBps;
-    nextProposalId = 1;
+    // delay / quorum already range-checked; both fit the packed widths.
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.proposalExpiry = uint64(_p.proposalExpiry);
+    _gov.crewVoteMode = _p.crewVoteMode;
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.quorumBps = uint16(_p.quorumBps);
+    _gov.nextProposalId = 1;
 
     setAvatar(_p.safe);
     setTarget(_p.safe);
@@ -363,12 +391,13 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
    * @return _passed True iff the crew vote passes under the configured mode.
    */
   function _crewVotePassed(Proposal storage _p) internal view returns (bool _passed) {
+    GovConfig memory _cfg = _gov;
     uint256 _yeas = _p.yeas;
-    if (crewVoteMode == CrewVoteMode.MAJORITY_SNAPSHOT) {
+    if (_cfg.crewVoteMode == CrewVoteMode.MAJORITY_SNAPSHOT) {
       _passed = _yeas * 2 > _p.snapshot;
     } else {
       uint256 _cast = _yeas + _p.nays;
-      if (_cast * 10_000 < uint256(_p.snapshot) * quorumBps) _passed = false;
+      if (_cast * 10_000 < uint256(_p.snapshot) * _cfg.quorumBps) _passed = false;
       else _passed = _yeas > _p.nays;
     }
   }

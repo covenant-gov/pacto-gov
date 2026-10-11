@@ -9,7 +9,6 @@ import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 
@@ -20,8 +19,6 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
  * @dev EIP-1167 master; `initialize` for clones. Mutiny freeze reads wired `mutinyModule.activeMutinyId`. Access = hats only
  */
 contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValidator, Initializable {
-  using EnumerableSet for EnumerableSet.AddressSet;
-
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
@@ -37,27 +34,19 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuartermaster
   uint256 public treasuryAuthorityRoleHatId;
   /// @inheritdoc IQuartermaster
-  uint256 public crewChangeDelay;
-  /// @inheritdoc IQuartermaster
-  uint256 public crewOffboardExpiry;
-  /// @inheritdoc IQuartermaster
-  uint256 public crewOffboardQuorumBps;
-  /// @inheritdoc IQuartermaster
   address public mutinyModule;
-  /// @inheritdoc IQuartermaster
-  uint256 public activeCrewOffboardId;
-  /// @inheritdoc IQuartermaster
-  uint256 public crewOffboardCount;
 
-  /// @inheritdoc IQuartermaster
-  mapping(address _candidate => uint256 _executableAt) public pendingCrewAddAt;
-  /// @inheritdoc IQuartermaster
-  mapping(address _crew => uint256 _executableAt) public pendingCrewRemoveAt;
+  /// @notice Packed delay, offboard expiry/quorum, and offboard ids.
+  GovConfig internal _gov;
 
-  /// @notice Enumerable keys for `pendingCrewAddAt` (`pendingAddCount` = `length()`).
-  EnumerableSet.AddressSet internal _pendingAdds;
-  /// @notice Enumerable keys for `pendingCrewRemoveAt` (`pendingRemoveCount` = `length()`).
-  EnumerableSet.AddressSet internal _pendingRemoves;
+  /// @notice Scheduled crew adds (`pendingAddCount` = length).
+  Pending[] internal _pendingAdds;
+  /// @notice 1-based index into `_pendingAdds`; `0` means absent.
+  mapping(address _candidate => uint256 _index) internal _pendingAddIndex;
+  /// @notice Scheduled crew removes (`pendingRemoveCount` = length).
+  Pending[] internal _pendingRemoves;
+  /// @notice 1-based index into `_pendingRemoves`; `0` means absent.
+  mapping(address _crew => uint256 _index) internal _pendingRemoveIndex;
   /// @notice Crew-led offboard votes indexed by id.
   mapping(uint256 _offboardId => CrewOffboard _vote) internal _offboards;
   /// @notice Vote-registry; `true` iff `_voter` has cast a vote in `_offboardId`.
@@ -87,9 +76,13 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     quartermasterRoleHatId = _p.quartermasterRoleHatId;
     treasuryAuthorityRoleHatId = _p.treasuryAuthorityRoleHatId;
     mutinyModule = _p.mutinyModule;
-    crewChangeDelay = _p.crewChangeDelay;
-    crewOffboardExpiry = _p.crewOffboardExpiry;
-    crewOffboardQuorumBps = _p.crewOffboardQuorumBps;
+    // delay / quorum already range-checked; both fit the packed widths.
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.crewChangeDelay = uint64(_p.crewChangeDelay);
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.crewOffboardExpiry = uint64(_p.crewOffboardExpiry);
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.crewOffboardQuorumBps = uint16(_p.crewOffboardQuorumBps);
     emit CrewChangeDelayUpdated(0, _p.crewChangeDelay);
     emit CrewOffboardExpiryUpdated(0, _p.crewOffboardExpiry);
     emit CrewOffboardQuorumBpsUpdated(0, _p.crewOffboardQuorumBps);
@@ -103,12 +96,11 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function requestAddCrew(address _candidate) external onlyHatWearer(captainHatId) {
     _requireRosterUnlocked();
     _validateAddCandidate(_candidate);
-    if (pendingCrewAddAt[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
+    if (_pendingAddIndex[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    _pendingAdds.add(_candidate);
-    uint256 _eta = block.timestamp + _crewAddDelay();
-    pendingCrewAddAt[_candidate] = _eta;
+    uint64 _eta = _etaFromDelay(_crewAddDelay());
+    _enqueue(_pendingAdds, _pendingAddIndex, _candidate, _eta);
     emit CrewAddRequested(_candidate, _eta);
   }
 
@@ -133,22 +125,19 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
 
   /// @inheritdoc IQuartermaster
   function cancelAddCrew(address _candidate) external onlyHatWearer(captainHatId) {
-    if (pendingCrewAddAt[_candidate] == 0) revert Quartermaster_NotPending(_candidate);
-    delete pendingCrewAddAt[_candidate];
-    _pendingAdds.remove(_candidate);
+    _dequeue(_pendingAdds, _pendingAddIndex, _candidate);
     emit CrewAddCancelled(_candidate);
   }
 
   /// @inheritdoc IQuartermaster
   function executeAddCrew(address _candidate) external {
-    uint256 _eta = pendingCrewAddAt[_candidate];
+    uint256 _eta = _pendingEta(_pendingAdds, _pendingAddIndex, _candidate);
     if (_eta == 0) revert Quartermaster_NotPending(_candidate);
     if (block.timestamp < _eta) revert Quartermaster_StillLocked(_candidate, _eta);
     _requireRosterUnlocked();
     if (_HATS.isWearerOfHat(_candidate, crewHatId)) revert Quartermaster_AlreadyCrew(_candidate);
 
-    delete pendingCrewAddAt[_candidate];
-    _pendingAdds.remove(_candidate);
+    _dequeue(_pendingAdds, _pendingAddIndex, _candidate);
     _HATS.mintHat(crewHatId, _candidate);
     emit CrewAddExecuted(_candidate);
   }
@@ -163,32 +152,26 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_crew == address(0)) revert Quartermaster_ZeroAddress();
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
-    if (pendingCrewRemoveAt[_crew] == 0) {
-      _pendingRemoves.add(_crew);
-    }
-    uint256 _eta = block.timestamp + crewChangeDelay;
-    pendingCrewRemoveAt[_crew] = _eta;
+    uint64 _eta = _etaFromDelay(_gov.crewChangeDelay);
+    _enqueue(_pendingRemoves, _pendingRemoveIndex, _crew, _eta);
     emit CrewRemoveRequested(_crew, _eta);
   }
 
   /// @inheritdoc IQuartermaster
   function cancelRemoveCrew(address _crew) external onlyHatWearer(captainHatId) {
-    if (pendingCrewRemoveAt[_crew] == 0) revert Quartermaster_NotPending(_crew);
-    delete pendingCrewRemoveAt[_crew];
-    _pendingRemoves.remove(_crew);
+    _dequeue(_pendingRemoves, _pendingRemoveIndex, _crew);
     emit CrewRemoveCancelled(_crew);
   }
 
   /// @inheritdoc IQuartermaster
   function executeRemoveCrew(address _crew) external {
-    uint256 _eta = pendingCrewRemoveAt[_crew];
+    uint256 _eta = _pendingEta(_pendingRemoves, _pendingRemoveIndex, _crew);
     if (_eta == 0) revert Quartermaster_NotPending(_crew);
     if (block.timestamp < _eta) revert Quartermaster_StillLocked(_crew, _eta);
     _requireRosterUnlocked();
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
-    delete pendingCrewRemoveAt[_crew];
-    _pendingRemoves.remove(_crew);
+    _dequeue(_pendingRemoves, _pendingRemoveIndex, _crew);
     _HATS.setHatWearerStatus(crewHatId, _crew, false, false);
     emit CrewRemoveExecuted(_crew);
   }
@@ -204,36 +187,40 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_target == msg.sender) revert Quartermaster_SelfOffboard();
     if (_HATS.isWearerOfHat(_target, captainHatId)) revert Quartermaster_CandidateIsCaptain(_target);
     if (!_HATS.isWearerOfHat(_target, crewHatId)) revert Quartermaster_NotCrew(_target);
-    if (pendingCrewRemoveAt[_target] != 0) revert Quartermaster_PendingCaptainRemove(_target);
+    if (_pendingRemoveIndex[_target] != 0) revert Quartermaster_PendingCaptainRemove(_target);
 
-    uint256 _deadline256 = block.timestamp + crewOffboardExpiry;
+    uint256 _deadline256 = block.timestamp + _gov.crewOffboardExpiry;
     if (_deadline256 > type(uint64).max) revert Quartermaster_DeadlineOverflow();
 
-    _offboardId = ++crewOffboardCount;
+    GovConfig memory _cfg = _gov;
+    _cfg.crewOffboardCount += 1;
+    _cfg.activeCrewOffboardId = _cfg.crewOffboardCount;
+    _offboardId = _cfg.crewOffboardCount;
+    _gov = _cfg;
+
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
     _offboards[_offboardId] = CrewOffboard({
       target: _target,
+      executed: false,
       proposer: msg.sender,
       // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
       // forge-lint: disable-next-line(unsafe-typecast)
       deadline: uint64(_deadline256),
       snapshot: _snapshot,
       yeas: 0,
-      nays: 0,
-      executed: false
+      nays: 0
     });
-    activeCrewOffboardId = _offboardId;
     emit CrewOffboardProposed(_offboardId, msg.sender, _target, _deadline256, _snapshot);
   }
 
   /// @inheritdoc IQuartermaster
   function crewOffboardVote(uint256 _offboardId, bool _support) external onlyHatWearer(crewHatId) {
     _requireActiveOffboard(_offboardId);
-    _requireOffboardNotExpired(_offboardId);
+    CrewOffboard storage _o = _offboards[_offboardId];
+    _requireOffboardNotExpired(_o, _offboardId);
     if (_hasCrewOffboardVote[_offboardId][msg.sender]) revert Quartermaster_AlreadyVoted(msg.sender);
 
     _hasCrewOffboardVote[_offboardId][msg.sender] = true;
-    CrewOffboard storage _o = _offboards[_offboardId];
     if (_support) {
       unchecked {
         _o.yeas += 1;
@@ -251,12 +238,12 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     _requireActiveOffboard(_offboardId);
     CrewOffboard storage _o = _offboards[_offboardId];
     if (_o.executed) revert Quartermaster_NoActiveOffboard();
-    _requireOffboardNotExpired(_offboardId);
+    _requireOffboardNotExpired(_o, _offboardId);
     if (!_offboardPassed(_o)) revert Quartermaster_OffboardNotPassed(_o.yeas, _o.nays, _o.snapshot);
     if (!_HATS.isWearerOfHat(_o.target, crewHatId)) revert Quartermaster_NotCrew(_o.target);
 
     _o.executed = true;
-    activeCrewOffboardId = 0;
+    _gov.activeCrewOffboardId = 0;
     _HATS.setHatWearerStatus(crewHatId, _o.target, false, false);
     emit CrewOffboardExecuted(_offboardId, _o.target);
   }
@@ -268,7 +255,7 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_o.executed) revert Quartermaster_NoActiveOffboard();
     if (block.timestamp < _o.deadline) revert Quartermaster_OffboardNotExpired(_offboardId, _o.deadline);
 
-    activeCrewOffboardId = 0;
+    _gov.activeCrewOffboardId = 0;
     emit CrewOffboardExpired(_offboardId);
   }
 
@@ -278,21 +265,26 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
 
   /// @inheritdoc IQuartermaster
   function mintCrewFromMutiny(address _formerCaptain) external onlyHatWearer(mutinyRoleHatId) {
-    if (_formerCaptain == address(0)) revert Quartermaster_ZeroAddress();
-    if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
-    if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
-
-    _HATS.mintHat(crewHatId, _formerCaptain);
-    emit CrewMintedFromMutiny(_formerCaptain);
+    _mintCrewFromMutiny(_formerCaptain);
   }
 
   /// @inheritdoc IQuartermaster
   function revokeCrewFromMutiny(address _crew) external onlyHatWearer(mutinyRoleHatId) {
-    if (_crew == address(0)) revert Quartermaster_ZeroAddress();
-    if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
+    _revokeCrewFromMutiny(_crew);
+  }
 
-    _HATS.setHatWearerStatus(crewHatId, _crew, false, false);
-    emit CrewRevokedFromMutiny(_crew);
+  /// @inheritdoc IQuartermaster
+  function applySuccessionCrew(
+    address _from,
+    address _to,
+    bool _seatFormerCaptain
+  ) external onlyHatWearer(mutinyRoleHatId) {
+    if (_HATS.isWearerOfHat(_to, crewHatId)) {
+      _revokeCrewFromMutiny(_to);
+    }
+    if (_seatFormerCaptain) {
+      _mintCrewFromMutiny(_from);
+    }
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -302,24 +294,30 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuartermaster
   function setCrewChangeDelay(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
-    uint256 _old = crewChangeDelay;
-    crewChangeDelay = _newValue;
+    uint256 _old = _gov.crewChangeDelay;
+    // casting to 'uint64' is safe because `_validateDelay` caps at `MAX_GOV_DELAY` (60 days).
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.crewChangeDelay = uint64(_newValue);
     emit CrewChangeDelayUpdated(_old, _newValue);
   }
 
   /// @inheritdoc IQuartermaster
   function setCrewOffboardExpiry(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
-    uint256 _old = crewOffboardExpiry;
-    crewOffboardExpiry = _newValue;
+    uint256 _old = _gov.crewOffboardExpiry;
+    // casting to 'uint64' is safe because `_validateDelay` caps at `MAX_GOV_DELAY` (60 days).
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.crewOffboardExpiry = uint64(_newValue);
     emit CrewOffboardExpiryUpdated(_old, _newValue);
   }
 
   /// @inheritdoc IQuartermaster
   function setCrewOffboardQuorumBps(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateQuorumBps(_newValue);
-    uint256 _old = crewOffboardQuorumBps;
-    crewOffboardQuorumBps = _newValue;
+    uint256 _old = _gov.crewOffboardQuorumBps;
+    // casting to 'uint16' is safe because `_validateQuorumBps` caps at `MAX_QUORUM_BPS` (10_000).
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.crewOffboardQuorumBps = uint16(_newValue);
     emit CrewOffboardQuorumBpsUpdated(_old, _newValue);
   }
 
@@ -327,67 +325,79 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
                         VIEWS
   //////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc IHatsEligibility
-  function getWearerStatus(address, uint256) external pure returns (bool _eligible, bool _standing) {
-    _eligible = true;
-    _standing = true;
+  /// @inheritdoc IQuartermaster
+  function crewChangeDelay() external view returns (uint256 _delay) {
+    _delay = _gov.crewChangeDelay;
   }
 
   /// @inheritdoc IQuartermaster
-  function mutinyActive() public view returns (bool _active) {
-    _active = IMutinyModule(mutinyModule).activeMutinyId() != 0;
+  function crewOffboardExpiry() external view returns (uint256 _expiry) {
+    _expiry = _gov.crewOffboardExpiry;
+  }
+
+  /// @inheritdoc IQuartermaster
+  function crewOffboardQuorumBps() external view returns (uint256 _bps) {
+    _bps = _gov.crewOffboardQuorumBps;
+  }
+
+  /// @inheritdoc IQuartermaster
+  function activeCrewOffboardId() external view returns (uint256 _id) {
+    _id = _gov.activeCrewOffboardId;
+  }
+
+  /// @inheritdoc IQuartermaster
+  function crewOffboardCount() external view returns (uint256 _count) {
+    _count = _gov.crewOffboardCount;
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingCrewAddAt(address _candidate) external view returns (uint256 _executableAt) {
+    _executableAt = _pendingEta(_pendingAdds, _pendingAddIndex, _candidate);
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingCrewRemoveAt(address _crew) external view returns (uint256 _executableAt) {
+    _executableAt = _pendingEta(_pendingRemoves, _pendingRemoveIndex, _crew);
   }
 
   /// @inheritdoc IQuartermaster
   function pendingAddAt(uint256 _index) external view returns (address _candidate, uint256 _executableAt) {
-    _candidate = _pendingAdds.at(_index);
-    _executableAt = pendingCrewAddAt[_candidate];
+    Pending storage _p = _pendingAdds[_index];
+    _candidate = _p.account;
+    _executableAt = _p.eta;
   }
 
   /// @inheritdoc IQuartermaster
   function pendingRemoveAt(uint256 _index) external view returns (address _crew, uint256 _executableAt) {
-    _crew = _pendingRemoves.at(_index);
-    _executableAt = pendingCrewRemoveAt[_crew];
+    Pending storage _p = _pendingRemoves[_index];
+    _crew = _p.account;
+    _executableAt = _p.eta;
   }
 
   /// @inheritdoc IQuartermaster
   function pendingAdds() external view returns (address[] memory _candidates, uint256[] memory _executableAts) {
-    _candidates = _pendingAdds.values();
-    uint256 _n = _candidates.length;
-    _executableAts = new uint256[](_n);
-    for (uint256 _i; _i < _n; ++_i) {
-      _executableAts[_i] = pendingCrewAddAt[_candidates[_i]];
-    }
+    (_candidates, _executableAts) = _pendingValues(_pendingAdds);
   }
 
   /// @inheritdoc IQuartermaster
   function pendingRemoves() external view returns (address[] memory _crew, uint256[] memory _executableAts) {
-    _crew = _pendingRemoves.values();
-    uint256 _n = _crew.length;
-    _executableAts = new uint256[](_n);
-    for (uint256 _i; _i < _n; ++_i) {
-      _executableAts[_i] = pendingCrewRemoveAt[_crew[_i]];
-    }
+    (_crew, _executableAts) = _pendingValues(_pendingRemoves);
   }
 
   /// @inheritdoc IQuartermaster
   function pendingAddCount() external view returns (uint256 _count) {
-    _count = _pendingAdds.length();
+    _count = _pendingAdds.length;
   }
 
   /// @inheritdoc IQuartermaster
   function pendingRemoveCount() external view returns (uint256 _count) {
-    _count = _pendingRemoves.length();
+    _count = _pendingRemoves.length;
   }
 
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = _pendingAdds.length() == 0 && _pendingRemoves.length() == 0 && !mutinyActive() && activeCrewOffboardId == 0;
-  }
-
-  /// @inheritdoc IHatGated
-  function hats() public view override(IHatGated, HatGated) returns (IHats _hats) {
-    _hats = _HATS;
+    _quiet =
+      _pendingAdds.length == 0 && _pendingRemoves.length == 0 && !mutinyActive() && _gov.activeCrewOffboardId == 0;
   }
 
   /// @inheritdoc IQuartermaster
@@ -419,15 +429,109 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     _voted = _hasCrewOffboardVote[_offboardId][_voter];
   }
 
+  /// @inheritdoc IHatsEligibility
+  function getWearerStatus(address, uint256) external pure returns (bool _eligible, bool _standing) {
+    _eligible = true;
+    _standing = true;
+  }
+
+  /// @inheritdoc IQuartermaster
+  function mutinyActive() public view returns (bool _active) {
+    _active = IMutinyModule(mutinyModule).activeMutinyId() != 0;
+  }
+
+  /// @inheritdoc IHatGated
+  function hats() public view override(IHatGated, HatGated) returns (IHats _hats) {
+    _hats = _HATS;
+  }
+
   /*///////////////////////////////////////////////////////////////
                         INTERNAL LOGIC
   //////////////////////////////////////////////////////////////*/
   /**
+   * @notice Push `_account` or overwrite `eta` if already queued (1-based index).
+   * @param _list Pending array.
+   * @param _indexOf 1-based index map.
+   * @param _account Address to enqueue.
+   * @param _eta New executable-at timestamp.
+   */
+  function _enqueue(
+    Pending[] storage _list,
+    mapping(address => uint256) storage _indexOf,
+    address _account,
+    uint64 _eta
+  ) internal {
+    uint256 _i = _indexOf[_account];
+    if (_i == 0) {
+      _list.push(Pending({account: _account, eta: _eta}));
+      _indexOf[_account] = _list.length;
+    } else {
+      _list[_i - 1].eta = _eta;
+    }
+  }
+
+  /**
+   * @notice Swap-and-pop `_account` from `_list`. Reverts `NotPending` if absent.
+   * @param _list Pending array.
+   * @param _indexOf 1-based index map.
+   * @param _account Address to remove.
+   */
+  function _dequeue(Pending[] storage _list, mapping(address => uint256) storage _indexOf, address _account) internal {
+    uint256 _i = _indexOf[_account];
+    if (_i == 0) revert Quartermaster_NotPending(_account);
+    uint256 _last = _list.length;
+    if (_i != _last) {
+      Pending storage _moved = _list[_last - 1];
+      _list[_i - 1] = _moved;
+      _indexOf[_moved.account] = _i;
+    }
+    _list.pop();
+    delete _indexOf[_account];
+  }
+
+  /**
+   * @notice Mint crew to `_formerCaptain` (mutiny succession). Caller must already be MutinyRole-gated.
+   * @param _formerCaptain Recipient of the crew hat.
+   */
+  function _mintCrewFromMutiny(address _formerCaptain) internal {
+    if (_formerCaptain == address(0)) revert Quartermaster_ZeroAddress();
+    if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
+    if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
+
+    _HATS.mintHat(crewHatId, _formerCaptain);
+    emit CrewMintedFromMutiny(_formerCaptain);
+  }
+
+  /**
+   * @notice Revoke crew from `_crew` (mutiny succession). Caller must already be MutinyRole-gated.
+   * @param _crew Address that must lose the crew hat.
+   */
+  function _revokeCrewFromMutiny(address _crew) internal {
+    if (_crew == address(0)) revert Quartermaster_ZeroAddress();
+    if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
+
+    _HATS.setHatWearerStatus(crewHatId, _crew, false, false);
+    emit CrewRevokedFromMutiny(_crew);
+  }
+
+  /**
    * @notice Timelock for a captain-scheduled crew add (`0` when no crew wearer yet; else `crewChangeDelay`).
-   * @return _delay Seconds added to `block.timestamp` when recording `pendingCrewAddAt`.
+   * @return _delay Seconds added to `block.timestamp` when recording a pending add.
    */
   function _crewAddDelay() internal view returns (uint256 _delay) {
-    _delay = _HATS.hatSupply(crewHatId) == 0 ? 0 : crewChangeDelay;
+    _delay = _HATS.hatSupply(crewHatId) == 0 ? 0 : _gov.crewChangeDelay;
+  }
+
+  /**
+   * @notice `block.timestamp + _delay` as `uint64`, or `DeadlineOverflow`.
+   * @param _delay Seconds to add to `block.timestamp`.
+   * @return _eta Packed executable-at timestamp.
+   */
+  function _etaFromDelay(uint256 _delay) internal view returns (uint64 _eta) {
+    uint256 _eta256 = block.timestamp + _delay;
+    if (_eta256 > type(uint64).max) revert Quartermaster_DeadlineOverflow();
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _eta = uint64(_eta256);
   }
 
   /**
@@ -444,8 +548,8 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
    * @notice Reverts if mutiny mode is on or a crew-led offboard vote is live.
    */
   function _requireRosterUnlocked() internal view {
-    if (mutinyActive()) revert Quartermaster_MutinyActive();
-    if (activeCrewOffboardId != 0) revert Quartermaster_CrewOffboardActive();
+    if (IMutinyModule(mutinyModule).activeMutinyId() != 0) revert Quartermaster_MutinyActive();
+    if (_gov.activeCrewOffboardId != 0) revert Quartermaster_CrewOffboardActive();
   }
 
   /**
@@ -453,15 +557,16 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
    * @param _offboardId Vote id supplied by the caller.
    */
   function _requireActiveOffboard(uint256 _offboardId) internal view {
-    if (_offboardId == 0 || _offboardId != activeCrewOffboardId) revert Quartermaster_NoActiveOffboard();
+    if (_offboardId == 0 || _offboardId != _gov.activeCrewOffboardId) revert Quartermaster_NoActiveOffboard();
   }
 
   /**
-   * @notice Reverts if the active offboard at `_offboardId` is at or past its deadline.
-   * @param _offboardId Vote that must still be inside its voting window.
+   * @notice Reverts if `_o` is at or past its deadline.
+   * @param _o Offboard already loaded from storage.
+   * @param _offboardId Vote id (for revert payload).
    */
-  function _requireOffboardNotExpired(uint256 _offboardId) internal view {
-    if (block.timestamp >= _offboards[_offboardId].deadline) revert Quartermaster_OffboardExpired(_offboardId);
+  function _requireOffboardNotExpired(CrewOffboard storage _o, uint256 _offboardId) internal view {
+    if (block.timestamp >= _o.deadline) revert Quartermaster_OffboardExpired(_offboardId);
   }
 
   /**
@@ -471,7 +576,44 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
    */
   function _offboardPassed(CrewOffboard storage _o) internal view returns (bool _passed) {
     uint256 _cast = uint256(_o.yeas) + uint256(_o.nays);
-    if (_cast * 10_000 < uint256(_o.snapshot) * crewOffboardQuorumBps) _passed = false;
+    if (_cast * 10_000 < uint256(_o.snapshot) * _gov.crewOffboardQuorumBps) _passed = false;
     else _passed = _o.yeas > _o.nays;
+  }
+
+  /**
+   * @notice Executable-at timestamp for `_account`, or zero if not queued.
+   * @param _list Pending array.
+   * @param _indexOf 1-based index map.
+   * @param _account Address to look up.
+   * @return _eta Timestamp, or zero.
+   */
+  function _pendingEta(
+    Pending[] storage _list,
+    mapping(address => uint256) storage _indexOf,
+    address _account
+  ) internal view returns (uint256 _eta) {
+    uint256 _i = _indexOf[_account];
+    if (_i != 0) _eta = _list[_i - 1].eta;
+  }
+
+  /**
+   * @notice Snapshot of a pending list as parallel address / eta arrays.
+   * @param _list Pending array.
+   * @return _accounts Addresses in list order.
+   * @return _etas Matching executable-at timestamps.
+   */
+  function _pendingValues(Pending[] storage _list)
+    internal
+    view
+    returns (address[] memory _accounts, uint256[] memory _etas)
+  {
+    uint256 _n = _list.length;
+    _accounts = new address[](_n);
+    _etas = new uint256[](_n);
+    for (uint256 _i; _i < _n; ++_i) {
+      Pending storage _p = _list[_i];
+      _accounts[_i] = _p.account;
+      _etas[_i] = _p.eta;
+    }
   }
 }

@@ -152,7 +152,7 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
 
     vm.expectEmit(true, true, true, true, address(_squadTreasury));
     emit ITreasuryAuthority.ProposalCreated(
-      1, _squadCaptain, _to, _value, ITreasuryAuthority.Operation.CALL, _data, _deadlineEmit, _snap
+      1, _squadCaptain, _to, _value, ITreasuryAuthority.Operation.CALL, keccak256(_data), _deadlineEmit, _snap
     );
 
     vm.prank(_squadCaptain);
@@ -166,7 +166,7 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
       address _storedTo,
       uint256 _storedValue,
       ITreasuryAuthority.Operation _op,
-      bytes memory _storedData,
+      bytes32 _storedHash,
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
@@ -178,7 +178,7 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
     assertEq(_storedTo, _to);
     assertEq(_storedValue, _value);
     assertEq(uint256(_op), uint256(ITreasuryAuthority.Operation.CALL));
-    assertEq(keccak256(_storedData), keccak256(_data));
+    assertEq(_storedHash, keccak256(_data));
     // forge-lint: disable-next-line(unsafe-typecast)
     assertEq(_deadline, uint64(_deadline256));
     assertEq(uint256(_snapshot), _snap);
@@ -220,10 +220,10 @@ contract E2ETreasuryAuthorityTest is E2ETreasuryAuthorityBase {
     assertEq(_second, 2);
     assertEq(_squadTreasury.openProposalOf(_squadCaptain), 2);
 
-    (, address _t2,, ITreasuryAuthority.Operation _op2, bytes memory _d2,,,,,,,) = _squadTreasury.proposal(_second);
+    (, address _t2,, ITreasuryAuthority.Operation _op2, bytes32 _h2,,,,,,,) = _squadTreasury.proposal(_second);
     assertEq(_t2, _to2);
     assertEq(uint256(_op2), uint256(ITreasuryAuthority.Operation.CALL));
-    assertEq(keccak256(_d2), keccak256(hex'beef'));
+    assertEq(_h2, keccak256(hex'beef'));
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -542,7 +542,7 @@ contract E2ETreasuryAuthorityLifecycleTest is E2ETreasuryAuthorityBase {
     _squadTreasury.captainVote(_id, true);
 
     uint256 _before = _beneficiary.balance;
-    _squadTreasury.execute(_id);
+    _squadTreasury.execute(_id, hex'');
     assertEq(_beneficiary.balance, _before + 2 ether);
     assertEq(_squadTreasury.openProposalOf(_squadCaptain), 0);
   }
@@ -698,7 +698,7 @@ contract E2ETreasuryAuthorityLifecycleTest is E2ETreasuryAuthorityBase {
       address _storedTo,
       uint256 _storedValue,
       ITreasuryAuthority.Operation _op,
-      bytes memory _storedData,
+      bytes32 _storedHash,
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
@@ -710,7 +710,7 @@ contract E2ETreasuryAuthorityLifecycleTest is E2ETreasuryAuthorityBase {
     assertEq(_storedTo, _to);
     assertEq(_storedValue, _value);
     assertEq(uint256(_op), uint256(ITreasuryAuthority.Operation.CALL));
-    assertEq(keccak256(_storedData), keccak256(_data));
+    assertEq(_storedHash, keccak256(_data));
     assertEq(_deadline, _expectedDeadline);
     assertEq(uint256(_snapshot), IHats(HATS_PROTOCOL_V1).hatSupply(_squadTreasury.crewHatId()));
     assertEq(_yeas, 0);
@@ -926,11 +926,11 @@ contract E2ETreasuryAuthorityForkFuzz is IntegrationBase {
 
     if (_passes) {
       uint256 _balBefore = _beneficiary.balance;
-      _squadTreasury.execute(_id);
+      _squadTreasury.execute(_id, hex'');
       assertEq(_beneficiary.balance, _balBefore + 1 wei);
     } else {
       vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-      _squadTreasury.execute(_id);
+      _squadTreasury.execute(_id, hex'');
     }
   }
 
@@ -1021,11 +1021,11 @@ contract E2ETreasuryAuthorityForkFuzz is IntegrationBase {
 
     if (_passes) {
       uint256 _before = _beneficiary.balance;
-      _squadTreasury.execute(_id);
+      _squadTreasury.execute(_id, hex'');
       assertEq(_beneficiary.balance, _before + 1 wei);
     } else {
       vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-      _squadTreasury.execute(_id);
+      _squadTreasury.execute(_id, hex'');
     }
   }
 }

@@ -39,23 +39,49 @@ interface IQuartermaster is IQuiescent, IHatGated {
   }
 
   /**
-   * @notice Persisted crew-led offboard vote.
+   * @notice Persisted crew-led offboard vote. `executed` packs with `target`.
    * @param target Crew member to remove.
+   * @param executed Whether the offboard has been finalized.
    * @param proposer Crew member that opened the vote.
    * @param deadline Unix timestamp after which `executeOffboard` reverts and `expireOffboard` is valid.
    * @param snapshot Crew hat supply at propose time.
    * @param yeas Yea vote count.
    * @param nays Nay vote count.
-   * @param executed Whether the offboard has been finalized.
    */
   struct CrewOffboard {
     address target;
+    bool executed;
     address proposer;
     uint64 deadline;
     uint64 snapshot;
     uint64 yeas;
     uint64 nays;
-    bool executed;
+  }
+
+  /**
+   * @notice Packed delay / offboard counters (two slots).
+   * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
+   * @param crewOffboardExpiry Seconds from offboard propose until the vote may be expired.
+   * @param crewOffboardQuorumBps Quorum in basis points (`QUORUM_OF_CAST`).
+   * @param activeCrewOffboardId Live offboard id, or zero.
+   * @param crewOffboardCount Last issued offboard id.
+   */
+  struct GovConfig {
+    uint64 crewChangeDelay;
+    uint64 crewOffboardExpiry;
+    uint16 crewOffboardQuorumBps;
+    uint64 activeCrewOffboardId;
+    uint64 crewOffboardCount;
+  }
+
+  /**
+   * @notice One scheduled crew add or remove.
+   * @param account Candidate (add) or crew wearer (remove).
+   * @param eta Unix timestamp when execute becomes valid.
+   */
+  struct Pending {
+    address account;
+    uint64 eta;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -358,6 +384,15 @@ interface IQuartermaster is IQuiescent, IHatGated {
    * @param _crew Address that must lose the crew hat.
    */
   function revokeCrewFromMutiny(address _crew) external;
+
+  /**
+   * @notice Apply mutiny succession crew adjustments in one gated call.
+   * @dev Revokes crew from `_to` if worn; mints crew to `_from` only when `_seatFormerCaptain`.
+   * @param _from Outgoing captain (crew mint target when seating).
+   * @param _to Incoming captain (crew revoke target if they still wear crew).
+   * @param _seatFormerCaptain If true, mint a crew hat to `_from`.
+   */
+  function applySuccessionCrew(address _from, address _to, bool _seatFormerCaptain) external;
 
   /**
    * @notice Update the crew change delay. TreasuryAuthorityRole-gated.

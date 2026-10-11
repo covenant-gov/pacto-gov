@@ -612,6 +612,53 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
     _qm.revokeCrewFromMutiny(_bob);
   }
 
+  function test_ApplySuccessionCrew_RevokesToAndMintsFrom() external {
+    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockCrewCapacity(1, _CREW_MAX);
+    _mockSetHatWearerStatus(_CREW_HAT, _alice, true);
+    _mockMintHat(_CREW_HAT, _bob, true);
+
+    vm.expectCall(
+      _HATS_ADDRESS, abi.encodeWithSelector(IHats.setHatWearerStatus.selector, _CREW_HAT, _alice, false, false)
+    );
+    vm.expectCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.mintHat.selector, _CREW_HAT, _bob));
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewRevokedFromMutiny(_alice);
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewMintedFromMutiny(_bob);
+
+    vm.prank(_mutinyClone);
+    _qm.applySuccessionCrew(_bob, _alice, true);
+  }
+
+  function test_ApplySuccessionCrew_SkipRevokeWhenToNotCrew() external {
+    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, false);
+    _mockWearer(_bob, _CREW_HAT, false);
+    _mockCrewCapacity(0, _CREW_MAX);
+    _mockMintHat(_CREW_HAT, _bob, true);
+
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewMintedFromMutiny(_bob);
+
+    vm.prank(_mutinyClone);
+    _qm.applySuccessionCrew(_bob, _alice, true);
+  }
+
+  function test_ApplySuccessionCrew_SkipMintWhenNotSeating() external {
+    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockSetHatWearerStatus(_CREW_HAT, _alice, true);
+
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewRevokedFromMutiny(_alice);
+
+    vm.prank(_mutinyClone);
+    _qm.applySuccessionCrew(_bob, _alice, false);
+  }
+
   function test_MutinyActive_ReadsPeerActiveMutinyId() external {
     assertFalse(_qm.mutinyActive());
     assertTrue(_qm.isQuiet());
