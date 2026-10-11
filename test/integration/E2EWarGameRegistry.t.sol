@@ -30,7 +30,7 @@ contract E2EWarGameRegistryTest is IntegrationBase {
     (uint256 _topHat,,,) = _deployWarGame(_SQUAD_ID, _nextSalt());
 
     assertEq(NavePirataRegistry(_infra.registry).deploymentCount(), _before);
-    assertEq(NavePirataRegistry(_infra.registry).deployment(_topHat).topHatId, 0);
+    assertEq(NavePirataRegistry(_infra.registry).deployment(_topHat).safe, address(0));
     assertEq(WarGameRegistry(_infra.warGameRegistry).activeTopHatId(_SQUAD_ID), _topHat);
   }
 
@@ -39,7 +39,7 @@ contract E2EWarGameRegistryTest is IntegrationBase {
 
     WarGameRegistry _games = WarGameRegistry(_infra.warGameRegistry);
     INavePirataRegistry.Deployment memory _active = _games.active(_SQUAD_ID);
-    assertEq(_active.topHatId, _topHat);
+    assertEq(_games.activeTopHatId(_SQUAD_ID), _topHat);
     assertEq(_active.quartermaster, _qm);
 
     IWarGameRegistry.Record memory _record = _games.record(_topHat);
@@ -76,19 +76,19 @@ contract E2EWarGameRegistryTest is IntegrationBase {
 
     WarGameRegistry _games = WarGameRegistry(_infra.warGameRegistry);
     assertEq(_games.activeTopHatId(_SQUAD_ID), 0);
-    assertEq(_games.active(_SQUAD_ID).topHatId, 0);
+    assertEq(_games.active(_SQUAD_ID).safe, address(0));
     assertEq(uint8(_games.record(_topHat).status), uint8(IWarGameRegistry.Status.Retired));
     assertEq(_games.history(_SQUAD_ID).length, 1);
   }
 
   function test_e2e_productionDeploy_stillHitsNavePirataRegistry() public withDeployedNavePirataSquad {
-    assertEq(NavePirataRegistry(_infra.registry).deployment(_squadTopHatId).topHatId, _squadTopHatId);
+    assertTrue(NavePirataRegistry(_infra.registry).deployment(_squadTopHatId).safe != address(0));
     uint256 _prodCount = NavePirataRegistry(_infra.registry).deploymentCount();
 
     _deployWarGame(_SQUAD_ID, _nextSalt());
 
     assertEq(NavePirataRegistry(_infra.registry).deploymentCount(), _prodCount);
-    assertTrue(WarGameRegistry(_infra.warGameRegistry).active(_SQUAD_ID).topHatId != 0);
+    assertTrue(WarGameRegistry(_infra.warGameRegistry).activeTopHatId(_SQUAD_ID) != 0);
   }
 
   function test_e2e_warGameDeploy_seedsFiveMinuteDelays() public {

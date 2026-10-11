@@ -16,15 +16,23 @@ abstract contract SquadAdminBase is ISquadAdminBase {
   // forge-lint: disable-next-line(unsafe-typecast) — ASCII labels fit in `bytes32` (Solidity left-padding).
   bytes32 public constant PAUSE_PERMISSION = bytes32('PAUSE');
 
+  /// @notice Bit 0 of `_executorFlags`: `FULL_PERMISSION`.
+  uint8 internal constant _FLAG_FULL = 1;
+  /// @notice Bit 1 of `_executorFlags`: `PAUSE_PERMISSION`.
+  uint8 internal constant _FLAG_PAUSE = 2;
+
   /*///////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Mapping of executor address → role → enabled flag.
+  /// @notice Mapping of executor address → app role → enabled flag (sentinels use `_executorFlags`).
   mapping(address account => mapping(bytes32 role => bool enabled)) internal _executors;
 
-  /// @notice Mapping of role → enabled flag.
-  mapping(bytes32 role => bool enabled) internal _enabledRoles;
+  /// @notice Packed PAUSE/FULL bits per executor (`_FLAG_PAUSE` / `_FLAG_FULL`).
+  mapping(address account => uint8 flags) internal _executorFlags;
+
+  /// @notice 1-based index into `_roles` (0 = not in catalog).
+  mapping(bytes32 role => uint256 index) internal _roleIndex;
 
   /// @notice list of all roles that can be enabled
   bytes32[] internal _roles;
@@ -56,46 +64,62 @@ abstract contract SquadAdminBase is ISquadAdminBase {
     if (_role == bytes32(0)) revert SquadAdminBase_ZeroAddress();
     if (_role == FULL_PERMISSION || _role == PAUSE_PERMISSION) revert SquadAdminBase_RoleAlreadyExists();
     if (_roleExists(_role)) revert SquadAdminBase_RoleAlreadyExists();
-    _enabledRoles[_role] = true;
     _roles.push(_role);
+    _roleIndex[_role] = _roles.length;
   }
 
   /// @inheritdoc ISquadAdminBase
   function deleteRole(bytes32 _role) external isAllowed roleExists(_role) {
     if (_role == FULL_PERMISSION || _role == PAUSE_PERMISSION) revert SquadAdminBase_ReservedRole();
-    _enabledRoles[_role] = false;
-    uint256 _len = _roles.length;
-    for (uint256 i = 0; i < _len; ++i) {
-      if (_roles[i] == _role) {
-        _roles[i] = _roles[_len - 1];
-        _roles.pop();
-        break;
-      }
+
+    uint256 _idx1 = _roleIndex[_role];
+    uint256 _idx = _idx1 - 1;
+    uint256 _last = _roles.length - 1;
+    if (_idx != _last) {
+      bytes32 _moved = _roles[_last];
+      _roles[_idx] = _moved;
+      _roleIndex[_moved] = _idx1;
     }
+    _roles.pop();
+    delete _roleIndex[_role];
   }
 
   /// @inheritdoc ISquadAdminBase
   function enableExecutor(address _executor, bytes32 _role) external isAllowed roleExists(_role) {
     if (_executor == address(0)) revert SquadAdminBase_ZeroAddress();
-    _executors[_executor][_role] = true;
+    if (_role == FULL_PERMISSION) {
+      if (!_setExecutorFlag(_executor, _FLAG_FULL, true)) return;
+    } else if (_role == PAUSE_PERMISSION) {
+      if (!_setExecutorFlag(_executor, _FLAG_PAUSE, true)) return;
+    } else {
+      if (_executors[_executor][_role]) return;
+      _executors[_executor][_role] = true;
+    }
     emit ExecutorEnabled(_executor, _role);
   }
 
   /// @inheritdoc ISquadAdminBase
   function enableFullPermission(address _executor, bool _enable) external isAllowed {
-    _executors[_executor][FULL_PERMISSION] = _enable;
+    if (!_setExecutorFlag(_executor, _FLAG_FULL, _enable)) return;
     emit FullPermissionEnabled(_executor, _enable);
   }
 
   /// @inheritdoc ISquadAdminBase
   function disableExecutor(address _executor, bytes32 _role) external isAllowed roleExists(_role) {
-    _executors[_executor][_role] = false;
+    if (_role == FULL_PERMISSION) {
+      if (!_setExecutorFlag(_executor, _FLAG_FULL, false)) return;
+    } else if (_role == PAUSE_PERMISSION) {
+      if (!_setExecutorFlag(_executor, _FLAG_PAUSE, false)) return;
+    } else {
+      if (!_executors[_executor][_role]) return;
+      _executors[_executor][_role] = false;
+    }
     emit ExecutorDisabled(_executor, _role);
   }
 
   /// @inheritdoc ISquadAdminBase
   function pauseExecutor(address _executor, bool _pause) external isAllowed {
-    _executors[_executor][PAUSE_PERMISSION] = _pause;
+    if (!_setExecutorFlag(_executor, _FLAG_PAUSE, _pause)) return;
     emit ExecutorPaused(_executor, _pause);
   }
 
@@ -105,19 +129,21 @@ abstract contract SquadAdminBase is ISquadAdminBase {
 
   /// @inheritdoc ISquadAdminBase
   function hasExecutorRole(address _executor, bytes32 _role) external view roleExists(_role) returns (bool _enabled) {
-    if (_isExecutorPaused(_executor)) _enabled = false;
-    else _enabled = _isExecutorFullPermission(_executor) || _executors[_executor][_role];
+    uint8 _flags = _executorFlags[_executor];
+    if ((_flags & _FLAG_PAUSE) != 0) _enabled = false;
+    else _enabled = ((_flags & _FLAG_FULL) != 0) || _executors[_executor][_role];
   }
 
   /// @inheritdoc ISquadAdminBase
   function isExecutorFullPermission(address _executor) external view returns (bool _fullPermission) {
-    if (_isExecutorPaused(_executor)) _fullPermission = false;
-    else _fullPermission = _isExecutorFullPermission(_executor);
+    uint8 _flags = _executorFlags[_executor];
+    if ((_flags & _FLAG_PAUSE) != 0) _fullPermission = false;
+    else _fullPermission = (_flags & _FLAG_FULL) != 0;
   }
 
   /// @inheritdoc ISquadAdminBase
   function isExecutorPaused(address _executor) external view returns (bool _paused) {
-    _paused = _isExecutorPaused(_executor);
+    _paused = (_executorFlags[_executor] & _FLAG_PAUSE) != 0;
   }
 
   /// @inheritdoc ISquadAdminBase
@@ -139,21 +165,18 @@ abstract contract SquadAdminBase is ISquadAdminBase {
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Reads the pause sentinel for `_executor`.
-   * @param _executor Account queried.
-   * @return _paused Whether `PAUSE_PERMISSION` is enabled in storage.
+   * @notice Sets or clears a bit in `_executorFlags`.
+   * @param _executor Account to update.
+   * @param _flag `_FLAG_FULL` or `_FLAG_PAUSE`.
+   * @param _enable True to set the bit; false to clear it.
+   * @return _changed Whether storage changed.
    */
-  function _isExecutorPaused(address _executor) internal view returns (bool _paused) {
-    _paused = _executors[_executor][PAUSE_PERMISSION];
-  }
-
-  /**
-   * @notice Reads the full-permission sentinel for `_executor`.
-   * @param _executor Account queried.
-   * @return _fullPermission Whether `FULL_PERMISSION` is enabled in storage.
-   */
-  function _isExecutorFullPermission(address _executor) internal view returns (bool _fullPermission) {
-    _fullPermission = _executors[_executor][FULL_PERMISSION];
+  function _setExecutorFlag(address _executor, uint8 _flag, bool _enable) internal returns (bool _changed) {
+    uint8 _flags = _executorFlags[_executor];
+    uint8 _next = _enable ? uint8(_flags | _flag) : uint8(_flags & ~_flag);
+    if (_next == _flags) return false;
+    _executorFlags[_executor] = _next;
+    _changed = true;
   }
 
   /**
@@ -163,7 +186,7 @@ abstract contract SquadAdminBase is ISquadAdminBase {
    */
   function _roleExists(bytes32 _role) internal view returns (bool _exists) {
     if (_role == FULL_PERMISSION || _role == PAUSE_PERMISSION) return true;
-    _exists = _enabledRoles[_role];
+    _exists = _roleIndex[_role] != 0;
   }
 
   /**

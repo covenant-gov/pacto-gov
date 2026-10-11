@@ -15,7 +15,7 @@ import {IHatsEligibility} from 'hats-core/Interfaces/IHatsEligibility.sol';
 /**
  * @title MutinyModule
  * @author Pacto
- * @notice 51% snapshot mutiny or captain resignation; `IHatsEligibility` for the captain hat; `Quartermaster.setMutinyActive` while a round is live
+ * @notice 51% snapshot mutiny or captain resignation; captain-hat `IHatsEligibility` (always eligible); QM reads `activeMutinyId` to freeze captain HR
  * @dev EIP-1167 master. Hats has no `wearerOfHat(hatId)` — store `quartermaster` and re-check `isWearerOfHat` on each call. Failed rounds expire after `mutinyExpiry` via permissionless `expireMutiny`
  */
 contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidator, Initializable {
@@ -38,14 +38,10 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   /// @inheritdoc IMutinyModule
   address public safe;
   /// @inheritdoc IMutinyModule
-  uint256 public activeMutinyId;
-
-  /// @inheritdoc IMutinyModule
-  uint256 public mutinyCount;
-  /// @inheritdoc IMutinyModule
   uint256 public treasuryAuthorityRoleHatId;
-  /// @inheritdoc IMutinyModule
-  uint256 public mutinyExpiry;
+
+  /// @notice Packed `mutinyExpiry`, `activeMutinyId`, `mutinyCount`.
+  GovConfig internal _gov;
 
   /// @notice Round state indexed by mutiny id.
   mapping(uint256 _mutinyId => MutinyRound _round) internal _rounds;
@@ -69,7 +65,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
    * @param _mutinyId Round id supplied by the caller.
    */
   modifier activeMutiny(uint256 _mutinyId) {
-    _activeMutinyId(_mutinyId);
+    _requireActiveMutiny(_mutinyId);
     _;
   }
 
@@ -98,8 +94,9 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     quartermaster = _p.quartermaster;
     safe = _p.safe;
     treasuryAuthorityRoleHatId = _p.treasuryAuthorityRoleHatId;
-    mutinyExpiry = _p.mutinyExpiry;
-    mutinyCount = 0;
+    // delay already range-checked; fits `uint64`.
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.mutinyExpiry = uint64(_p.mutinyExpiry);
     emit MutinyExpiryUpdated(0, _p.mutinyExpiry);
   }
 
@@ -108,45 +105,46 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToCrewMember(address _proposedCrewMember) external {
+  function startMutinyToCrewMember(address _proposedCrewMember, bool _seatFormerCaptain) external {
     _requireHatWearer(_proposedCrewMember, crewHatId);
-    _startMutiny(_proposedCrewMember);
+    _startMutiny(_proposedCrewMember, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToCommittee(address _proposedMultisigCommittee) external {
+  function startMutinyToCommittee(address _proposedMultisigCommittee, bool _seatFormerCaptain) external {
     (bool ok, bytes memory data) = _proposedMultisigCommittee.staticcall(abi.encodeWithSignature('getThreshold()'));
     if (!ok || data.length != 32) revert MutinyModule_NotContract(_proposedMultisigCommittee);
-    _startMutiny(_proposedMultisigCommittee);
+    _startMutiny(_proposedMultisigCommittee, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa) external {
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa, bool _seatFormerCaptain) external {
     if (_isContract(_proposedArbitraryEoa)) revert MutinyModule_NotEOA(_proposedArbitraryEoa);
-    _startMutiny(_proposedArbitraryEoa);
+    _startMutiny(_proposedArbitraryEoa, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryContract(address _proposedArbitraryContract) external {
+  function startMutinyToArbitraryContract(address _proposedArbitraryContract, bool _seatFormerCaptain) external {
     if (!_isContract(_proposedArbitraryContract)) {
       revert MutinyModule_NotContract(_proposedArbitraryContract);
     }
-    _startMutiny(_proposedArbitraryContract);
+    _startMutiny(_proposedArbitraryContract, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToPauseCaptain() external {
-    _startMutiny(safe);
+  function startMutinyToPauseCaptain(bool _seatFormerCaptain) external {
+    _startMutiny(safe, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
   function castVote(uint256 _mutinyId) external onlyHatWearer(crewHatId) activeMutiny(_mutinyId) {
-    _requireNotExpired(_mutinyId);
+    MutinyRound storage _r = _rounds[_mutinyId];
+    _requireNotExpired(_r, _mutinyId);
     if (_hasVoted[_mutinyId][msg.sender]) revert MutinyModule_AlreadyVoted(msg.sender);
     // Roster is frozen for the round, so current crew wearership matches snapshot membership
     _hasVoted[_mutinyId][msg.sender] = true;
     unchecked {
-      _rounds[_mutinyId].yeas += 1;
+      _r.yeas += 1;
     }
     emit MutinyVoteCast(_mutinyId, msg.sender);
   }
@@ -155,7 +153,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   function executeMutiny(uint256 _mutinyId) external activeMutiny(_mutinyId) {
     MutinyRound storage _r = _rounds[_mutinyId];
     if (_r.executed) revert MutinyModule_NoActiveMutiny();
-    _requireNotExpired(_mutinyId);
+    _requireNotExpired(_r, _mutinyId);
     if (_r.yeas * 2 <= _r.snapshot) revert MutinyModule_ThresholdNotReached(_r.yeas, _r.snapshot);
 
     address _from = _r.fromCaptain;
@@ -163,10 +161,9 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     if (_from != captain) revert MutinyModule_StaleCaptain(_from);
 
     _r.executed = true;
-    activeMutinyId = 0;
+    _gov.activeMutinyId = 0;
 
-    _succeedCaptain(_from, _to);
-    IQuartermaster(_liveQuartermaster()).setMutinyActive(false);
+    _succeedCaptain(_from, _to, _r.seatFormerCaptain);
 
     emit MutinyExecuted(_mutinyId, _from, _to);
   }
@@ -177,33 +174,49 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     if (_r.executed) revert MutinyModule_NoActiveMutiny();
     if (block.timestamp < _r.deadline) revert MutinyModule_NotExpired(_mutinyId, _r.deadline);
 
-    activeMutinyId = 0;
-    IQuartermaster(_liveQuartermaster()).setMutinyActive(false);
+    _gov.activeMutinyId = 0;
     emit MutinyExpired(_mutinyId);
   }
 
   /// @inheritdoc IMutinyModule
-  function captainResign(address _newCaptain) external onlyHatWearer(captainHatId) {
+  function captainResign(address _newCaptain, bool _seatFormerCaptain) external onlyHatWearer(captainHatId) {
     if (_newCaptain == address(0)) revert MutinyModule_ZeroAddress();
     if (_newCaptain == msg.sender) revert MutinyModule_SameCaptain(_newCaptain);
-    if (activeMutinyId != 0) revert MutinyModule_AlreadyActive();
+    if (_gov.activeMutinyId != 0) revert MutinyModule_AlreadyActive();
     if (msg.sender != captain) revert MutinyModule_StaleCaptain(captain);
 
-    _succeedCaptain(msg.sender, _newCaptain);
-    emit CaptainResigned(msg.sender, _newCaptain);
+    _succeedCaptain(msg.sender, _newCaptain, _seatFormerCaptain);
+    emit CaptainResigned(msg.sender, _newCaptain, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
   function setMutinyExpiry(uint256 _newValue) external onlyHatWearer(treasuryAuthorityRoleHatId) {
     _validateDelay(_newValue);
-    uint256 _old = mutinyExpiry;
-    mutinyExpiry = _newValue;
+    uint256 _old = _gov.mutinyExpiry;
+    // casting to 'uint64' is safe because `_validateDelay` caps at `MAX_GOV_DELAY` (60 days).
+    // forge-lint: disable-next-line(unsafe-typecast)
+    _gov.mutinyExpiry = uint64(_newValue);
     emit MutinyExpiryUpdated(_old, _newValue);
   }
 
   /*///////////////////////////////////////////////////////////////
                             VIEWS
   //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IMutinyModule
+  function activeMutinyId() external view returns (uint256 _id) {
+    _id = _gov.activeMutinyId;
+  }
+
+  /// @inheritdoc IMutinyModule
+  function mutinyCount() external view returns (uint256 _count) {
+    _count = _gov.mutinyCount;
+  }
+
+  /// @inheritdoc IMutinyModule
+  function mutinyExpiry() external view returns (uint256 _expiry) {
+    _expiry = _gov.mutinyExpiry;
+  }
 
   /// @inheritdoc IMutinyModule
   function mutiny(uint256 _id)
@@ -216,7 +229,8 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
-      bool _executed
+      bool _executed,
+      bool _seatFormerCaptain
     )
   {
     MutinyRound storage _r = _rounds[_id];
@@ -227,6 +241,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     _snapshot = _r.snapshot;
     _yeas = _r.yeas;
     _executed = _r.executed;
+    _seatFormerCaptain = _r.seatFormerCaptain;
   }
 
   /// @inheritdoc IMutinyModule
@@ -248,18 +263,15 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     else _inSnapshot = _HATS.isWearerOfHat(_voter, crewHatId);
   }
 
-  /// @inheritdoc IHatsEligibility
-  function getWearerStatus(
-    address _wearer,
-    uint256 /*_hatId*/
-  ) external view returns (bool _eligible, bool _standing) {
-    _eligible = _wearer == captain;
-    _standing = true;
-  }
-
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = activeMutinyId == 0;
+    _quiet = _gov.activeMutinyId == 0;
+  }
+
+  /// @inheritdoc IHatsEligibility
+  function getWearerStatus(address, uint256) external pure returns (bool _eligible, bool _standing) {
+    _eligible = true;
+    _standing = true;
   }
 
   /// @inheritdoc IHatGated
@@ -273,57 +285,53 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   /**
    * @notice Starts a mutiny round.
    * @param _proposedNewCaptain The address of the proposed new captain.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function _startMutiny(address _proposedNewCaptain)
-    internal
-    onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedNewCaptain)
-  {
+  function _startMutiny(
+    address _proposedNewCaptain,
+    bool _seatFormerCaptain
+  ) internal onlyHatWearer(crewHatId) mutinyCheck(_proposedNewCaptain) {
     address _qm = _liveQuartermaster();
     if (IQuartermaster(_qm).activeCrewOffboardId() != 0) revert MutinyModule_CrewOffboardActive();
 
-    uint256 _deadline256 = block.timestamp + mutinyExpiry;
+    GovConfig memory _cfg = _gov;
+    uint256 _deadline256 = block.timestamp + _cfg.mutinyExpiry;
     if (_deadline256 > type(uint64).max) revert MutinyModule_DeadlineOverflow();
 
-    uint256 _id = ++mutinyCount;
+    _cfg.mutinyCount += 1;
+    _cfg.activeMutinyId = _cfg.mutinyCount;
+    uint256 _id = _cfg.mutinyCount;
+    _gov = _cfg;
+
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
 
     _rounds[_id] = MutinyRound({
       proposedNewCaptain: _proposedNewCaptain,
+      executed: false,
+      seatFormerCaptain: _seatFormerCaptain,
       fromCaptain: captain,
       startedAt: uint64(block.timestamp),
       // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
       // forge-lint: disable-next-line(unsafe-typecast)
       deadline: uint64(_deadline256),
       snapshot: _snapshot,
-      yeas: 0,
-      executed: false
+      yeas: 0
     });
-    activeMutinyId = _id;
 
-    IQuartermaster(_qm).setMutinyActive(true);
-    emit MutinyStarted(_id, msg.sender, _proposedNewCaptain, _snapshot);
+    emit MutinyStarted(_id, msg.sender, _proposedNewCaptain, _snapshot, _seatFormerCaptain);
   }
 
   /**
-   * @notice Transfers captain hat; updates `captain` before `transferHat` so `getWearerStatus` accepts the new wearer. EOA ex-captain: QM mint or crew handoff
-   * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`
+   * @notice Transfers captain hat and updates the `captain` identity cache
+   * @dev Crew revoke/mint batched via Quartermaster `applySuccessionCrew`
    * @param _from Outgoing captain
    * @param _to Incoming captain
+   * @param _seatFormerCaptain If true, mint a crew hat to `_from` after succession
    */
-  function _succeedCaptain(address _from, address _to) internal {
-    address _qm = _liveQuartermaster();
+  function _succeedCaptain(address _from, address _to, bool _seatFormerCaptain) internal {
     captain = _to;
     _HATS.transferHat(captainHatId, _from, _to);
-
-    // is ex-captain an EOA? if so, mint or handoff crew hat
-    if (_from.code.length == 0) {
-      if (_HATS.isWearerOfHat(_to, crewHatId)) {
-        IQuartermaster(_qm).crewHandoffForMutiny(_from, _to);
-      } else {
-        IQuartermaster(_qm).mintCrewFromMutiny(_from);
-      }
-    }
+    IQuartermaster(_liveQuartermaster()).applySuccessionCrew(_from, _to, _seatFormerCaptain);
   }
 
   /**
@@ -342,7 +350,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   function _mutinyCheck(address _target) internal view {
     if (_target == address(0)) revert MutinyModule_ZeroAddress();
     if (_target == captain) revert MutinyModule_SameCaptain(_target);
-    if (activeMutinyId != 0) revert MutinyModule_AlreadyActive();
+    if (_gov.activeMutinyId != 0) revert MutinyModule_AlreadyActive();
     if (!_HATS.isWearerOfHat(captain, captainHatId)) revert MutinyModule_StaleCaptain(captain);
   }
 
@@ -350,17 +358,17 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
    * @notice Reverts if the specified mutiny id is not the active mutiny id
    * @param _mutinyId The mutiny id to check
    */
-  function _activeMutinyId(uint256 _mutinyId) internal view {
-    if (_mutinyId == 0) revert MutinyModule_NoActiveMutiny();
-    if (_mutinyId != activeMutinyId) revert MutinyModule_NoActiveMutiny();
+  function _requireActiveMutiny(uint256 _mutinyId) internal view {
+    if (_mutinyId == 0 || _mutinyId != _gov.activeMutinyId) revert MutinyModule_NoActiveMutiny();
   }
 
   /**
-   * @notice Reverts if the active round at `_mutinyId` is at or past its deadline.
-   * @param _mutinyId Round that must still be inside its voting window.
+   * @notice Reverts if `_r` is at or past its deadline.
+   * @param _r Round already loaded from storage.
+   * @param _mutinyId Round id (for revert payload).
    */
-  function _requireNotExpired(uint256 _mutinyId) internal view {
-    if (block.timestamp >= _rounds[_mutinyId].deadline) revert MutinyModule_Expired(_mutinyId);
+  function _requireNotExpired(MutinyRound storage _r, uint256 _mutinyId) internal view {
+    if (block.timestamp >= _r.deadline) revert MutinyModule_Expired(_mutinyId);
   }
 
   /**

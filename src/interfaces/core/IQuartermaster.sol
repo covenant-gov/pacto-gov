@@ -7,8 +7,8 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
 /**
  * @title IQuartermaster
  * @author Pacto
- * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard vote (`QUORUM_OF_CAST`); implements `IHatsEligibility` for the crew hat. Captain requests; anyone
- *         executes after `crewChangeDelay`. Crew may offboard one member at a time without the captain. When `mutinyActive` or an offboard is live, captain HR is frozen. Delay / offboard params: TA role + two-body
+ * @notice Timelocked crew add/remove (bootstrap without delay); crew-led offboard vote (`QUORUM_OF_CAST`); implements `IHatsEligibility` for the crew hat (always eligible; revoke via Hats `setHatWearerStatus`). Captain requests; anyone
+ *         executes after `crewChangeDelay`. Crew may offboard one member at a time without the captain. When the wired MutinyModule has an active round or an offboard is live, captain HR is frozen. Delay / offboard params: TA role + two-body
  */
 interface IQuartermaster is IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
@@ -21,6 +21,7 @@ interface IQuartermaster is IQuiescent, IHatGated {
    * @param mutinyRoleHatId MutinyRole hat id; mutiny hooks require this gate.
    * @param quartermasterRoleHatId QuartermasterRole hat id worn by this clone.
    * @param treasuryAuthorityRoleHatId TreasuryAuthorityRole hat id; gates parameter setters.
+   * @param mutinyModule Authoritative MutinyModule peer (`activeMutinyId` freezes captain HR).
    * @param crewChangeDelay Initial timelock in seconds for requested crew adds / removes.
    * @param crewOffboardExpiry Initial voting window in seconds for crew-led offboard (same range as TA `proposalExpiry`).
    * @param crewOffboardQuorumBps Initial quorum bps for crew-led offboard (`QUORUM_OF_CAST`).
@@ -31,29 +32,56 @@ interface IQuartermaster is IQuiescent, IHatGated {
     uint256 mutinyRoleHatId;
     uint256 quartermasterRoleHatId;
     uint256 treasuryAuthorityRoleHatId;
+    address mutinyModule;
     uint256 crewChangeDelay;
     uint256 crewOffboardExpiry;
     uint256 crewOffboardQuorumBps;
   }
 
   /**
-   * @notice Persisted crew-led offboard vote.
+   * @notice Persisted crew-led offboard vote. `executed` packs with `target`.
    * @param target Crew member to remove.
+   * @param executed Whether the offboard has been finalized.
    * @param proposer Crew member that opened the vote.
    * @param deadline Unix timestamp after which `executeOffboard` reverts and `expireOffboard` is valid.
    * @param snapshot Crew hat supply at propose time.
    * @param yeas Yea vote count.
    * @param nays Nay vote count.
-   * @param executed Whether the offboard has been finalized.
    */
   struct CrewOffboard {
     address target;
+    bool executed;
     address proposer;
     uint64 deadline;
     uint64 snapshot;
     uint64 yeas;
     uint64 nays;
-    bool executed;
+  }
+
+  /**
+   * @notice Packed delay / offboard counters (two slots).
+   * @param crewChangeDelay Seconds between scheduling and executing a crew add / remove.
+   * @param crewOffboardExpiry Seconds from offboard propose until the vote may be expired.
+   * @param crewOffboardQuorumBps Quorum in basis points (`QUORUM_OF_CAST`).
+   * @param activeCrewOffboardId Live offboard id, or zero.
+   * @param crewOffboardCount Last issued offboard id.
+   */
+  struct GovConfig {
+    uint64 crewChangeDelay;
+    uint64 crewOffboardExpiry;
+    uint16 crewOffboardQuorumBps;
+    uint64 activeCrewOffboardId;
+    uint64 crewOffboardCount;
+  }
+
+  /**
+   * @notice One scheduled crew add or remove.
+   * @param account Candidate (add) or crew wearer (remove).
+   * @param eta Unix timestamp when execute becomes valid.
+   */
+  struct Pending {
+    address account;
+    uint64 eta;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -104,17 +132,10 @@ interface IQuartermaster is IQuiescent, IHatGated {
   event CrewMintedFromMutiny(address indexed _formerCaptain);
 
   /**
-   * @notice The MutinyModule handed the new captain's existing crew hat to the former captain.
-   * @param _formerCaptain Address that received the crew hat.
-   * @param _newCaptain Address whose crew hat was transferred.
+   * @notice The MutinyModule revoked the crew hat from a successor who cannot wear crew and captain together.
+   * @param _crew Address whose crew hat was revoked.
    */
-  event CrewHandoffForMutiny(address indexed _formerCaptain, address indexed _newCaptain);
-
-  /**
-   * @notice Mutiny mode toggled (disables captain-driven onboarding while active).
-   * @param _active True when a mutiny is in progress.
-   */
-  event MutinyActiveSet(bool _active);
+  event CrewRevokedFromMutiny(address indexed _crew);
 
   /**
    * @notice The crew change delay parameter was updated via a Treasury Authority proposal.
@@ -352,25 +373,26 @@ interface IQuartermaster is IQuiescent, IHatGated {
 
   /**
    * @notice Mint one crew hat to `_formerCaptain` with no delay (mutiny / succession path).
-   * @dev Only callable by the MutinyRole hat wearer; used to seat a deposed human captain as crew.
+   * @dev Only callable by the MutinyRole hat wearer; used when a round opts in to seat the former captain as crew.
    * @param _formerCaptain Recipient of the crew hat.
    */
   function mintCrewFromMutiny(address _formerCaptain) external;
 
   /**
-   * @notice Hand the existing crew hat from the elected successor to the former captain in one step.
-   * @dev Only callable by the MutinyRole hat wearer. Used when the new captain was already crew.
-   * @param _formerCaptain Previous captain (receives crew).
-   * @param _newCaptain New captain (must not retain the crew hat after execution).
+   * @notice Revoke the crew hat from `_crew` with no delay (mutiny / succession path).
+   * @dev Only callable by the MutinyRole hat wearer. Used when the captain successor still wears crew.
+   * @param _crew Address that must lose the crew hat.
    */
-  function crewHandoffForMutiny(address _formerCaptain, address _newCaptain) external;
+  function revokeCrewFromMutiny(address _crew) external;
 
   /**
-   * @notice Toggle mutiny mode to guard captain-driven onboarding.
-   * @dev Only callable by the MutinyRole hat wearer.
-   * @param _active True to block captain onboarding while a mutiny runs.
+   * @notice Apply mutiny succession crew adjustments in one gated call.
+   * @dev Revokes crew from `_to` if worn; mints crew to `_from` only when `_seatFormerCaptain`.
+   * @param _from Outgoing captain (crew mint target when seating).
+   * @param _to Incoming captain (crew revoke target if they still wear crew).
+   * @param _seatFormerCaptain If true, mint a crew hat to `_from`.
    */
-  function setMutinyActive(bool _active) external;
+  function applySuccessionCrew(address _from, address _to, bool _seatFormerCaptain) external;
 
   /**
    * @notice Update the crew change delay. TreasuryAuthorityRole-gated.
@@ -425,10 +447,16 @@ interface IQuartermaster is IQuiescent, IHatGated {
   function crewOffboardCount() external view returns (uint256 _count);
 
   /**
-   * @notice Whether a mutiny is currently active.
+   * @notice Whether the wired MutinyModule currently has an active round (`activeMutinyId != 0`).
    * @return _active True if mutiny is active.
    */
   function mutinyActive() external view returns (bool _active);
+
+  /**
+   * @notice Authoritative MutinyModule peer wired at init.
+   * @return _mutinyModule Peer address.
+   */
+  function mutinyModule() external view returns (address _mutinyModule);
 
   /**
    * @notice Timestamp after which `executeAddCrew` succeeds, or zero if none.
@@ -485,13 +513,6 @@ interface IQuartermaster is IQuiescent, IHatGated {
    * @return _executableAts Matching `executeRemoveCrew` timestamps.
    */
   function pendingRemoves() external view returns (address[] memory _crew, uint256[] memory _executableAts);
-
-  /**
-   * @notice Local crew-hat eligibility flag for `_wearer` (same bit as `getWearerStatus`).
-   * @param _wearer Address to query.
-   * @return _eligible True if this contract treats `_wearer` as eligible crew.
-   */
-  function crewEligible(address _wearer) external view returns (bool _eligible);
 
   /**
    * @notice Captain hat id for access-control checks.

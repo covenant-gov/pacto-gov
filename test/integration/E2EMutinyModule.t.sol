@@ -74,7 +74,7 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
     if (_fixtureHasOpenRound) return;
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
     _squadActiveMutinyId = _squadMutiny.activeMutinyId();
     _fixtureHasOpenRound = true;
   }
@@ -83,7 +83,7 @@ abstract contract E2EMutinyModuleBase is IntegrationBase {
   function _ensureVotesAboveMajority() internal {
     if (_fixtureHasVoteMajority) return;
 
-    (,,,, uint64 _snapshot,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,, uint64 _snapshot,,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
 
     for (uint256 _i = 0; _i < _minYeas; _i++) {
@@ -198,7 +198,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadCrewHatId, _stranger));
     vm.prank(_stranger);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -208,22 +208,22 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_mutinyStart_reverts_whenProposedIsZero() public withDeployedNavePirataSquad {
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(address(0));
+    _squadMutiny.startMutinyToArbitraryEoa(address(0), false);
   }
 
   function test_e2e_mutinyStart_reverts_whenProposedIsCurrentCaptain() public withDeployedNavePirataSquad {
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_SameCaptain.selector, _squadCaptain));
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadCaptain, false);
   }
 
   function test_e2e_mutinyStart_reverts_whenRoundAlreadyActive() public withDeployedNavePirataSquad {
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
 
     vm.expectRevert(IMutinyModule.MutinyModule_AlreadyActive.selector);
     vm.prank(_squadCrew[1]);
-    _squadMutiny.startMutinyToArbitraryEoa(makeAddr('e2eMutinySecondTarget'));
+    _squadMutiny.startMutinyToArbitraryEoa(makeAddr('e2eMutinySecondTarget'), false);
   }
 
   function test_e2e_mutinyStart_reverts_whenQuartermasterPeerIsStale() public withDeployedNavePirataSquad {
@@ -232,7 +232,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleQuartermaster.selector, _staleQm));
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
   }
 
   function test_e2e_mutinyStart_reverts_whenCaptainDoesNotWearCaptainHat() public withDeployedNavePirataSquad {
@@ -242,7 +242,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleCaptain.selector, _squadCaptain));
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(makeAddr('e2eMutinyAfterHatMove'));
+    _squadMutiny.startMutinyToArbitraryEoa(makeAddr('e2eMutinyAfterHatMove'), false);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -257,7 +257,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
       abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadCrewHatId, _squadProposedCaptain)
     );
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToCrewMember(_squadProposedCaptain);
+    _squadMutiny.startMutinyToCrewMember(_squadProposedCaptain, false);
   }
 
   function test_e2e_startMutinyToCrewMember_succeeds_opensRound() public withDeployedNavePirataSquad {
@@ -265,13 +265,13 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     uint64 _snapshot = uint64(IHats(HATS_PROTOCOL_V1).hatSupply(_squadCrewHatId));
 
     vm.expectEmit(true, true, true, true, address(_squadMutiny));
-    emit IMutinyModule.MutinyStarted(1, _squadCrew[0], _crewSuccessor, _snapshot);
+    emit IMutinyModule.MutinyStarted(1, _squadCrew[0], _crewSuccessor, _snapshot, false);
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToCrewMember(_crewSuccessor);
+    _squadMutiny.startMutinyToCrewMember(_crewSuccessor, false);
 
     assertEq(_squadMutiny.activeMutinyId(), 1);
-    (address _proposed,,,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _crewSuccessor);
     assertTrue(_squadQuartermaster.mutinyActive());
   }
@@ -285,19 +285,19 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotContract.selector, _notCommittee));
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToCommittee(_notCommittee);
+    _squadMutiny.startMutinyToCommittee(_notCommittee, false);
   }
 
   function test_e2e_startMutinyToCommittee_succeeds_opensRound() public withDeployedNavePirataSquad {
     uint64 _snapshot = uint64(IHats(HATS_PROTOCOL_V1).hatSupply(_squadCrewHatId));
 
     vm.expectEmit(true, true, true, true, address(_squadMutiny));
-    emit IMutinyModule.MutinyStarted(1, _squadCrew[0], _squadSafe, _snapshot);
+    emit IMutinyModule.MutinyStarted(1, _squadCrew[0], _squadSafe, _snapshot, false);
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToCommittee(_squadSafe);
+    _squadMutiny.startMutinyToCommittee(_squadSafe, false);
 
-    (address _proposed,,,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadSafe);
   }
 
@@ -308,7 +308,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_startMutinyToArbitraryEOA_reverts_whenProposedHasCode() public withDeployedNavePirataSquad {
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotEOA.selector, _squadSafe));
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadSafe);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadSafe, false);
   }
 
   function test_e2e_startMutinyToArbitraryEOA_succeeds_emitsAndFreezesQuartermaster()
@@ -318,10 +318,10 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     uint64 _snapshot = uint64(IHats(HATS_PROTOCOL_V1).hatSupply(_squadCrewHatId));
 
     vm.expectEmit(true, true, true, true, address(_squadMutiny));
-    emit IMutinyModule.MutinyStarted(1, _squadCrew[0], _squadProposedCaptain, _snapshot);
+    emit IMutinyModule.MutinyStarted(1, _squadCrew[0], _squadProposedCaptain, _snapshot, false);
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
 
     assertEq(_squadMutiny.activeMutinyId(), 1);
     assertFalse(_squadMutiny.isQuiet());
@@ -334,7 +334,8 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
       uint64 _deadline,
       uint64 _storedSnapshot,
       uint64 _yeas,
-      bool _executed
+      bool _executed,
+      bool _seatFormerCaptain
     ) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadProposedCaptain);
     assertEq(_fromCaptain, _squadCaptain);
@@ -344,6 +345,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     assertEq(_storedSnapshot, _snapshot);
     assertEq(_yeas, 0);
     assertFalse(_executed);
+    assertFalse(_seatFormerCaptain);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -353,14 +355,14 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   function test_e2e_startMutinyToArbitraryContract_reverts_whenProposedIsEoa() public withDeployedNavePirataSquad {
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotContract.selector, _squadProposedCaptain));
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryContract(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryContract(_squadProposedCaptain, false);
   }
 
   function test_e2e_startMutinyToArbitraryContract_succeeds_opensRound() public withDeployedNavePirataSquad {
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryContract(_squadSafe);
+    _squadMutiny.startMutinyToArbitraryContract(_squadSafe, false);
 
-    (address _proposed,,,,,,) = _squadMutiny.mutiny(1);
+    (address _proposed,,,,,,,) = _squadMutiny.mutiny(1);
     assertEq(_proposed, _squadSafe);
     assertEq(_squadMutiny.activeMutinyId(), 1);
   }
@@ -410,7 +412,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _squadMutiny.castVote(_squadActiveMutinyId);
 
     assertTrue(_squadMutiny.hasVoted(_squadActiveMutinyId, _squadCrew[1]));
-    (,,,,, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,,, uint64 _yeas,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     assertEq(_yeas, 1);
   }
 
@@ -447,7 +449,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   {
     _castVotes(_squadActiveMutinyId, 2);
 
-    (,,,, uint64 _snapshot, uint64 _yeas,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (,,,, uint64 _snapshot, uint64 _yeas,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_ThresholdNotReached.selector, _yeas, _snapshot));
     _squadMutiny.executeMutiny(_squadActiveMutinyId);
   }
@@ -464,7 +466,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _squadMutiny.executeMutiny(_squadActiveMutinyId);
   }
 
-  function test_e2e_executeMutiny_succeeds_whenSuccessorIsEoaFormerCrewNotWearingCrewHat()
+  function test_e2e_executeMutiny_succeeds_whenSuccessorIsEoa_noSeatFormer()
     public
     withDeployedNavePirataSquad
     withOpenMutinyRound
@@ -479,14 +481,18 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     assertTrue(_squadMutiny.isQuiet());
     assertFalse(_squadQuartermaster.mutinyActive());
     assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_squadProposedCaptain, _squadMutiny.captainHatId()));
-    assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_squadCaptain, _squadCrewHatId));
+    assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_squadCaptain, _squadCrewHatId));
   }
 
-  function test_e2e_executeMutiny_succeeds_whenSuccessorAlreadyWearsCrewHat() public withDeployedNavePirataSquad {
+  function test_e2e_executeMutiny_succeeds_whenSuccessorAlreadyWearsCrewHat_revokesCrew()
+    public
+    withDeployedNavePirataSquad
+  {
     address _crewSuccessor = _squadCrew[3];
+    address _formerCaptain = _squadCaptain;
 
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToCrewMember(_crewSuccessor);
+    _squadMutiny.startMutinyToCrewMember(_crewSuccessor, false);
     uint256 _id = _squadMutiny.activeMutinyId();
     _castVotes(_id, 3);
 
@@ -494,19 +500,39 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     assertEq(_squadMutiny.captain(), _crewSuccessor);
     assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_crewSuccessor, _squadMutiny.captainHatId()));
-    assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_squadCaptain, _squadCrewHatId));
+    assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_crewSuccessor, _squadCrewHatId));
+    assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_formerCaptain, _squadCrewHatId));
   }
 
-  function test_e2e_executeMutiny_succeeds_whenFormerCaptainIsContractSkipsCrewMint() public {
+  function test_e2e_executeMutiny_succeeds_whenSeatFormerCaptain_mintsCrewToFormer()
+    public
+    withDeployedNavePirataSquad
+  {
+    address _crewSuccessor = _squadCrew[3];
+    address _formerCaptain = _squadCaptain;
+
+    vm.prank(_squadCrew[0]);
+    _squadMutiny.startMutinyToCrewMember(_crewSuccessor, true);
+    uint256 _id = _squadMutiny.activeMutinyId();
+    _castVotes(_id, 3);
+
+    _squadMutiny.executeMutiny(_id);
+
+    assertEq(_squadMutiny.captain(), _crewSuccessor);
+    assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_crewSuccessor, _squadCrewHatId));
+    assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_formerCaptain, _squadCrewHatId));
+  }
+
+  function test_e2e_executeMutiny_succeeds_whenSeatFormerFalse_skipsCrewMint() public {
     E2EContractCaptain _contractCaptain = new E2EContractCaptain();
     (MutinyModule _mutiny, Quartermaster _qm,, address[] memory _crew, address _proposedCaptain) =
       _deployFreshSquadWithCaptain(address(_contractCaptain), DEPLOY_NAV_PIRATA_SALT_NONCE + 1);
 
     vm.prank(_crew[0]);
-    _mutiny.startMutinyToArbitraryEoa(_proposedCaptain);
+    _mutiny.startMutinyToArbitraryEoa(_proposedCaptain, false);
     uint256 _id = _mutiny.activeMutinyId();
 
-    (,,,, uint64 _snapshot,,) = _mutiny.mutiny(_id);
+    (,,,, uint64 _snapshot,,,) = _mutiny.mutiny(_id);
     uint256 _minYeas = uint256(_snapshot) / 2 + 1;
     for (uint256 _i = 0; _i < _minYeas; _i++) {
       vm.prank(_crew[_i]);
@@ -530,19 +556,19 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _captainHatId, _stranger));
     vm.prank(_stranger);
-    _squadMutiny.captainResign(_squadProposedCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain, false);
   }
 
   function test_e2e_captainResign_reverts_whenNewCaptainIsZero() public withDeployedNavePirataSquad {
     vm.expectRevert(IMutinyModule.MutinyModule_ZeroAddress.selector);
     vm.prank(_squadCaptain);
-    _squadMutiny.captainResign(address(0));
+    _squadMutiny.captainResign(address(0), false);
   }
 
   function test_e2e_captainResign_reverts_whenNewCaptainIsCaller() public withDeployedNavePirataSquad {
     vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_SameCaptain.selector, _squadCaptain));
     vm.prank(_squadCaptain);
-    _squadMutiny.captainResign(_squadCaptain);
+    _squadMutiny.captainResign(_squadCaptain, false);
   }
 
   function test_e2e_captainResign_reverts_whenMutinyAlreadyActive()
@@ -552,40 +578,52 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
   {
     vm.expectRevert(IMutinyModule.MutinyModule_AlreadyActive.selector);
     vm.prank(_squadCaptain);
-    _squadMutiny.captainResign(_squadProposedCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain, false);
   }
 
   function test_e2e_captainResign_reverts_whenCaptainCacheNotMsgSender() public withDeployedNavePirataSquad {
     vm.store(address(_squadMutiny), bytes32(uint256(4)), bytes32(uint256(uint160(_squadCrew[2]))));
 
-    vm.expectRevert(
-      abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadMutiny.captainHatId(), _squadCaptain)
-    );
+    // Hat wearer check passes (eligibility always true + still holds captain hat); identity cache rejects.
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_StaleCaptain.selector, _squadCrew[2]));
     vm.prank(_squadCaptain);
-    _squadMutiny.captainResign(_squadProposedCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain, false);
   }
 
-  function test_e2e_captainResign_succeeds_handoffToEoa() public withDeployedNavePirataSquad {
+  function test_e2e_captainResign_succeeds_noSeatFormer() public withDeployedNavePirataSquad {
+    address _formerCaptain = _squadCaptain;
+
     vm.prank(_squadCaptain);
-    _squadMutiny.captainResign(_squadProposedCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain, false);
 
     assertEq(_squadMutiny.captain(), _squadProposedCaptain);
     assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_squadProposedCaptain, _squadMutiny.captainHatId()));
-    assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_squadCaptain, _squadCrewHatId));
+    assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_formerCaptain, _squadCrewHatId));
+  }
+
+  function test_e2e_captainResign_succeeds_seatFormer() public withDeployedNavePirataSquad {
+    address _formerCaptain = _squadCaptain;
+
+    vm.prank(_squadCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain, true);
+
+    assertEq(_squadMutiny.captain(), _squadProposedCaptain);
+    assertTrue(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_formerCaptain, _squadCrewHatId));
   }
 
   /*///////////////////////////////////////////////////////////////
                         views / eligibility / isQuiet
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_getWearerStatus_eligibleOnlyForTrackedCaptain() public withDeployedNavePirataSquad {
+  function test_e2e_getWearerStatus_alwaysEligibleAndStanding() public withDeployedNavePirataSquad {
     (bool _captainEligible, bool _captainStanding) =
       _squadMutiny.getWearerStatus(_squadCaptain, _squadMutiny.captainHatId());
     assertTrue(_captainEligible);
     assertTrue(_captainStanding);
 
-    (bool _crewEligible,) = _squadMutiny.getWearerStatus(_squadCrew[0], _squadMutiny.captainHatId());
-    assertFalse(_crewEligible);
+    (bool _crewEligible, bool _crewStanding) = _squadMutiny.getWearerStatus(_squadCrew[0], _squadMutiny.captainHatId());
+    assertTrue(_crewEligible);
+    assertTrue(_crewStanding);
   }
 
   function test_e2e_isQuiet_trueWhenNoMutiny_falseWhenRoundOpen() public withDeployedNavePirataSquad {
@@ -594,7 +632,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     _ensureOpenRound();
     assertFalse(_squadMutiny.isQuiet());
     assertEq(_squadMutiny.mutinyCount(), 1);
-    (, address _fromCaptain,,,,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
+    (, address _fromCaptain,,,,,,) = _squadMutiny.mutiny(_squadActiveMutinyId);
     assertEq(_fromCaptain, _squadCaptain);
     assertFalse(_squadMutiny.thresholdReached(_squadActiveMutinyId));
   }
@@ -620,7 +658,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
   function test_e2e_expireMutiny_clearsQmAndAllowsNewRoundAndResign() public withDeployedNavePirataSquad {
     vm.prank(_squadCrew[0]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
     uint256 _id = _squadMutiny.activeMutinyId();
     assertTrue(_squadQuartermaster.mutinyActive());
 
@@ -632,13 +670,13 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
     assertTrue(_squadMutiny.isQuiet());
 
     vm.prank(_squadCrew[1]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
     uint256 _id2 = _squadMutiny.activeMutinyId();
     vm.warp(block.timestamp + _squadMutiny.mutinyExpiry());
     _squadMutiny.expireMutiny(_id2);
 
     vm.prank(_squadCaptain);
-    _squadMutiny.captainResign(_squadProposedCaptain);
+    _squadMutiny.captainResign(_squadProposedCaptain, false);
     assertEq(_squadMutiny.captain(), _squadProposedCaptain);
   }
 
@@ -648,7 +686,7 @@ contract E2EMutinyModuleTest is E2EMutinyModuleBase {
 
     vm.expectRevert(IMutinyModule.MutinyModule_CrewOffboardActive.selector);
     vm.prank(_squadCrew[1]);
-    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+    _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
   }
 
   function test_e2e_isInSnapshot_reflectsCurrentCrewWearershipDuringActiveRound()

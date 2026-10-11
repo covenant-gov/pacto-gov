@@ -70,7 +70,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
    * @param yeas Yea vote count.
    * @param nays Nay vote count.
    * @param value ETH value.
-   * @param data Calldata payload.
+   * @param dataHash `keccak256` of the calldata supplied at `propose` / required at `execute`.
    */
   struct Proposal {
     address proposer;
@@ -84,7 +84,23 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
     uint64 yeas;
     uint64 nays;
     uint256 value;
-    bytes data;
+    bytes32 dataHash;
+  }
+
+  /**
+   * @notice Packed governance counters and parameters (one slot).
+   * @param proposalExpiry Seconds from creation until a proposal expires.
+   * @param crewVoteMode Crew vote counting mode.
+   * @param quorumBps Quorum in basis points (`QUORUM_OF_CAST` only).
+   * @param nextProposalId Next unused proposal id (exclusive bound; first id is 1).
+   * @param maxDeadline Latest proposal deadline ever assigned (`isQuiet`).
+   */
+  struct GovConfig {
+    uint64 proposalExpiry;
+    CrewVoteMode crewVoteMode;
+    uint16 quorumBps;
+    uint64 nextProposalId;
+    uint64 maxDeadline;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -97,7 +113,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
    * @param _to Target address the Safe will call.
    * @param _value ETH value in wei.
    * @param _op Operation type.
-   * @param _data Calldata to forward.
+   * @param _dataHash `keccak256` of the calldata to forward.
    * @param _deadline Timestamp after which the proposal expires.
    * @param _snapshot Snapshot size of eligible crew at creation time.
    */
@@ -107,7 +123,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
     address indexed _to,
     uint256 _value,
     Operation _op,
-    bytes _data,
+    bytes32 _dataHash,
     uint256 _deadline,
     uint256 _snapshot
   );
@@ -131,15 +147,8 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
   /**
    * @notice The proposal was executed against the Safe via the Zodiac module surface.
    * @param _proposalId Proposal identifier.
-   * @param _success Whether the underlying Safe execution succeeded.
    */
-  event ProposalExecuted(uint256 indexed _proposalId, bool _success);
-
-  /**
-   * @notice The proposal expired without execution.
-   * @param _proposalId Proposal identifier.
-   */
-  event ProposalExpired(uint256 indexed _proposalId);
+  event ProposalExecuted(uint256 indexed _proposalId);
 
   /**
    * @notice Proposal expiry parameter updated.
@@ -213,6 +222,8 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
   error TreasuryAuthority_AlreadyExecuted();
   /// @notice The underlying Safe execution failed.
   error TreasuryAuthority_SafeExecutionFailed();
+  /// @notice Calldata supplied to `execute` does not match the hash stored at `propose`.
+  error TreasuryAuthority_DataHashMismatch();
   /// @notice `block.timestamp + proposalExpiry` exceeds `type(uint64).max` (proposal `deadline` storage width).
   error TreasuryAuthority_DeadlineOverflow();
 
@@ -270,9 +281,11 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
    * @notice Execute a proposal once the crew vote has passed, the proposal was not vetoed, and either the captain
    *         approved or the Safe (`avatar`) wears the captain hat (paused captain / crew-only path).
    * @dev Permissionless; uses Zodiac `Module.exec*` to act on the Safe. Reverts `NotExecutable` if any precondition fails.
+   *         `_data` must match the hash stored at `propose`.
    * @param _proposalId Proposal identifier.
+   * @param _data Calldata forwarded to the Safe; must satisfy `keccak256(_data) == proposal.dataHash`.
    */
-  function execute(uint256 _proposalId) external;
+  function execute(uint256 _proposalId, bytes calldata _data) external;
 
   /*///////////////////////////////////////////////////////////////
                             PARAMETER SETTERS
@@ -330,7 +343,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
    * @return _to Target address.
    * @return _value ETH value.
    * @return _op Operation type.
-   * @return _data Calldata to forward.
+   * @return _dataHash `keccak256` of the calldata required at `execute`.
    * @return _deadline Unix timestamp after which the proposal expires.
    * @return _snapshot Snapshot size of eligible crew at creation time.
    * @return _yeas Yea vote count.
@@ -347,7 +360,7 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
       address _to,
       uint256 _value,
       Operation _op,
-      bytes memory _data,
+      bytes32 _dataHash,
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,

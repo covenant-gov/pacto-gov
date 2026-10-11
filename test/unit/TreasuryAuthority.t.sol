@@ -239,7 +239,7 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
 
     vm.expectEmit();
     emit ITreasuryAuthority.ProposalCreated(
-      1, _captain, _dest, 1 ether, ITreasuryAuthority.Operation.CALL, hex'dead', _expectedDeadline, 10
+      1, _captain, _dest, 1 ether, ITreasuryAuthority.Operation.CALL, keccak256(hex'dead'), _expectedDeadline, 10
     );
 
     vm.prank(_captain);
@@ -254,7 +254,7 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
       address _to,
       uint256 _value,
       ITreasuryAuthority.Operation _op,
-      bytes memory _data,
+      bytes32 _dataHash,
       uint64 _deadline,
       uint64 _snap,
       uint64 _yeas,
@@ -267,7 +267,7 @@ contract UnitTreasuryAuthorityPropose is UnitTreasuryAuthorityBase {
     assertEq(_to, _dest);
     assertEq(_value, 1 ether);
     assertEq(uint256(_op), uint256(ITreasuryAuthority.Operation.CALL));
-    assertEq(_data, hex'dead');
+    assertEq(_dataHash, keccak256(hex'dead'));
     assertEq(_deadline, _expectedDeadline);
     assertEq(_snap, 10);
     assertEq(_yeas, 0);
@@ -466,7 +466,7 @@ contract UnitTreasuryAuthorityCaptainVote is UnitTreasuryAuthorityBase {
     vm.prank(_captain);
     _ta.captainVote(_id, false);
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 
   function test_CaptainVote_RevertsOnSecondCall() external {
@@ -549,17 +549,34 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
       abi.encodeWithSelector(IAvatar.execTransactionFromModule.selector, _dest, 1 ether, hex'cafe', Enum.Operation.Call)
     );
     vm.expectEmit();
-    emit ITreasuryAuthority.ProposalExecuted(_id, true);
+    emit ITreasuryAuthority.ProposalExecuted(_id);
 
     assertTrue(_ta.crewVotePassed(_id));
     assertTrue(_ta.isExecutable(_id));
 
-    _ta.execute(_id);
+    _ta.execute(_id, hex'cafe');
 
     (,,,,,,,,,,, bool _exec) = _ta.proposal(_id);
     assertTrue(_exec);
     assertFalse(_ta.isExecutable(_id));
     assertEq(_ta.openProposalOf(_captain), 0);
+  }
+
+  function test_Execute_RevertsIfDataHashMismatch() external {
+    _mockCaptainOrCrew(_captain, true, false);
+    _mockCrewSupply(1);
+    vm.prank(_captain);
+    uint256 _id = _ta.propose(_dest, 0, hex'cafe', ITreasuryAuthority.Operation.CALL);
+
+    _mockWearer(_crewA, _CREW_HAT, true);
+    vm.prank(_crewA);
+    _ta.crewVote(_id, true);
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    vm.prank(_captain);
+    _ta.captainVote(_id, true);
+
+    vm.expectRevert(ITreasuryAuthority.TreasuryAuthority_DataHashMismatch.selector);
+    _ta.execute(_id, hex'dead');
   }
 
   function test_Execute_Delegatecall_ForwardsOperation() external {
@@ -582,7 +599,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
         IAvatar.execTransactionFromModule.selector, _dest, uint256(0), hex'01', Enum.Operation.DelegateCall
       )
     );
-    _ta.execute(_id);
+    _ta.execute(_id, hex'01');
   }
 
   function test_Execute_RevertsIfCrewVoteBelowMajority() external {
@@ -603,7 +620,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     _ta.captainVote(_id, true);
 
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 
   function test_Execute_RevertsIfCaptainNotApproved() external {
@@ -619,7 +636,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     _mockWearer(_SAFE_ADDRESS, _CAPTAIN_HAT, false);
 
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 
   function test_Execute_SucceedsWithoutCaptainVoteWhenAvatarWearsCaptainHat() external {
@@ -636,7 +653,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     _mockWearer(_SAFE_ADDRESS, _CAPTAIN_HAT, true);
 
     _mockSafeExec(true);
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
     (,,,,,,,,,,, bool _exec) = _ta.proposal(_id);
     assertTrue(_exec);
   }
@@ -656,7 +673,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
 
     _mockSafeExec(false);
     vm.expectRevert(ITreasuryAuthority.TreasuryAuthority_SafeExecutionFailed.selector);
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 
   function test_Execute_RevertsOnDoubleExecute() external {
@@ -673,9 +690,9 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     _ta.captainVote(_id, true);
 
     _mockSafeExec(true);
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
     vm.expectRevert(ITreasuryAuthority.TreasuryAuthority_AlreadyExecuted.selector);
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 
   function test_Execute_RevertsIfExpired() external {
@@ -685,7 +702,7 @@ contract UnitTreasuryAuthorityExecuteMajority is UnitTreasuryAuthorityBase {
     uint256 _id = _ta.propose(_dest, 0, hex'', ITreasuryAuthority.Operation.CALL);
     vm.warp(block.timestamp + PROPOSAL_EXPIRY + 1);
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_ProposalExpired.selector, _id));
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 }
 
@@ -723,7 +740,7 @@ contract UnitTreasuryAuthorityExecuteQuorum is UnitTreasuryAuthorityBase {
     _ta.captainVote(_id, true);
 
     _mockSafeExec(true);
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
 
     (,,,,,,,,,,, bool _exec) = _ta.proposal(_id);
     assertTrue(_exec);
@@ -747,7 +764,7 @@ contract UnitTreasuryAuthorityExecuteQuorum is UnitTreasuryAuthorityBase {
     _ta.captainVote(_id, true);
 
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 
   function test_Execute_Fails_WhenYeasNotGreaterThanNays() external {
@@ -774,7 +791,7 @@ contract UnitTreasuryAuthorityExecuteQuorum is UnitTreasuryAuthorityBase {
     _ta.captainVote(_id, true);
 
     vm.expectRevert(abi.encodeWithSelector(ITreasuryAuthority.TreasuryAuthority_NotExecutable.selector, _id));
-    _ta.execute(_id);
+    _ta.execute(_id, hex'');
   }
 }
 

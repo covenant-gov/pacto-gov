@@ -39,6 +39,7 @@ abstract contract UnitRoleHatClonesFactoryBase is Test {
       mutinyRoleHatId: 3,
       quartermasterRoleHatId: 4,
       treasuryAuthorityRoleHatId: 5,
+      mutinyModule: address(0xBEEF),
       crewChangeDelay: CREW_CHANGE_DELAY,
       crewOffboardExpiry: PROPOSAL_EXPIRY,
       crewOffboardQuorumBps: SQUAD_QUORUM_BPS
@@ -63,6 +64,7 @@ contract UnitRoleHatClonesFactoryCreate is UnitRoleHatClonesFactoryBase {
     assertEq(_clone, _predicted);
     assertEq(Quartermaster(_clone).captainHatId(), 1);
     assertEq(Quartermaster(_clone).crewHatId(), 2);
+    assertEq(Quartermaster(_clone).mutinyModule(), address(0xBEEF));
     assertEq(Quartermaster(_clone).crewChangeDelay(), CREW_CHANGE_DELAY);
   }
 
@@ -106,5 +108,36 @@ contract UnitRoleHatClonesFactoryCreate is UnitRoleHatClonesFactoryBase {
     address _a = _factory.predictCloneAddress(address(_master), bytes32(uint256(1)));
     address _b = _factory.predictCloneAddress(address(_master), bytes32(uint256(2)));
     assertTrue(_a != _b);
+  }
+
+  function test_CreateClones_HappyPath_Batch() external {
+    address[] memory _masters = new address[](2);
+    _masters[0] = address(_master);
+    _masters[1] = address(_master);
+
+    bytes[] memory _inits = new bytes[](2);
+    _inits[0] = _defaultQmInit();
+    _inits[1] = '';
+
+    bytes32[] memory _salts = new bytes32[](2);
+    _salts[0] = keccak256('batch-0');
+    _salts[1] = keccak256('batch-1');
+
+    address[] memory _clones = _factory.createClones(_masters, _inits, _salts);
+    assertEq(_clones.length, 2);
+    assertEq(_clones[0], _factory.predictCloneAddress(address(_master), _salts[0]));
+    assertEq(_clones[1], _factory.predictCloneAddress(address(_master), _salts[1]));
+    assertEq(Quartermaster(_clones[0]).captainHatId(), 1);
+    assertEq(Quartermaster(_clones[1]).captainHatId(), 0);
+  }
+
+  function test_CreateClones_RevertsOnLengthMismatch() external {
+    address[] memory _masters = new address[](1);
+    _masters[0] = address(_master);
+    bytes[] memory _inits = new bytes[](2);
+    bytes32[] memory _salts = new bytes32[](1);
+
+    vm.expectRevert(IRoleHatClonesFactory.RoleHatClonesFactory_LengthMismatch.selector);
+    _factory.createClones(_masters, _inits, _salts);
   }
 }

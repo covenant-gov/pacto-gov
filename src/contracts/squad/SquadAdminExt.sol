@@ -6,7 +6,6 @@ import {SquadAdmin} from 'contracts/squad/SquadAdmin.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {ISquadAdmin} from 'interfaces/squad/ISquadAdmin.sol';
 import {ISquadAdminExt} from 'interfaces/squad/ISquadAdminExt.sol';
-import {IHatGated} from 'interfaces/utils/IHatGated.sol';
 
 contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
   /// @inheritdoc ISquadAdminExt
@@ -47,23 +46,17 @@ contract SquadAdminExt is SquadAdmin, ISquadAdminExt {
     owner = address(0);
   }
 
-  /// @inheritdoc IHatGated
-  function hats() public view override(IHatGated, SquadAdmin) returns (IHats _hats) {
-    _hats = _HATS;
-  }
-
   /*///////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Reverts unless `msg.sender` is the owner.
-  function _requireOwner() internal view {
-    if (msg.sender != owner) revert SquadAdminExt_NotAllowed();
-  }
-
   /// @inheritdoc SquadAdmin
   function _requireAllowed() internal view override {
-    if (owner != address(0)) _requireOwner();
-    else super._requireAllowed();
+    address _owner = owner;
+    if (_owner != address(0)) {
+      if (msg.sender != _owner) revert SquadAdminExt_NotAllowed();
+    } else {
+      super._requireAllowed();
+    }
   }
 }

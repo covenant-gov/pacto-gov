@@ -53,6 +53,7 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
       mutinyRoleHatId: _squadQuartermaster.mutinyRoleHatId(),
       quartermasterRoleHatId: _squadQuartermaster.quartermasterRoleHatId(),
       treasuryAuthorityRoleHatId: _squadQuartermaster.treasuryAuthorityRoleHatId(),
+      mutinyModule: _squadQuartermaster.mutinyModule(),
       crewChangeDelay: _squadQuartermaster.crewChangeDelay(),
       crewOffboardExpiry: _squadQuartermaster.crewOffboardExpiry(),
       crewOffboardQuorumBps: _squadQuartermaster.crewOffboardQuorumBps()
@@ -153,15 +154,15 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
   function _ensureSquadMutinyActive() internal returns (uint256 _mutinyId) {
     if (!_squadQuartermaster.mutinyActive()) {
       vm.prank(_squadCrew[0]);
-      _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain);
+      _squadMutiny.startMutinyToArbitraryEoa(_squadProposedCaptain, false);
     }
     _mutinyId = _squadMutiny.activeMutinyId();
   }
 
-  /// @dev MutinyRole-gated toggle without going through vote flow (fresh squads with no crew yet).
-  function _setMutinyActiveViaModule(MutinyModule _mutiny, Quartermaster _qm, bool _active) internal {
-    vm.prank(address(_mutiny));
-    _qm.setMutinyActive(_active);
+  /// @dev Force MutinyModule `activeMutinyId` inside packed `_gov` (slot 8) without a crew vote — for empty-roster freeze tests.
+  function _forceMutinyActiveId(MutinyModule _mutiny, uint256 _id) internal {
+    uint256 _word = _mutiny.mutinyExpiry() | (_id << 64) | (uint256(_mutiny.mutinyCount()) << 128);
+    vm.store(address(_mutiny), bytes32(uint256(8)), bytes32(_word));
   }
 
   function _isCrewWearer(uint256 _crewHatId, address _who) internal view returns (bool _wears) {
@@ -258,6 +259,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     assertEq(_squadQuartermaster.mutinyRoleHatId(), _d.mutinyRoleHatId);
     assertEq(_squadQuartermaster.quartermasterRoleHatId(), _d.quartermasterRoleHatId);
     assertEq(_squadQuartermaster.treasuryAuthorityRoleHatId(), _d.treasuryAuthorityRoleHatId);
+    assertEq(_squadQuartermaster.mutinyModule(), _d.mutinyModule);
   }
 
   function test_e2e_quartermaster_crewChangeDelay_matchesProductionDefault() public withDeployedNavePirataSquad {
@@ -479,7 +481,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
   function test_e2e_bootstrapCrew_reverts_whenMutinyActive() public {
     (Quartermaster _qm, MutinyModule _mutiny,, address _captain,,) =
       _deployFreshSquadWithoutBootstrap(_FRESH_SQUAD_SALT + 1);
-    _setMutinyActiveViaModule(_mutiny, _qm, true);
+    _forceMutinyActiveId(_mutiny, 1);
 
     address _candidate = _qmCandidate('e2eQmBootstrapMutiny');
     address[] memory _batch = new address[](1);
@@ -632,8 +634,9 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _squadQuartermaster.executeRemoveCrew(_crew);
 
     assertFalse(_isCrewWearer(_squadCrewHatId, _crew));
-    (bool _eligible,) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
-    assertFalse(_eligible);
+    (bool _eligible, bool _standing) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
+    assertTrue(_eligible);
+    assertTrue(_standing);
     assertEq(_squadQuartermaster.pendingCrewRemoveAt(_crew), 0);
   }
 
@@ -721,78 +724,63 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _squadQuartermaster.mintCrewFromMutiny(_formerCaptain);
   }
 
-  function test_e2e_crewHandoffForMutiny_succeeds_whenCalledByMutinyModule() public withDeployedNavePirataSquad {
-    address _formerCaptain = _squadCaptain;
-    address _newCaptain = _squadCrew[0];
+  function test_e2e_revokeCrewFromMutiny_succeeds_whenCalledByMutinyModule() public withDeployedNavePirataSquad {
+    address _crew = _squadCrew[0];
 
-    vm.expectEmit(true, true, false, true, address(_squadQuartermaster));
-    emit IQuartermaster.CrewHandoffForMutiny(_formerCaptain, _newCaptain);
+    vm.expectEmit(true, false, false, true, address(_squadQuartermaster));
+    emit IQuartermaster.CrewRevokedFromMutiny(_crew);
     vm.prank(address(_squadMutiny));
-    _squadQuartermaster.crewHandoffForMutiny(_formerCaptain, _newCaptain);
+    _squadQuartermaster.revokeCrewFromMutiny(_crew);
 
-    assertTrue(_isCrewWearer(_squadCrewHatId, _formerCaptain));
-    assertFalse(_isCrewWearer(_squadCrewHatId, _newCaptain));
-    (bool _eligible,) = _squadQuartermaster.getWearerStatus(_formerCaptain, _squadCrewHatId);
-    assertTrue(_eligible);
+    assertFalse(_isCrewWearer(_squadCrewHatId, _crew));
   }
 
-  function test_e2e_crewHandoffForMutiny_reverts_whenCallerDoesNotWearMutinyRoleHat()
+  function test_e2e_revokeCrewFromMutiny_reverts_whenCallerDoesNotWearMutinyRoleHat()
     public
     withDeployedNavePirataSquad
   {
-    address _stranger = _qmLabeledAddr('e2eQmHandoffNotMutiny');
+    address _stranger = _qmLabeledAddr('e2eQmRevokeNotMutiny');
 
     vm.expectRevert(
       abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadQuartermaster.mutinyRoleHatId(), _stranger)
     );
     vm.prank(_stranger);
-    _squadQuartermaster.crewHandoffForMutiny(_squadCaptain, _squadCrew[0]);
+    _squadQuartermaster.revokeCrewFromMutiny(_squadCrew[0]);
   }
 
-  function test_e2e_crewHandoffForMutiny_reverts_whenFormerCaptainIsZero() public withDeployedNavePirataSquad {
+  function test_e2e_revokeCrewFromMutiny_reverts_whenCrewIsZero() public withDeployedNavePirataSquad {
     vm.expectRevert(IQuartermaster.Quartermaster_ZeroAddress.selector);
     vm.prank(address(_squadMutiny));
-    _squadQuartermaster.crewHandoffForMutiny(address(0), _squadCrew[0]);
+    _squadQuartermaster.revokeCrewFromMutiny(address(0));
   }
 
-  function test_e2e_crewHandoffForMutiny_reverts_whenNewCaptainDoesNotWearCrewHat() public withDeployedNavePirataSquad {
-    address _notCrew = _qmLabeledAddr('e2eQmHandoffNotCrew');
+  function test_e2e_revokeCrewFromMutiny_reverts_whenTargetDoesNotWearCrewHat() public withDeployedNavePirataSquad {
+    address _notCrew = _qmLabeledAddr('e2eQmRevokeNotCrew');
 
     vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotCrew.selector, _notCrew));
     vm.prank(address(_squadMutiny));
-    _squadQuartermaster.crewHandoffForMutiny(_squadCaptain, _notCrew);
+    _squadQuartermaster.revokeCrewFromMutiny(_notCrew);
   }
 
-  function test_e2e_crewHandoffForMutiny_reverts_whenFormerCaptainAlreadyCrew() public withDeployedNavePirataSquad {
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_AlreadyCrew.selector, _squadCrew[1]));
-    vm.prank(address(_squadMutiny));
-    _squadQuartermaster.crewHandoffForMutiny(_squadCrew[1], _squadCrew[0]);
-  }
+  function test_e2e_mutinyActive_tracksMutinyModuleActiveMutinyId() public withDeployedNavePirataSquad {
+    assertEq(_squadQuartermaster.mutinyModule(), address(_squadMutiny));
+    assertFalse(_squadQuartermaster.mutinyActive());
+    assertTrue(_squadQuartermaster.isQuiet());
 
-  function test_e2e_setMutinyActive_succeeds_togglesFlagAndEmits() public withDeployedNavePirataSquad {
-    vm.expectEmit(false, false, false, true, address(_squadQuartermaster));
-    emit IQuartermaster.MutinyActiveSet(true);
-    vm.prank(address(_squadMutiny));
-    _squadQuartermaster.setMutinyActive(true);
+    uint256 _id = _ensureSquadMutinyActive();
     assertTrue(_squadQuartermaster.mutinyActive());
     assertFalse(_squadQuartermaster.isQuiet());
 
-    vm.expectEmit(false, false, false, true, address(_squadQuartermaster));
-    emit IQuartermaster.MutinyActiveSet(false);
-    vm.prank(address(_squadMutiny));
-    _squadQuartermaster.setMutinyActive(false);
+    (,,,, uint64 _snapshot,,,) = _squadMutiny.mutiny(_id);
+    uint256 _minYeas = uint256(_snapshot) / 2 + 1;
+    for (uint256 _i = 0; _i < _minYeas; _i++) {
+      vm.prank(_squadCrew[_i]);
+      _squadMutiny.castVote(_id);
+    }
+    _squadMutiny.executeMutiny(_id);
+
     assertFalse(_squadQuartermaster.mutinyActive());
     assertTrue(_squadQuartermaster.isQuiet());
-  }
-
-  function test_e2e_setMutinyActive_reverts_whenCallerDoesNotWearMutinyRoleHat() public withDeployedNavePirataSquad {
-    address _stranger = _qmLabeledAddr('e2eQmSetMutinyNotRole');
-
-    vm.expectRevert(
-      abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _squadQuartermaster.mutinyRoleHatId(), _stranger)
-    );
-    vm.prank(_stranger);
-    _squadQuartermaster.setMutinyActive(true);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -835,15 +823,15 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
                         views / eligibility / isQuiet
   //////////////////////////////////////////////////////////////*/
 
-  function test_e2e_getWearerStatus_defaultsIneligibleForNonCrew() public withDeployedNavePirataSquad {
+  function test_e2e_getWearerStatus_alwaysEligibleAndStanding() public withDeployedNavePirataSquad {
     address _stranger = _qmLabeledAddr('e2eQmEligibilityDefault');
 
     (bool _eligible, bool _standing) = _squadQuartermaster.getWearerStatus(_stranger, _squadCrewHatId);
-    assertFalse(_eligible);
+    assertTrue(_eligible);
     assertTrue(_standing);
   }
 
-  function test_e2e_getWearerStatus_reflectsCrewMintAndRemoveCycle() public withDeployedNavePirataSquad {
+  function test_e2e_getWearerStatus_remainsEligibleAfterRemove() public withDeployedNavePirataSquad {
     address _crew = _squadCrew[4];
 
     (bool _eligibleBefore,) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
@@ -853,8 +841,9 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _warpToPendingRemoveExecutable(_squadQuartermaster, _crew);
     _squadQuartermaster.executeRemoveCrew(_crew);
 
+    assertFalse(_isCrewWearer(_squadCrewHatId, _crew));
     (bool _eligibleAfter,) = _squadQuartermaster.getWearerStatus(_crew, _squadCrewHatId);
-    assertFalse(_eligibleAfter);
+    assertTrue(_eligibleAfter);
   }
 
   function test_e2e_isQuiet_falseWhenPendingAddOrRemove() public withDeployedNavePirataSquad {
@@ -913,7 +902,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _warpToPendingAddExecutable(_squadQuartermaster, _addB);
     _squadQuartermaster.executeAddCrew(_addB);
     assertEq(_squadQuartermaster.pendingAddCount(), 0);
-    assertTrue(_squadQuartermaster.crewEligible(_addB));
+    assertTrue(_isCrewWearer(_squadCrewHatId, _addB));
 
     (address[] memory _rems,) = _squadQuartermaster.pendingRemoves();
     assertEq(_rems.length, 1);
@@ -960,7 +949,6 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
     _squadQuartermaster.executeOffboard(_id);
 
     assertEq(_squadQuartermaster.activeCrewOffboardId(), 0);
-    assertFalse(_squadQuartermaster.crewEligible(_target));
     assertFalse(IHats(HATS_PROTOCOL_V1).isWearerOfHat(_target, _squadCrewHatId));
   }
 

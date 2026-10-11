@@ -39,14 +39,12 @@ interface IWarGameRegistry {
                             EVENTS
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice A war-game stack became Active for `_squadId`.
+   * @notice A war-game stack became Active for `_squadId` (full record is in storage).
    * @param _squadId Squad key.
    * @param _topHatId Tophat id of the new Active stack.
-   * @param _deployment Nested production deployment record.
+   * @param _safe Squad Safe address.
    */
-  event WarGameRegistered(
-    bytes32 indexed _squadId, uint256 indexed _topHatId, INavePirataRegistry.Deployment _deployment
-  );
+  event WarGameRegistered(bytes32 indexed _squadId, uint256 indexed _topHatId, address indexed _safe);
 
   /**
    * @notice An Active war-game stack was retired (explicit `retire` or auto-retire on the next register).
@@ -98,9 +96,10 @@ interface IWarGameRegistry {
   /**
    * @notice Record a new Active war-game. Factory-only. Auto-retires the previous Active for `_squadId`.
    * @param _squadId Non-zero squad key.
-   * @param _deployment Deployment record (must have a unique non-zero `topHatId`).
+   * @param _topHatId Unique tophat id for this stack (registry key).
+   * @param _deployment Deployment record (without `topHatId`).
    */
-  function register(bytes32 _squadId, INavePirataRegistry.Deployment calldata _deployment) external;
+  function register(bytes32 _squadId, uint256 _topHatId, INavePirataRegistry.Deployment calldata _deployment) external;
 
   /**
    * @notice Retire the Active stack for `_squadId` without deploying a replacement. Factory-only.

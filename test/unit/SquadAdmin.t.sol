@@ -251,11 +251,22 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
 
   function test_DisableExecutor_AllowsWhenRoleWasNeverEnabled() external {
     _mockCaptain(_captain, true);
-    vm.expectEmit(true, true, false, false, address(_admin));
-    emit ISquadAdminBase.ExecutorDisabled(_alice, _ROLE_APP);
+    vm.recordLogs();
     vm.prank(_captain);
     _admin.disableExecutor(_alice, _ROLE_APP);
+    assertEq(vm.getRecordedLogs().length, 0);
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_EnableExecutor_RepeatEnable_SkipsEvent() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_APP);
+    vm.recordLogs();
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_APP);
+    assertEq(vm.getRecordedLogs().length, 0);
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
   }
 
   function test_EnableThenDisable_IsolatesPerExecutorAndRole() external {
@@ -345,6 +356,54 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
     _admin.disableExecutor(_alice, _ROLE_PAUSE);
 
     assertFalse(_admin.isExecutorPaused(_alice));
+  }
+
+  function test_EnableExecutor_WithPauseRoleKey_SetsPauseFlag() external {
+    _mockCaptain(_captain, true);
+    vm.expectEmit(true, true, false, false, address(_admin));
+    emit ISquadAdminBase.ExecutorEnabled(_alice, _ROLE_PAUSE);
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_PAUSE);
+
+    assertTrue(_admin.isExecutorPaused(_alice));
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_DisableExecutor_OnFullRoleKey_ClearsFullPermission() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.enableFullPermission(_alice, true);
+    assertTrue(_admin.isExecutorFullPermission(_alice));
+
+    vm.expectEmit(true, true, false, false, address(_admin));
+    emit ISquadAdminBase.ExecutorDisabled(_alice, _ROLE_FULL);
+    vm.prank(_captain);
+    _admin.disableExecutor(_alice, _ROLE_FULL);
+
+    assertFalse(_admin.isExecutorFullPermission(_alice));
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_EnableFullPermission_Repeat_SkipsEvent() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.enableFullPermission(_alice, true);
+    vm.recordLogs();
+    vm.prank(_captain);
+    _admin.enableFullPermission(_alice, true);
+    assertEq(vm.getRecordedLogs().length, 0);
+    assertTrue(_admin.isExecutorFullPermission(_alice));
+  }
+
+  function test_PauseExecutor_RepeatPause_SkipsEvent() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.pauseExecutor(_alice, true);
+    vm.recordLogs();
+    vm.prank(_captain);
+    _admin.pauseExecutor(_alice, true);
+    assertEq(vm.getRecordedLogs().length, 0);
+    assertTrue(_admin.isExecutorPaused(_alice));
   }
 }
 
