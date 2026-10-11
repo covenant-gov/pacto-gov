@@ -9,7 +9,7 @@ import {IQuiescent} from 'interfaces/utils/IQuiescent.sol';
  * @author Pacto
  * @notice 51% of snapshot crew (yeas) to replace the captain, or `captainResign` if no open mutiny. Captain hat
  *         `IHatsEligibility` (always eligible). Each round has a deadline (`mutinyExpiry`, same bounds as TA `proposalExpiry`);
- *         permissionless `expireMutiny` clears a failed round. Drives `transferHat` and QM for crew
+ *         permissionless `expireMutiny` clears a failed round. Drives `transferHat` and QM crew revoke/mint
  */
 interface IMutinyModule is IQuiescent, IHatGated {
   /*///////////////////////////////////////////////////////////////
@@ -48,6 +48,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param snapshot Size of the crew electorate at `startedAt`.
    * @param yeas Yea vote count.
    * @param executed Whether the round has been finalized.
+   * @param seatFormerCaptain If true, execution mints a crew hat to `fromCaptain` after succession.
    */
   struct MutinyRound {
     address proposedNewCaptain;
@@ -57,6 +58,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
     uint64 snapshot;
     uint64 yeas;
     bool executed;
+    bool seatFormerCaptain;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -68,9 +70,14 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param _proposer Crew member that opened the round.
    * @param _proposedNewCaptain Successor if the mutiny passes.
    * @param _snapshot Snapshot size of eligible crew when the round opened.
+   * @param _seatFormerCaptain Whether execution should mint a crew hat to the outgoing captain.
    */
   event MutinyStarted(
-    uint256 indexed _mutinyId, address indexed _proposer, address indexed _proposedNewCaptain, uint256 _snapshot
+    uint256 indexed _mutinyId,
+    address indexed _proposer,
+    address indexed _proposedNewCaptain,
+    uint256 _snapshot,
+    bool _seatFormerCaptain
   );
 
   /**
@@ -92,8 +99,9 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @notice The captain voluntarily handed the captain hat to a new wearer.
    * @param _formerCaptain Address that held the captain hat.
    * @param _newCaptain Address that received the captain hat.
+   * @param _seatFormerCaptain Whether a crew hat was minted to the outgoing captain.
    */
-  event CaptainResigned(address indexed _formerCaptain, address indexed _newCaptain);
+  event CaptainResigned(address indexed _formerCaptain, address indexed _newCaptain, bool _seatFormerCaptain);
 
   /**
    * @notice The active mutiny round expired without execution; QM mutiny mode was cleared.
@@ -201,33 +209,38 @@ interface IMutinyModule is IQuiescent, IHatGated {
   /**
    * @notice Open a mutiny to a crew-hat successor. Crew-hat-gated; `_proposedCrewMember` must wear `crewHatId`.
    * @param _proposedCrewMember Address that wears `crewHatId`.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function startMutinyToCrewMember(address _proposedCrewMember) external;
+  function startMutinyToCrewMember(address _proposedCrewMember, bool _seatFormerCaptain) external;
 
   /**
    * @notice Open a mutiny to a Safe-style multisig (`getThreshold()` returns one word). Crew-hat-gated.
    * @param _proposedMultisigCommittee Address that is a Safe-style multisig.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function startMutinyToCommittee(address _proposedMultisigCommittee) external;
+  function startMutinyToCommittee(address _proposedMultisigCommittee, bool _seatFormerCaptain) external;
 
   /**
    * @notice Open a mutiny to an EOA successor (no contract code). Crew-hat-gated.
    * @param _proposedArbitraryEoa Address that is an EOA.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa) external;
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa, bool _seatFormerCaptain) external;
 
   /**
    * @notice Open a mutiny to a contract successor (non-zero code length). Crew-hat-gated.
    * @param _proposedArbitraryContract Address that is a contract.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function startMutinyToArbitraryContract(address _proposedArbitraryContract) external;
+  function startMutinyToArbitraryContract(address _proposedArbitraryContract, bool _seatFormerCaptain) external;
 
   /**
    * @notice Open a mutiny that on success transfers the captain hat to the squad Safe (`safe`).
    * @dev While the Safe wears the captain hat, `TreasuryAuthority` treats crew-passed proposals as executable without a
    *         separate `captainVote(true)`. A later mutiny can move the hat to a new captain as usual.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function startMutinyToPauseCaptain() external;
+  function startMutinyToPauseCaptain(bool _seatFormerCaptain) external;
 
   /**
    * @notice Cast a yea vote in the active mutiny. Crew-hat-gated and snapshot-constrained.
@@ -252,8 +265,9 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @notice Captain's voluntary succession — transfers the captain hat to `_newCaptain`. Captain-hat-gated.
    * @dev Reverts if a mutiny is active; `_newCaptain` must be non-zero.
    * @param _newCaptain Address that receives the captain hat.
+   * @param _seatFormerCaptain If true, mints a crew hat to the outgoing captain after succession.
    */
-  function captainResign(address _newCaptain) external;
+  function captainResign(address _newCaptain, bool _seatFormerCaptain) external;
 
   /**
    * @notice Update the mutiny round lifetime. TreasuryAuthorityRole-gated.
@@ -287,6 +301,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @return _snapshot Snapshot size of eligible crew.
    * @return _yeas Yea vote count.
    * @return _executed Whether the round has already been executed.
+   * @return _seatFormerCaptain Whether execution mints a crew hat to the outgoing captain.
    */
   function mutiny(uint256 _id)
     external
@@ -298,7 +313,8 @@ interface IMutinyModule is IQuiescent, IHatGated {
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
-      bool _executed
+      bool _executed,
+      bool _seatFormerCaptain
     );
 
   /**
@@ -358,7 +374,7 @@ interface IMutinyModule is IQuiescent, IHatGated {
   function captain() external view returns (address _captain);
 
   /**
-   * @notice Quartermaster clone address used for mutiny-driven crew mint / hand-off calls.
+   * @notice Quartermaster clone address used for mutiny-driven crew revoke / mint calls.
    * @dev Captured at `initialize`; verified to still wear `quartermasterRoleHatId` at every
    *      outbound peer call so a stale pointer (e.g. after a QuartermasterRole upgrade ceremony)
    *      reverts rather than silently calls the wrong contract. Re-deploying MutinyModule

@@ -575,46 +575,41 @@ contract UnitQuartermasterMutinyHooks is UnitQuartermasterBase {
     _qm.mintCrewFromMutiny(_alice);
   }
 
-  function test_CrewHandoffForMutiny_HappyPath() external {
+  function test_RevokeCrewFromMutiny_HappyPath() external {
     _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
     _mockWearer(_bob, _CREW_HAT, true);
-    _mockWearer(_alice, _CREW_HAT, false);
-    _mockTransferHat(_CREW_HAT, _bob, _alice);
+    _mockSetHatWearerStatus(_CREW_HAT, _bob, true);
 
-    vm.expectCall(_HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _CREW_HAT, _bob, _alice));
-    vm.expectEmit(true, true, false, true, address(_qm));
-    emit IQuartermaster.CrewHandoffForMutiny(_alice, _bob);
+    vm.expectCall(
+      _HATS_ADDRESS, abi.encodeWithSelector(IHats.setHatWearerStatus.selector, _CREW_HAT, _bob, false, false)
+    );
+    vm.expectEmit(true, false, false, true, address(_qm));
+    emit IQuartermaster.CrewRevokedFromMutiny(_bob);
 
     vm.prank(_mutinyClone);
-    _qm.crewHandoffForMutiny(_alice, _bob);
-
-    (bool _eligible,) = _qm.getWearerStatus(_alice, _CREW_HAT);
-    assertTrue(_eligible);
-    assertEq(_qm.pendingAddCount(), 0);
+    _qm.revokeCrewFromMutiny(_bob);
   }
 
-  function test_CrewHandoffForMutiny_RevertsOnZero() external {
+  function test_RevokeCrewFromMutiny_RevertsOnZero() external {
     _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
     vm.prank(_mutinyClone);
     vm.expectRevert(IQuartermaster.Quartermaster_ZeroAddress.selector);
-    _qm.crewHandoffForMutiny(address(0), _bob);
+    _qm.revokeCrewFromMutiny(address(0));
   }
 
-  function test_CrewHandoffForMutiny_RevertsIfNewCaptainNotCrew() external {
+  function test_RevokeCrewFromMutiny_RevertsIfNotCrew() external {
     _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
     _mockWearer(_bob, _CREW_HAT, false);
     vm.prank(_mutinyClone);
     vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotCrew.selector, _bob));
-    _qm.crewHandoffForMutiny(_alice, _bob);
+    _qm.revokeCrewFromMutiny(_bob);
   }
 
-  function test_CrewHandoffForMutiny_RevertsIfFormerAlreadyCrew() external {
-    _mockWearer(_mutinyClone, _MUTINY_ROLE_HAT, true);
-    _mockWearer(_bob, _CREW_HAT, true);
-    _mockWearer(_alice, _CREW_HAT, true);
-    vm.prank(_mutinyClone);
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_AlreadyCrew.selector, _alice));
-    _qm.crewHandoffForMutiny(_alice, _bob);
+  function test_RevokeCrewFromMutiny_RevertsIfNotMutinyRole() external {
+    _mockWearer(_stranger, _MUTINY_ROLE_HAT, false);
+    vm.prank(_stranger);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _MUTINY_ROLE_HAT, _stranger));
+    _qm.revokeCrewFromMutiny(_bob);
   }
 
   function test_MutinyActive_ReadsPeerActiveMutinyId() external {

@@ -287,15 +287,12 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   }
 
   /// @inheritdoc IQuartermaster
-  function crewHandoffForMutiny(address _formerCaptain, address _newCaptain) external onlyHatWearer(mutinyRoleHatId) {
-    if (_formerCaptain == address(0) || _newCaptain == address(0)) {
-      revert Quartermaster_ZeroAddress();
-    }
-    if (!_HATS.isWearerOfHat(_newCaptain, crewHatId)) revert Quartermaster_NotCrew(_newCaptain);
-    if (_HATS.isWearerOfHat(_formerCaptain, crewHatId)) revert Quartermaster_AlreadyCrew(_formerCaptain);
+  function revokeCrewFromMutiny(address _crew) external onlyHatWearer(mutinyRoleHatId) {
+    if (_crew == address(0)) revert Quartermaster_ZeroAddress();
+    if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
-    _HATS.transferHat(crewHatId, _newCaptain, _formerCaptain);
-    emit CrewHandoffForMutiny(_formerCaptain, _newCaptain);
+    _HATS.setHatWearerStatus(crewHatId, _crew, false, false);
+    emit CrewRevokedFromMutiny(_crew);
   }
 
   /*///////////////////////////////////////////////////////////////

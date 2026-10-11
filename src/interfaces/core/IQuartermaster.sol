@@ -106,11 +106,10 @@ interface IQuartermaster is IQuiescent, IHatGated {
   event CrewMintedFromMutiny(address indexed _formerCaptain);
 
   /**
-   * @notice The MutinyModule handed the new captain's existing crew hat to the former captain.
-   * @param _formerCaptain Address that received the crew hat.
-   * @param _newCaptain Address whose crew hat was transferred.
+   * @notice The MutinyModule revoked the crew hat from a successor who cannot wear crew and captain together.
+   * @param _crew Address whose crew hat was revoked.
    */
-  event CrewHandoffForMutiny(address indexed _formerCaptain, address indexed _newCaptain);
+  event CrewRevokedFromMutiny(address indexed _crew);
 
   /**
    * @notice The crew change delay parameter was updated via a Treasury Authority proposal.
@@ -348,18 +347,17 @@ interface IQuartermaster is IQuiescent, IHatGated {
 
   /**
    * @notice Mint one crew hat to `_formerCaptain` with no delay (mutiny / succession path).
-   * @dev Only callable by the MutinyRole hat wearer; used to seat a deposed human captain as crew.
+   * @dev Only callable by the MutinyRole hat wearer; used when a round opts in to seat the former captain as crew.
    * @param _formerCaptain Recipient of the crew hat.
    */
   function mintCrewFromMutiny(address _formerCaptain) external;
 
   /**
-   * @notice Hand the existing crew hat from the elected successor to the former captain in one step.
-   * @dev Only callable by the MutinyRole hat wearer. Used when the new captain was already crew.
-   * @param _formerCaptain Previous captain (receives crew).
-   * @param _newCaptain New captain (must not retain the crew hat after execution).
+   * @notice Revoke the crew hat from `_crew` with no delay (mutiny / succession path).
+   * @dev Only callable by the MutinyRole hat wearer. Used when the captain successor still wears crew.
+   * @param _crew Address that must lose the crew hat.
    */
-  function crewHandoffForMutiny(address _formerCaptain, address _newCaptain) external;
+  function revokeCrewFromMutiny(address _crew) external;
 
   /**
    * @notice Update the crew change delay. TreasuryAuthorityRole-gated.

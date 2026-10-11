@@ -108,35 +108,35 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToCrewMember(address _proposedCrewMember) external {
+  function startMutinyToCrewMember(address _proposedCrewMember, bool _seatFormerCaptain) external {
     _requireHatWearer(_proposedCrewMember, crewHatId);
-    _startMutiny(_proposedCrewMember);
+    _startMutiny(_proposedCrewMember, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToCommittee(address _proposedMultisigCommittee) external {
+  function startMutinyToCommittee(address _proposedMultisigCommittee, bool _seatFormerCaptain) external {
     (bool ok, bytes memory data) = _proposedMultisigCommittee.staticcall(abi.encodeWithSignature('getThreshold()'));
     if (!ok || data.length != 32) revert MutinyModule_NotContract(_proposedMultisigCommittee);
-    _startMutiny(_proposedMultisigCommittee);
+    _startMutiny(_proposedMultisigCommittee, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa) external {
+  function startMutinyToArbitraryEoa(address _proposedArbitraryEoa, bool _seatFormerCaptain) external {
     if (_isContract(_proposedArbitraryEoa)) revert MutinyModule_NotEOA(_proposedArbitraryEoa);
-    _startMutiny(_proposedArbitraryEoa);
+    _startMutiny(_proposedArbitraryEoa, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToArbitraryContract(address _proposedArbitraryContract) external {
+  function startMutinyToArbitraryContract(address _proposedArbitraryContract, bool _seatFormerCaptain) external {
     if (!_isContract(_proposedArbitraryContract)) {
       revert MutinyModule_NotContract(_proposedArbitraryContract);
     }
-    _startMutiny(_proposedArbitraryContract);
+    _startMutiny(_proposedArbitraryContract, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
-  function startMutinyToPauseCaptain() external {
-    _startMutiny(safe);
+  function startMutinyToPauseCaptain(bool _seatFormerCaptain) external {
+    _startMutiny(safe, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
@@ -165,7 +165,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     _r.executed = true;
     activeMutinyId = 0;
 
-    _succeedCaptain(_from, _to);
+    _succeedCaptain(_from, _to, _r.seatFormerCaptain);
 
     emit MutinyExecuted(_mutinyId, _from, _to);
   }
@@ -181,14 +181,14 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   }
 
   /// @inheritdoc IMutinyModule
-  function captainResign(address _newCaptain) external onlyHatWearer(captainHatId) {
+  function captainResign(address _newCaptain, bool _seatFormerCaptain) external onlyHatWearer(captainHatId) {
     if (_newCaptain == address(0)) revert MutinyModule_ZeroAddress();
     if (_newCaptain == msg.sender) revert MutinyModule_SameCaptain(_newCaptain);
     if (activeMutinyId != 0) revert MutinyModule_AlreadyActive();
     if (msg.sender != captain) revert MutinyModule_StaleCaptain(captain);
 
-    _succeedCaptain(msg.sender, _newCaptain);
-    emit CaptainResigned(msg.sender, _newCaptain);
+    _succeedCaptain(msg.sender, _newCaptain, _seatFormerCaptain);
+    emit CaptainResigned(msg.sender, _newCaptain, _seatFormerCaptain);
   }
 
   /// @inheritdoc IMutinyModule
@@ -214,7 +214,8 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
       uint64 _deadline,
       uint64 _snapshot,
       uint64 _yeas,
-      bool _executed
+      bool _executed,
+      bool _seatFormerCaptain
     )
   {
     MutinyRound storage _r = _rounds[_id];
@@ -225,6 +226,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     _snapshot = _r.snapshot;
     _yeas = _r.yeas;
     _executed = _r.executed;
+    _seatFormerCaptain = _r.seatFormerCaptain;
   }
 
   /// @inheritdoc IMutinyModule
@@ -268,12 +270,12 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   /**
    * @notice Starts a mutiny round.
    * @param _proposedNewCaptain The address of the proposed new captain.
+   * @param _seatFormerCaptain If true, execution mints a crew hat to the outgoing captain.
    */
-  function _startMutiny(address _proposedNewCaptain)
-    internal
-    onlyHatWearer(crewHatId)
-    mutinyCheck(_proposedNewCaptain)
-  {
+  function _startMutiny(
+    address _proposedNewCaptain,
+    bool _seatFormerCaptain
+  ) internal onlyHatWearer(crewHatId) mutinyCheck(_proposedNewCaptain) {
     address _qm = _liveQuartermaster();
     if (IQuartermaster(_qm).activeCrewOffboardId() != 0) revert MutinyModule_CrewOffboardActive();
 
@@ -292,31 +294,31 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
       deadline: uint64(_deadline256),
       snapshot: _snapshot,
       yeas: 0,
-      executed: false
+      executed: false,
+      seatFormerCaptain: _seatFormerCaptain
     });
     activeMutinyId = _id;
 
-    emit MutinyStarted(_id, msg.sender, _proposedNewCaptain, _snapshot);
+    emit MutinyStarted(_id, msg.sender, _proposedNewCaptain, _snapshot, _seatFormerCaptain);
   }
 
   /**
-   * @notice Transfers captain hat and updates the `captain` identity cache. EOA ex-captain: QM mint or crew handoff
-   * @dev Contract ex-captains do not receive a crew seat; EOA ex-captains do via `mintCrewFromMutiny` or `crewHandoffForMutiny`
+   * @notice Transfers captain hat and updates the `captain` identity cache
+   * @dev Always revokes crew from `_to` if worn. Mints crew to `_from` only when `_seatFormerCaptain`
    * @param _from Outgoing captain
    * @param _to Incoming captain
+   * @param _seatFormerCaptain If true, mint a crew hat to `_from` after succession
    */
-  function _succeedCaptain(address _from, address _to) internal {
-    address _qm = _liveQuartermaster();
+  function _succeedCaptain(address _from, address _to, bool _seatFormerCaptain) internal {
     captain = _to;
     _HATS.transferHat(captainHatId, _from, _to);
 
-    // is ex-captain an EOA? if so, mint or handoff crew hat
-    if (_from.code.length == 0) {
-      if (_HATS.isWearerOfHat(_to, crewHatId)) {
-        IQuartermaster(_qm).crewHandoffForMutiny(_from, _to);
-      } else {
-        IQuartermaster(_qm).mintCrewFromMutiny(_from);
-      }
+    address _qm = _liveQuartermaster();
+    if (_HATS.isWearerOfHat(_to, crewHatId)) {
+      IQuartermaster(_qm).revokeCrewFromMutiny(_to);
+    }
+    if (_seatFormerCaptain) {
+      IQuartermaster(_qm).mintCrewFromMutiny(_from);
     }
   }
 
