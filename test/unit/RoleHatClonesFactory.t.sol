@@ -64,6 +64,7 @@ contract UnitRoleHatClonesFactoryCreate is UnitRoleHatClonesFactoryBase {
     assertEq(_clone, _predicted);
     assertEq(Quartermaster(_clone).captainHatId(), 1);
     assertEq(Quartermaster(_clone).crewHatId(), 2);
+    assertEq(Quartermaster(_clone).mutinyModule(), address(0xBEEF));
     assertEq(Quartermaster(_clone).crewChangeDelay(), CREW_CHANGE_DELAY);
   }
 
