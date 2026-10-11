@@ -54,14 +54,9 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   /// @inheritdoc IQuartermaster
   mapping(address _crew => uint256 _executableAt) public pendingCrewRemoveAt;
 
-  /// @inheritdoc IQuartermaster
-  uint256 public pendingAddCount;
-  /// @inheritdoc IQuartermaster
-  uint256 public pendingRemoveCount;
-
-  /// @notice Enumerable keys for `pendingCrewAddAt`. Updated in lockstep with `pendingAddCount`.
+  /// @notice Enumerable keys for `pendingCrewAddAt` (`pendingAddCount` = `length()`).
   EnumerableSet.AddressSet internal _pendingAdds;
-  /// @notice Enumerable keys for `pendingCrewRemoveAt`. Updated in lockstep with `pendingRemoveCount`.
+  /// @notice Enumerable keys for `pendingCrewRemoveAt` (`pendingRemoveCount` = `length()`).
   EnumerableSet.AddressSet internal _pendingRemoves;
   /// @notice Crew-led offboard votes indexed by id.
   mapping(uint256 _offboardId => CrewOffboard _vote) internal _offboards;
@@ -111,7 +106,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (pendingCrewAddAt[_candidate] != 0) revert Quartermaster_DuplicateCrewAdd(_candidate);
     if (_HATS.hatSupply(crewHatId) >= _HATS.getHatMaxSupply(crewHatId)) revert Quartermaster_CrewFull();
 
-    pendingAddCount++;
     _pendingAdds.add(_candidate);
     uint256 _eta = block.timestamp + _crewAddDelay();
     pendingCrewAddAt[_candidate] = _eta;
@@ -141,7 +135,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function cancelAddCrew(address _candidate) external onlyHatWearer(captainHatId) {
     if (pendingCrewAddAt[_candidate] == 0) revert Quartermaster_NotPending(_candidate);
     delete pendingCrewAddAt[_candidate];
-    pendingAddCount--;
     _pendingAdds.remove(_candidate);
     emit CrewAddCancelled(_candidate);
   }
@@ -155,7 +148,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (_HATS.isWearerOfHat(_candidate, crewHatId)) revert Quartermaster_AlreadyCrew(_candidate);
 
     delete pendingCrewAddAt[_candidate];
-    pendingAddCount--;
     _pendingAdds.remove(_candidate);
     _HATS.mintHat(crewHatId, _candidate);
     emit CrewAddExecuted(_candidate);
@@ -172,7 +164,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
     if (pendingCrewRemoveAt[_crew] == 0) {
-      pendingRemoveCount++;
       _pendingRemoves.add(_crew);
     }
     uint256 _eta = block.timestamp + crewChangeDelay;
@@ -184,7 +175,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
   function cancelRemoveCrew(address _crew) external onlyHatWearer(captainHatId) {
     if (pendingCrewRemoveAt[_crew] == 0) revert Quartermaster_NotPending(_crew);
     delete pendingCrewRemoveAt[_crew];
-    pendingRemoveCount--;
     _pendingRemoves.remove(_crew);
     emit CrewRemoveCancelled(_crew);
   }
@@ -198,7 +188,6 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     if (!_HATS.isWearerOfHat(_crew, crewHatId)) revert Quartermaster_NotCrew(_crew);
 
     delete pendingCrewRemoveAt[_crew];
-    pendingRemoveCount--;
     _pendingRemoves.remove(_crew);
     _HATS.setHatWearerStatus(crewHatId, _crew, false, false);
     emit CrewRemoveExecuted(_crew);
@@ -384,9 +373,19 @@ contract Quartermaster is IQuartermaster, IHatsEligibility, HatGated, RangeValid
     }
   }
 
+  /// @inheritdoc IQuartermaster
+  function pendingAddCount() external view returns (uint256 _count) {
+    _count = _pendingAdds.length();
+  }
+
+  /// @inheritdoc IQuartermaster
+  function pendingRemoveCount() external view returns (uint256 _count) {
+    _count = _pendingRemoves.length();
+  }
+
   /// @inheritdoc IQuiescent
   function isQuiet() external view returns (bool _quiet) {
-    _quiet = pendingAddCount == 0 && pendingRemoveCount == 0 && !mutinyActive() && activeCrewOffboardId == 0;
+    _quiet = _pendingAdds.length() == 0 && _pendingRemoves.length() == 0 && !mutinyActive() && activeCrewOffboardId == 0;
   }
 
   /// @inheritdoc IHatGated
