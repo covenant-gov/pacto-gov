@@ -41,12 +41,10 @@ contract WarGameRegistry is IWarGameRegistry {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IWarGameRegistry
-  function register(bytes32 _squadId, INavePirataRegistry.Deployment calldata _deployment) external {
+  function register(bytes32 _squadId, uint256 _topHatId, INavePirataRegistry.Deployment calldata _deployment) external {
     if (msg.sender != factory) revert WarGameRegistry_NotFactory(msg.sender);
     if (_squadId == bytes32(0)) revert WarGameRegistry_ZeroSquadId();
-
-    uint256 _topHatId = _deployment.topHatId;
-    if (_records[_topHatId].deployment.topHatId != 0) revert WarGameRegistry_AlreadyRegistered(_topHatId);
+    if (_records[_topHatId].deployment.safe != address(0)) revert WarGameRegistry_AlreadyRegistered(_topHatId);
 
     uint256 _prev = _activeTopHatIds[_squadId];
     if (_prev != 0) {
@@ -57,7 +55,7 @@ contract WarGameRegistry is IWarGameRegistry {
     _records[_topHatId] = Record({deployment: _deployment, squadId: _squadId, status: Status.Active});
     _history[_squadId].push(_topHatId);
     _activeTopHatIds[_squadId] = _topHatId;
-    emit WarGameRegistered(_squadId, _topHatId, _deployment);
+    emit WarGameRegistered(_squadId, _topHatId, _deployment.safe);
   }
 
   /// @inheritdoc IWarGameRegistry

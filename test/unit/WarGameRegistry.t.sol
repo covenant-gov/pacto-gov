@@ -26,22 +26,21 @@ abstract contract UnitWarGameRegistryBase is Test {
     _registry.initialize(_factory);
   }
 
-  function _sampleDeployment(uint256 _topHatId) internal returns (INavePirataRegistry.Deployment memory _d) {
+  function _sampleDeployment(uint256 _seed) internal returns (INavePirataRegistry.Deployment memory _d) {
     _d = INavePirataRegistry.Deployment({
-      safe: makeAddr(string.concat('safe-', vm.toString(_topHatId))),
-      quartermaster: makeAddr(string.concat('qm-', vm.toString(_topHatId))),
-      mutinyModule: makeAddr(string.concat('mm-', vm.toString(_topHatId))),
-      treasuryAuthority: makeAddr(string.concat('ta-', vm.toString(_topHatId))),
-      squadAdminProxy: makeAddr(string.concat('sa-', vm.toString(_topHatId))),
-      topHatId: _topHatId,
-      captainHatId: _topHatId + 10,
-      crewHatId: _topHatId + 11,
-      squadAdminHatId: _topHatId + 12,
-      mutinyRoleHatId: _topHatId + 13,
-      quartermasterRoleHatId: _topHatId + 14,
-      treasuryAuthorityRoleHatId: _topHatId + 15,
+      safe: makeAddr(string.concat('safe-', vm.toString(_seed))),
+      quartermaster: makeAddr(string.concat('qm-', vm.toString(_seed))),
+      mutinyModule: makeAddr(string.concat('mm-', vm.toString(_seed))),
+      treasuryAuthority: makeAddr(string.concat('ta-', vm.toString(_seed))),
+      squadAdminProxy: makeAddr(string.concat('sa-', vm.toString(_seed))),
+      captainHatId: _seed + 10,
+      crewHatId: _seed + 11,
+      squadAdminHatId: _seed + 12,
+      mutinyRoleHatId: _seed + 13,
+      quartermasterRoleHatId: _seed + 14,
+      treasuryAuthorityRoleHatId: _seed + 15,
       deployedAt: uint64(block.timestamp),
-      deployer: makeAddr(string.concat('deployer-', vm.toString(_topHatId)))
+      deployer: makeAddr(string.concat('deployer-', vm.toString(_seed)))
     });
   }
 }
@@ -79,16 +78,16 @@ contract UnitWarGameRegistryRegister is UnitWarGameRegistryBase {
   function test_Register_HappyPath() external {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
 
-    vm.expectEmit(true, true, false, true, address(_registry));
-    emit IWarGameRegistry.WarGameRegistered(_SQUAD_ID, 1, _d);
+    vm.expectEmit(true, true, true, false, address(_registry));
+    emit IWarGameRegistry.WarGameRegistered(_SQUAD_ID, 1, _d.safe);
 
     vm.prank(_factory);
-    _registry.register(_SQUAD_ID, _d);
+    _registry.register(_SQUAD_ID, 1, _d);
 
     assertEq(_registry.activeTopHatId(_SQUAD_ID), 1);
     INavePirataRegistry.Deployment memory _active = _registry.active(_SQUAD_ID);
     assertEq(_active.safe, _d.safe);
-    assertEq(_active.topHatId, 1);
+    assertEq(_active.captainHatId, _d.captainHatId);
 
     IWarGameRegistry.Record memory _record = _registry.record(1);
     assertEq(_record.squadId, _SQUAD_ID);
@@ -104,24 +103,24 @@ contract UnitWarGameRegistryRegister is UnitWarGameRegistryBase {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
     vm.prank(_stranger);
     vm.expectRevert(abi.encodeWithSelector(IWarGameRegistry.WarGameRegistry_NotFactory.selector, _stranger));
-    _registry.register(_SQUAD_ID, _d);
+    _registry.register(_SQUAD_ID, 1, _d);
   }
 
   function test_Register_RevertsOnZeroSquadId() external {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
     vm.prank(_factory);
     vm.expectRevert(IWarGameRegistry.WarGameRegistry_ZeroSquadId.selector);
-    _registry.register(bytes32(0), _d);
+    _registry.register(bytes32(0), 1, _d);
   }
 
   function test_Register_RevertsOnDuplicateTopHat() external {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(7);
     vm.prank(_factory);
-    _registry.register(_SQUAD_ID, _d);
+    _registry.register(_SQUAD_ID, 7, _d);
 
     vm.prank(_factory);
     vm.expectRevert(abi.encodeWithSelector(IWarGameRegistry.WarGameRegistry_AlreadyRegistered.selector, uint256(7)));
-    _registry.register(keccak256('other-squad'), _d);
+    _registry.register(keccak256('other-squad'), 7, _d);
   }
 
   function test_Register_AutoRetiresPreviousActive() external {
@@ -129,20 +128,20 @@ contract UnitWarGameRegistryRegister is UnitWarGameRegistryBase {
     INavePirataRegistry.Deployment memory _second = _sampleDeployment(2);
 
     vm.prank(_factory);
-    _registry.register(_SQUAD_ID, _first);
+    _registry.register(_SQUAD_ID, 1, _first);
 
     vm.expectEmit(true, true, false, true, address(_registry));
     emit IWarGameRegistry.WarGameRetired(_SQUAD_ID, 1);
-    vm.expectEmit(true, true, false, true, address(_registry));
-    emit IWarGameRegistry.WarGameRegistered(_SQUAD_ID, 2, _second);
+    vm.expectEmit(true, true, true, false, address(_registry));
+    emit IWarGameRegistry.WarGameRegistered(_SQUAD_ID, 2, _second.safe);
 
     vm.prank(_factory);
-    _registry.register(_SQUAD_ID, _second);
+    _registry.register(_SQUAD_ID, 2, _second);
 
     assertEq(_registry.activeTopHatId(_SQUAD_ID), 2);
     assertEq(uint8(_registry.record(1).status), uint8(IWarGameRegistry.Status.Retired));
     assertEq(uint8(_registry.record(2).status), uint8(IWarGameRegistry.Status.Active));
-    assertEq(_registry.active(_SQUAD_ID).topHatId, 2);
+    assertEq(_registry.active(_SQUAD_ID).safe, _second.safe);
 
     uint256[] memory _history = _registry.history(_SQUAD_ID);
     assertEq(_history.length, 2);
@@ -156,7 +155,7 @@ contract UnitWarGameRegistryRetire is UnitWarGameRegistryBase {
     super.setUp();
     _wire();
     vm.prank(_factory);
-    _registry.register(_SQUAD_ID, _sampleDeployment(1));
+    _registry.register(_SQUAD_ID, 1, _sampleDeployment(1));
   }
 
   function test_Retire_HappyPath() external {
@@ -167,7 +166,7 @@ contract UnitWarGameRegistryRetire is UnitWarGameRegistryBase {
     _registry.retire(_SQUAD_ID);
 
     assertEq(_registry.activeTopHatId(_SQUAD_ID), 0);
-    assertEq(_registry.active(_SQUAD_ID).topHatId, 0);
+    assertEq(_registry.active(_SQUAD_ID).safe, address(0));
     assertEq(uint8(_registry.record(1).status), uint8(IWarGameRegistry.Status.Retired));
 
     uint256[] memory _history = _registry.history(_SQUAD_ID);
@@ -208,15 +207,15 @@ contract UnitWarGameRegistryDeployment is UnitWarGameRegistryBase {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
 
     vm.prank(_factory);
-    _registry.register(_SQUAD_ID, _d);
+    _registry.register(_SQUAD_ID, 1, _d);
 
     INavePirataRegistry.Deployment memory _stored = _registry.deployment(1);
-    assertEq(_stored.topHatId, 1);
+    assertEq(_stored.safe, _d.safe);
     assertEq(_stored.captainHatId, _d.captainHatId);
     assertEq(_stored.crewHatId, _d.crewHatId);
   }
 
-  function test_Deployment_UnknownIdReturnsZeroTopHatId() external view {
-    assertEq(_registry.deployment(99).topHatId, 0);
+  function test_Deployment_UnknownIdReturnsZeroSafe() external view {
+    assertEq(_registry.deployment(99).safe, address(0));
   }
 }

@@ -25,22 +25,21 @@ abstract contract UnitNavePirataRegistryBase is Test {
     _registry.initialize(_factory, _upgrader);
   }
 
-  function _sampleDeployment(uint256 _topHatId) internal returns (INavePirataRegistry.Deployment memory _d) {
+  function _sampleDeployment(uint256 _seed) internal returns (INavePirataRegistry.Deployment memory _d) {
     _d = INavePirataRegistry.Deployment({
-      safe: makeAddr(string.concat('safe-', vm.toString(_topHatId))),
-      quartermaster: makeAddr(string.concat('qm-', vm.toString(_topHatId))),
-      mutinyModule: makeAddr(string.concat('mm-', vm.toString(_topHatId))),
-      treasuryAuthority: makeAddr(string.concat('ta-', vm.toString(_topHatId))),
-      squadAdminProxy: makeAddr(string.concat('sa-', vm.toString(_topHatId))),
-      topHatId: _topHatId,
-      captainHatId: _topHatId + 10,
-      crewHatId: _topHatId + 11,
-      squadAdminHatId: _topHatId + 12,
-      mutinyRoleHatId: _topHatId + 13,
-      quartermasterRoleHatId: _topHatId + 14,
-      treasuryAuthorityRoleHatId: _topHatId + 15,
+      safe: makeAddr(string.concat('safe-', vm.toString(_seed))),
+      quartermaster: makeAddr(string.concat('qm-', vm.toString(_seed))),
+      mutinyModule: makeAddr(string.concat('mm-', vm.toString(_seed))),
+      treasuryAuthority: makeAddr(string.concat('ta-', vm.toString(_seed))),
+      squadAdminProxy: makeAddr(string.concat('sa-', vm.toString(_seed))),
+      captainHatId: _seed + 10,
+      crewHatId: _seed + 11,
+      squadAdminHatId: _seed + 12,
+      mutinyRoleHatId: _seed + 13,
+      quartermasterRoleHatId: _seed + 14,
+      treasuryAuthorityRoleHatId: _seed + 15,
       deployedAt: uint64(block.timestamp),
-      deployer: makeAddr(string.concat('deployer-', vm.toString(_topHatId)))
+      deployer: makeAddr(string.concat('deployer-', vm.toString(_seed)))
     });
   }
 
@@ -95,18 +94,18 @@ contract UnitNavePirataRegistryRegisterDeployment is UnitNavePirataRegistryBase 
   function test_RegisterDeployment_HappyPath() external {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
 
-    vm.expectEmit(true, false, false, true, address(_registry));
-    emit INavePirataRegistry.NavePirataRegistered(1, _d);
+    vm.expectEmit(true, true, true, false, address(_registry));
+    emit INavePirataRegistry.NavePirataRegistered(1, _d.safe, _d.deployer);
 
     vm.prank(_factory);
-    _registry.registerDeployment(_d);
+    _registry.registerDeployment(1, _d);
 
     assertEq(_registry.deploymentCount(), 1);
     assertEq(_registry.deploymentAt(0), 1);
 
     INavePirataRegistry.Deployment memory _stored = _registry.deployment(1);
     assertEq(_stored.safe, _d.safe);
-    assertEq(_stored.topHatId, _d.topHatId);
+    assertEq(_stored.captainHatId, _d.captainHatId);
     assertEq(_stored.deployer, _d.deployer);
   }
 
@@ -114,25 +113,25 @@ contract UnitNavePirataRegistryRegisterDeployment is UnitNavePirataRegistryBase 
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
     vm.prank(_stranger);
     vm.expectRevert(abi.encodeWithSelector(INavePirataRegistry.NavePirataRegistry_NotFactory.selector, _stranger));
-    _registry.registerDeployment(_d);
+    _registry.registerDeployment(1, _d);
   }
 
   function test_RegisterDeployment_RevertsOnDuplicateTopHat() external {
     INavePirataRegistry.Deployment memory _d = _sampleDeployment(7);
     vm.prank(_factory);
-    _registry.registerDeployment(_d);
+    _registry.registerDeployment(7, _d);
 
     vm.prank(_factory);
     vm.expectRevert(
       abi.encodeWithSelector(INavePirataRegistry.NavePirataRegistry_AlreadyRegistered.selector, uint256(7))
     );
-    _registry.registerDeployment(_d);
+    _registry.registerDeployment(7, _d);
   }
 
   function test_RegisterDeployment_Enumerates() external {
     for (uint256 _i = 1; _i <= 3; _i++) {
       vm.prank(_factory);
-      _registry.registerDeployment(_sampleDeployment(_i));
+      _registry.registerDeployment(_i, _sampleDeployment(_i));
     }
 
     assertEq(_registry.deploymentCount(), 3);
@@ -155,17 +154,16 @@ contract UnitNavePirataRegistryRecordUpgrade is UnitNavePirataRegistryBase {
     super.setUp();
     _wire();
     vm.prank(_factory);
-    _registry.registerDeployment(_sampleDeployment(_TOPHAT));
+    _registry.registerDeployment(_TOPHAT, _sampleDeployment(_TOPHAT));
   }
 
   function test_RecordUpgrade_HappyPath() external {
     INavePirataRegistry.UpgradeRecord memory _r = _sampleUpgrade(1);
 
-    vm.expectEmit(true, false, false, true, address(_registry));
-    emit INavePirataRegistry.RoleHatUpgradeRecorded(_TOPHAT, _r);
-
+    vm.recordLogs();
     vm.prank(_upgrader);
     _registry.recordUpgrade(_TOPHAT, _r);
+    assertEq(vm.getRecordedLogs().length, 0);
 
     assertEq(_registry.upgradeCount(_TOPHAT), 1);
     INavePirataRegistry.UpgradeRecord memory _stored = _registry.upgradeAt(_TOPHAT, 0);

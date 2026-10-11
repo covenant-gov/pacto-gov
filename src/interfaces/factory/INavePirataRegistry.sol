@@ -12,13 +12,12 @@ interface INavePirataRegistry {
                             TYPES
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Initial deployment record for a squad.
+   * @notice Initial deployment record for a squad. `topHatId` is the registry key, not a field.
    * @param safe Squad Safe address.
    * @param quartermaster Quartermaster clone address.
    * @param mutinyModule MutinyModule clone address.
    * @param treasuryAuthority TreasuryAuthority clone address.
    * @param squadAdminProxy Squad-admin EIP-1167 clone address.
-   * @param topHatId Tophat id worn by the squad Safe.
    * @param captainHatId Captain hat id.
    * @param crewHatId Crew hat id.
    * @param squadAdminHatId Squad-admin hat id.
@@ -34,7 +33,6 @@ interface INavePirataRegistry {
     address mutinyModule;
     address treasuryAuthority;
     address squadAdminProxy;
-    uint256 topHatId;
     uint256 captainHatId;
     uint256 crewHatId;
     uint256 squadAdminHatId;
@@ -65,18 +63,12 @@ interface INavePirataRegistry {
                             EVENTS
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice A new squad was registered.
+   * @notice A new squad was registered (full record is in storage; factory also emits `NavePirataDeployed`).
    * @param _topHatId Tophat id used as the squad key.
-   * @param _deployment Full deployment record.
+   * @param _safe Squad Safe address.
+   * @param _deployer Address that called `deployNavePirata`.
    */
-  event NavePirataRegistered(uint256 indexed _topHatId, Deployment _deployment);
-
-  /**
-   * @notice A role-hat upgrade was recorded against an existing squad.
-   * @param _topHatId Tophat id of the squad.
-   * @param _record Upgrade audit record.
-   */
-  event RoleHatUpgradeRecorded(uint256 indexed _topHatId, UpgradeRecord _record);
+  event NavePirataRegistered(uint256 indexed _topHatId, address indexed _safe, address indexed _deployer);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
@@ -125,9 +117,10 @@ interface INavePirataRegistry {
   //////////////////////////////////////////////////////////////*/
   /**
    * @notice Record a new squad deployment. Factory-only.
-   * @param _deployment The deployment record to store.
+   * @param _topHatId Squad tophat id (registry key).
+   * @param _deployment The deployment record to store (without `topHatId`).
    */
-  function registerDeployment(Deployment calldata _deployment) external;
+  function registerDeployment(uint256 _topHatId, Deployment calldata _deployment) external;
 
   /**
    * @notice Append an upgrade record to an existing squad's audit trail. Upgrader-only.

@@ -124,9 +124,13 @@ abstract contract UnitNavePirataFactoryBase is Test {
     );
   }
 
-  function _mockCreateClone(address _master, address _result) internal {
+  function _mockCreateClones(address _qm, address _mm, address _ta) internal {
+    address[] memory _clones = new address[](3);
+    _clones[0] = _qm;
+    _clones[1] = _mm;
+    _clones[2] = _ta;
     vm.mockCall(
-      _CLONES_ADDRESS, abi.encodeWithSelector(IRoleHatClonesFactory.createClone.selector, _master), abi.encode(_result)
+      _CLONES_ADDRESS, abi.encodeWithSelector(IRoleHatClonesFactory.createClones.selector), abi.encode(_clones)
     );
   }
 
@@ -238,9 +242,7 @@ abstract contract UnitNavePirataFactoryBase is Test {
     _mockPredict(_mmMasterCopy, _predMm);
     _mockPredict(_taMasterCopy, _predTa);
 
-    _mockCreateClone(_qmMasterCopy, _predQm);
-    _mockCreateClone(_mmMasterCopy, _predMm);
-    _mockCreateClone(_taMasterCopy, _predTa);
+    _mockCreateClones(_predQm, _predMm, _predTa);
 
     _mockSafeExec(true);
     _mockRegistryRegister();
@@ -617,7 +619,6 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
       mutinyModule: _predMm,
       treasuryAuthority: _predTa,
       squadAdminProxy: _expectedSquadAdminProxy(),
-      topHatId: _TOP_HAT_ID,
       captainHatId: _CAPTAIN_HAT_ID,
       crewHatId: _CREW_HAT_ID,
       squadAdminHatId: _SQUAD_ADMIN_HAT_ID,
@@ -628,7 +629,7 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
       deployer: _caller
     });
 
-    vm.expectCall(_REGISTRY_ADDRESS, abi.encodeCall(INavePirataRegistry.registerDeployment, (_expected)));
+    vm.expectCall(_REGISTRY_ADDRESS, abi.encodeCall(INavePirataRegistry.registerDeployment, (_TOP_HAT_ID, _expected)));
     vm.expectCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeWithSelector(IWarGameRegistry.register.selector), 0);
 
     vm.prank(_caller);
@@ -661,7 +662,6 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
       mutinyModule: _predMm,
       treasuryAuthority: _predTa,
       squadAdminProxy: _expectedSquadAdminProxy(),
-      topHatId: _TOP_HAT_ID,
       captainHatId: _CAPTAIN_HAT_ID,
       crewHatId: _CREW_HAT_ID,
       squadAdminHatId: _SQUAD_ADMIN_HAT_ID,
@@ -672,7 +672,9 @@ contract UnitNavePirataFactoryDeployHappyPath is UnitNavePirataFactoryBase {
       deployer: _caller
     });
 
-    vm.expectCall(_WAR_GAME_REGISTRY_ADDRESS, abi.encodeCall(IWarGameRegistry.register, (_params.squadId, _expected)));
+    vm.expectCall(
+      _WAR_GAME_REGISTRY_ADDRESS, abi.encodeCall(IWarGameRegistry.register, (_params.squadId, _TOP_HAT_ID, _expected))
+    );
     vm.expectCall(_REGISTRY_ADDRESS, abi.encodeWithSelector(INavePirataRegistry.registerDeployment.selector), 0);
 
     vm.prank(_caller);

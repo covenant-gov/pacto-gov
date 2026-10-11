@@ -28,6 +28,8 @@ interface IRoleHatClonesFactory {
   error RoleHatClonesFactory_InitializationFailed();
   /// @notice Master copy address is zero.
   error RoleHatClonesFactory_ZeroMasterCopy();
+  /// @notice Parallel `createClones` array lengths do not match.
+  error RoleHatClonesFactory_LengthMismatch();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -40,6 +42,19 @@ interface IRoleHatClonesFactory {
    * @return _clone New clone
    */
   function createClone(address _masterCopy, bytes calldata _initData, bytes32 _salt) external returns (address _clone);
+
+  /**
+   * @notice Batch CREATE2 clones; one external CALL for several role clones.
+   * @param _masterCopies Master implementations (parallel).
+   * @param _initDatas Encoded `initialize(...)` calldata per clone (parallel).
+   * @param _salts CREATE2 salts (parallel).
+   * @return _clones New clone addresses in input order.
+   */
+  function createClones(
+    address[] calldata _masterCopies,
+    bytes[] calldata _initDatas,
+    bytes32[] calldata _salts
+  ) external returns (address[] memory _clones);
 
   /**
    * @notice Deterministic address for `(masterCopy, salt, this factory)`

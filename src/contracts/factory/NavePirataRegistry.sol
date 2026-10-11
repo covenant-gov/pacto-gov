@@ -43,23 +43,21 @@ contract NavePirataRegistry is INavePirataRegistry {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc INavePirataRegistry
-  function registerDeployment(Deployment calldata _deployment) external {
+  function registerDeployment(uint256 _topHatId, Deployment calldata _deployment) external {
     if (msg.sender != factory) revert NavePirataRegistry_NotFactory(msg.sender);
-    uint256 _topHatId = _deployment.topHatId;
-    if (_deployments[_topHatId].topHatId != 0) revert NavePirataRegistry_AlreadyRegistered(_topHatId);
+    if (_deployments[_topHatId].safe != address(0)) revert NavePirataRegistry_AlreadyRegistered(_topHatId);
 
     _deployments[_topHatId] = _deployment;
     _topHats.push(_topHatId);
-    emit NavePirataRegistered(_topHatId, _deployment);
+    emit NavePirataRegistered(_topHatId, _deployment.safe, _deployment.deployer);
   }
 
   /// @inheritdoc INavePirataRegistry
   function recordUpgrade(uint256 _topHatId, UpgradeRecord calldata _record) external {
     if (msg.sender != upgrader) revert NavePirataRegistry_NotUpgrader(msg.sender);
-    if (_deployments[_topHatId].topHatId == 0) revert NavePirataRegistry_NotRegistered(_topHatId);
+    if (_deployments[_topHatId].safe == address(0)) revert NavePirataRegistry_NotRegistered(_topHatId);
 
     _upgradeLogs[_topHatId].push(_record);
-    emit RoleHatUpgradeRecorded(_topHatId, _record);
   }
 
   /*///////////////////////////////////////////////////////////////

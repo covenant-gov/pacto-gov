@@ -31,7 +31,8 @@ import {ISafe, ISafeProxyFactory} from 'interfaces/utils/safe/ISafe141.sol';
  * @notice Full-squad deploy in one tx: Safe, hat tree, role clones, squad-admin EIP-1167 clone, TA wiring, registry routing (see `INavePirataFactory`).
  *         `stackKind` sends Production to `NavePirataRegistry` and WarGame to `WarGameRegistry` only.
  *         Standalone: `deploySquadAdminExtStandalone`, `deploySquadAdminStandaloneCaptainHat` (permissionless; no registry row).
- * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts = `(msg.sender, saltNonce, kind)`. Placeholder
+ * @dev 1/1 Safe owner = factory, then pre-validated `exec` to enable TA + `swapOwner` to TA. Role clone salts =
+ *      `keccak256(base, kind)` where `base = keccak256(msg.sender, saltNonce)`. Placeholder
  *      role-hat eligibility/toggle → upgrader (Hats default active+eligible). `SquadParams` ≠ `RangeValidator` base
  */
 contract NavePirataFactory is INavePirataFactory {
@@ -142,9 +143,8 @@ contract NavePirataFactory is INavePirataFactory {
       _hats = _createHatTree(_params.metadataURI, _predMutinyModule, _predQuartermaster);
       _topHatId = _hats.topHatId;
 
-      _quartermaster = _deployQuartermasterClone(_params, _hats, _predMutinyModule, _qmSalt);
-      _mutinyModule = _deployMutinyModuleClone(_params, _hats, _quartermaster, _safe, _mmSalt);
-      _treasuryAuthority = _deployTreasuryAuthorityClone(_params, _safe, _hats, _taSalt);
+      (_quartermaster, _mutinyModule, _treasuryAuthority) =
+        _deployRoleClones(_params, _hats, _predQuartermaster, _predMutinyModule, _safe, _qmSalt, _mmSalt, _taSalt);
       _squadAdminProxy = _deploySquadAdminProxy(_params.squadAdminImplementation, _hats);
     }
 
@@ -160,7 +160,6 @@ contract NavePirataFactory is INavePirataFactory {
       mutinyModule: _mutinyModule,
       treasuryAuthority: _treasuryAuthority,
       squadAdminProxy: _squadAdminProxy,
-      topHatId: _topHatId,
       captainHatId: _hats.captainHatId,
       crewHatId: _hats.crewHatId,
       squadAdminHatId: _hats.squadAdminHatId,
@@ -171,9 +170,9 @@ contract NavePirataFactory is INavePirataFactory {
       deployer: msg.sender
     });
     if (_params.stackKind == StackKind.WarGame) {
-      _WAR_GAME_REGISTRY.register(_params.squadId, _deployment);
+      _WAR_GAME_REGISTRY.register(_params.squadId, _topHatId, _deployment);
     } else {
-      _REGISTRY.registerDeployment(_deployment);
+      _REGISTRY.registerDeployment(_topHatId, _deployment);
     }
 
     if (address(_SPONSOR_POLICY_REGISTRY) != address(0)) {
@@ -402,105 +401,85 @@ contract NavePirataFactory is INavePirataFactory {
   }
 
   /**
-   * @notice Creates the Quartermaster EIP-1167 clone and initializes it with hat ids from `_hats`.
-   * @param _params Full deploy params (`quartermasterMasterCopy`, `squadParams`).
-   * @param _hats Hat tree from `_createHatTree` (ids wired into `InitParams`).
-   * @param _predMutinyModule Predicted MutinyModule clone (authoritative peer for mutiny freeze).
-   * @param _salt CREATE2 salt for this clone.
-   * @return _clone Deployed Quartermaster clone address.
+   * @notice CREATE2-deploys QM / MM / TA clones in one clones-factory call.
+   * @param _params Full deploy params (masters + squad params).
+   * @param _hats Hat tree from `_createHatTree`.
+   * @param _predQuartermaster Predicted Quartermaster address (wired into MutinyModule init).
+   * @param _predMutinyModule Predicted MutinyModule address (wired into Quartermaster init).
+   * @param _safe Squad Safe (Zodiac avatar / MutinyModule safe).
+   * @param _qmSalt CREATE2 salt for Quartermaster.
+   * @param _mmSalt CREATE2 salt for MutinyModule.
+   * @param _taSalt CREATE2 salt for TreasuryAuthority.
+   * @return _quartermaster Deployed Quartermaster clone.
+   * @return _mutinyModule Deployed MutinyModule clone.
+   * @return _treasuryAuthority Deployed TreasuryAuthority clone.
    */
-  function _deployQuartermasterClone(
+  function _deployRoleClones(
     DeployParams calldata _params,
     HatTree memory _hats,
+    address _predQuartermaster,
     address _predMutinyModule,
-    bytes32 _salt
-  ) internal returns (address _clone) {
-    _clone = _CLONES_FACTORY.createClone(
-      _params.quartermasterMasterCopy,
-      abi.encodeCall(
-        Quartermaster.initialize,
-        (IQuartermaster.InitParams({
-            captainHatId: _hats.captainHatId,
-            crewHatId: _hats.crewHatId,
-            mutinyRoleHatId: _hats.mutinyRoleHatId,
-            quartermasterRoleHatId: _hats.quartermasterRoleHatId,
-            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            mutinyModule: _predMutinyModule,
-            crewChangeDelay: _params.squadParams.crewChangeDelay,
-            crewOffboardExpiry: _params.squadParams.proposalExpiry,
-            crewOffboardQuorumBps: _params.squadParams.quorumBps
-          }))
-      ),
-      _salt
-    );
-  }
-
-  /**
-   * @notice Creates the MutinyModule EIP-1167 clone and initializes it with `_hats`, captain, and Quartermaster.
-   * @param _params Full deploy params (`mutinyMasterCopy`, `captain`, `squadParams.proposalExpiry`).
-   * @param _hats Hat tree from `_createHatTree`.
-   * @param _quartermaster Deployed Quartermaster clone (peer for init).
-   * @param _safe Squad Safe (Zodiac `avatar`); stored on MutinyModule for pause-mutiny transfers.
-   * @param _salt CREATE2 salt for this clone.
-   * @return _clone Deployed MutinyModule clone address.
-   */
-  function _deployMutinyModuleClone(
-    DeployParams calldata _params,
-    HatTree memory _hats,
-    address _quartermaster,
     address _safe,
-    bytes32 _salt
-  ) internal returns (address _clone) {
-    _clone = _CLONES_FACTORY.createClone(
-      _params.mutinyMasterCopy,
-      abi.encodeCall(
-        MutinyModule.initialize,
-        (IMutinyModule.InitParams({
-            captainHatId: _hats.captainHatId,
-            crewHatId: _hats.crewHatId,
-            mutinyRoleHatId: _hats.mutinyRoleHatId,
-            quartermasterRoleHatId: _hats.quartermasterRoleHatId,
-            captain: _params.captain,
-            quartermaster: _quartermaster,
-            safe: _safe,
-            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            mutinyExpiry: _params.squadParams.proposalExpiry
-          }))
-      ),
-      _salt
-    );
-  }
+    bytes32 _qmSalt,
+    bytes32 _mmSalt,
+    bytes32 _taSalt
+  ) internal returns (address _quartermaster, address _mutinyModule, address _treasuryAuthority) {
+    address[] memory _masters = new address[](3);
+    _masters[0] = _params.quartermasterMasterCopy;
+    _masters[1] = _params.mutinyMasterCopy;
+    _masters[2] = _params.treasuryAuthorityMasterCopy;
 
-  /**
-   * @notice Creates the TreasuryAuthority EIP-1167 clone; init uses `_safe`, `_hats`, and squad params from `_params`.
-   * @param _params Full deploy params (`treasuryAuthorityMasterCopy`, `squadParams`).
-   * @param _safe Squad Safe proxy for Zodiac wiring.
-   * @param _hats Hat tree from `_createHatTree`.
-   * @param _salt CREATE2 salt for this clone.
-   * @return _clone Deployed TreasuryAuthority clone address.
-   */
-  function _deployTreasuryAuthorityClone(
-    DeployParams calldata _params,
-    address _safe,
-    HatTree memory _hats,
-    bytes32 _salt
-  ) internal returns (address _clone) {
-    _clone = _CLONES_FACTORY.createClone(
-      _params.treasuryAuthorityMasterCopy,
-      abi.encodeCall(
-        TreasuryAuthority.initialize,
-        (ITreasuryAuthority.InitParams({
-            safe: _safe,
-            captainHatId: _hats.captainHatId,
-            crewHatId: _hats.crewHatId,
-            treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
-            proposalExpiry: _params.squadParams.proposalExpiry,
-            crewVoteMode: _params.squadParams.crewVoteMode,
-            quorumBps: _params.squadParams.quorumBps
-          }))
-      ),
-      _salt
+    bytes[] memory _inits = new bytes[](3);
+    _inits[0] = abi.encodeCall(
+      Quartermaster.initialize,
+      (IQuartermaster.InitParams({
+          captainHatId: _hats.captainHatId,
+          crewHatId: _hats.crewHatId,
+          mutinyRoleHatId: _hats.mutinyRoleHatId,
+          quartermasterRoleHatId: _hats.quartermasterRoleHatId,
+          treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+          mutinyModule: _predMutinyModule,
+          crewChangeDelay: _params.squadParams.crewChangeDelay,
+          crewOffboardExpiry: _params.squadParams.proposalExpiry,
+          crewOffboardQuorumBps: _params.squadParams.quorumBps
+        }))
     );
+    _inits[1] = abi.encodeCall(
+      MutinyModule.initialize,
+      (IMutinyModule.InitParams({
+          captainHatId: _hats.captainHatId,
+          crewHatId: _hats.crewHatId,
+          mutinyRoleHatId: _hats.mutinyRoleHatId,
+          quartermasterRoleHatId: _hats.quartermasterRoleHatId,
+          captain: _params.captain,
+          quartermaster: _predQuartermaster,
+          safe: _safe,
+          treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+          mutinyExpiry: _params.squadParams.proposalExpiry
+        }))
+    );
+    _inits[2] = abi.encodeCall(
+      TreasuryAuthority.initialize,
+      (ITreasuryAuthority.InitParams({
+          safe: _safe,
+          captainHatId: _hats.captainHatId,
+          crewHatId: _hats.crewHatId,
+          treasuryAuthorityRoleHatId: _hats.treasuryAuthorityRoleHatId,
+          proposalExpiry: _params.squadParams.proposalExpiry,
+          crewVoteMode: _params.squadParams.crewVoteMode,
+          quorumBps: _params.squadParams.quorumBps
+        }))
+    );
+
+    bytes32[] memory _salts = new bytes32[](3);
+    _salts[0] = _qmSalt;
+    _salts[1] = _mmSalt;
+    _salts[2] = _taSalt;
+
+    address[] memory _clones = _CLONES_FACTORY.createClones(_masters, _inits, _salts);
+    _quartermaster = _clones[0];
+    _mutinyModule = _clones[1];
+    _treasuryAuthority = _clones[2];
   }
 
   /**
@@ -516,18 +495,18 @@ contract NavePirataFactory is INavePirataFactory {
   }
 
   /**
-   * @notice Derives the three clone salts for this deployment. The salt is mixed with
-   *         `msg.sender` and `saltNonce` so that, within `RoleHatClonesFactory`, no two squad
-   *         bootstraps can collide on a single clone kind.
+   * @notice Derives the three clone salts for this deployment. Hashes `msg.sender` + `saltNonce`
+   *         once, then mixes each kind tag so CREATE2 addresses stay unique per kind.
    * @param _saltNonce Caller-supplied determinism nonce.
    * @return _qmSalt Salt for the Quartermaster clone.
    * @return _mmSalt Salt for the MutinyModule clone.
    * @return _taSalt Salt for the TreasuryAuthority clone.
    */
   function _cloneSalts(uint256 _saltNonce) internal view returns (bytes32 _qmSalt, bytes32 _mmSalt, bytes32 _taSalt) {
-    _qmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_QM));
-    _mmSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_MM));
-    _taSalt = keccak256(abi.encode(msg.sender, _saltNonce, _KIND_TA));
+    bytes32 _base = keccak256(abi.encode(msg.sender, _saltNonce));
+    _qmSalt = keccak256(abi.encode(_base, _KIND_QM));
+    _mmSalt = keccak256(abi.encode(_base, _KIND_MM));
+    _taSalt = keccak256(abi.encode(_base, _KIND_TA));
   }
 
   /**
