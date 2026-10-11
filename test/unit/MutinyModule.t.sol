@@ -92,15 +92,11 @@ abstract contract UnitMutinyModuleBase is Test {
     );
   }
 
-  function _mockQmMintCrewFromMutiny(address _formerCaptain) internal {
+  function _mockQmApplySuccession(address _from, address _to, bool _seatFormerCaptain) internal {
     vm.mockCall(
-      _quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _formerCaptain), abi.encode()
-    );
-  }
-
-  function _mockQmRevokeCrewFromMutiny(address _crew) internal {
-    vm.mockCall(
-      _quartermaster, abi.encodeWithSelector(IQuartermaster.revokeCrewFromMutiny.selector, _crew), abi.encode()
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _from, _to, _seatFormerCaptain),
+      abi.encode()
     );
   }
 
@@ -384,11 +380,15 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     assertFalse(_mm.thresholdReached(0));
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
-    _mockWearer(_newCaptainEoa, _CREW_HAT, false);
+    _mockQmApplySuccession(_captain, _newCaptainEoa, false);
     _mockQmNoActiveOffboard();
 
     vm.expectCall(
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _CAPTAIN_HAT, _captain, _newCaptainEoa)
+    );
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _newCaptainEoa, false)
     );
     vm.expectEmit(true, true, true, true, address(_mm));
     emit IMutinyModule.MutinyExecuted(_id, _captain, _newCaptainEoa);
@@ -412,11 +412,13 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     uint256 _id = _stageWinningMutiny(_newCaptainEoa, true);
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
-    _mockWearer(_newCaptainEoa, _CREW_HAT, false);
-    _mockQmMintCrewFromMutiny(_captain);
+    _mockQmApplySuccession(_captain, _newCaptainEoa, true);
     _mockQmNoActiveOffboard();
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _captain));
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _newCaptainEoa, true)
+    );
 
     _mm.executeMutiny(_id);
     assertEq(_mm.captain(), _newCaptainEoa);
@@ -429,11 +431,13 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     uint256 _id = _stageWinningMutiny(_crewSuccessor, false);
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _crewSuccessor);
-    _mockWearer(_crewSuccessor, _CREW_HAT, true);
-    _mockQmRevokeCrewFromMutiny(_crewSuccessor);
+    _mockQmApplySuccession(_captain, _crewSuccessor, false);
     _mockQmNoActiveOffboard();
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.revokeCrewFromMutiny.selector, _crewSuccessor));
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _crewSuccessor, false)
+    );
 
     _mm.executeMutiny(_id);
     assertEq(_mm.captain(), _crewSuccessor);
@@ -444,13 +448,13 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
     uint256 _id = _stageWinningMutiny(_crewSuccessor, true);
 
     _mockTransferHat(_CAPTAIN_HAT, _captain, _crewSuccessor);
-    _mockWearer(_crewSuccessor, _CREW_HAT, true);
-    _mockQmRevokeCrewFromMutiny(_crewSuccessor);
-    _mockQmMintCrewFromMutiny(_captain);
+    _mockQmApplySuccession(_captain, _crewSuccessor, true);
     _mockQmNoActiveOffboard();
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.revokeCrewFromMutiny.selector, _crewSuccessor));
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _captain));
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _crewSuccessor, true)
+    );
 
     _mm.executeMutiny(_id);
     assertEq(_mm.captain(), _crewSuccessor);
@@ -463,13 +467,12 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
 
     uint256 _id = _stageWinningMutiny(_bob, true);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _bob);
-    _mockWearer(_bob, _CREW_HAT, true);
-    _mockQmRevokeCrewFromMutiny(_bob);
-    _mockQmMintCrewFromMutiny(_captain);
+    _mockQmApplySuccession(_captain, _bob, true);
     _mockQmNoActiveOffboard();
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.revokeCrewFromMutiny.selector, _bob));
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _captain));
+    vm.expectCall(
+      _quartermaster, abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _bob, true)
+    );
 
     _mm.executeMutiny(_id);
     assertEq(_mm.captain(), _bob);
@@ -488,7 +491,7 @@ contract UnitMutinyModuleExecute is UnitMutinyModuleBase {
   function test_ExecuteMutiny_RevertsIfAlreadyExecuted() external {
     uint256 _id = _stageWinningMutiny(_newCaptainEoa, false);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
-    _mockWearer(_newCaptainEoa, _CREW_HAT, false);
+    _mockQmApplySuccession(_captain, _newCaptainEoa, false);
     _mockQmNoActiveOffboard();
     _mm.executeMutiny(_id);
 
@@ -533,10 +536,14 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
   function test_CaptainResign_HappyPath_NonCrew_NoSeat() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
-    _mockWearer(_newCaptainEoa, _CREW_HAT, false);
+    _mockQmApplySuccession(_captain, _newCaptainEoa, false);
 
     vm.expectCall(
       _HATS_ADDRESS, abi.encodeWithSelector(IHats.transferHat.selector, _CAPTAIN_HAT, _captain, _newCaptainEoa)
+    );
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _newCaptainEoa, false)
     );
     vm.expectEmit(true, true, false, true, address(_mm));
     emit IMutinyModule.CaptainResigned(_captain, _newCaptainEoa, false);
@@ -550,10 +557,12 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
   function test_CaptainResign_HappyPath_NonCrew_SeatFormer() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _newCaptainEoa);
-    _mockWearer(_newCaptainEoa, _CREW_HAT, false);
-    _mockQmMintCrewFromMutiny(_captain);
+    _mockQmApplySuccession(_captain, _newCaptainEoa, true);
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.mintCrewFromMutiny.selector, _captain));
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _newCaptainEoa, true)
+    );
     vm.expectEmit(true, true, false, true, address(_mm));
     emit IMutinyModule.CaptainResigned(_captain, _newCaptainEoa, true);
 
@@ -567,10 +576,12 @@ contract UnitMutinyModuleCaptainResign is UnitMutinyModuleBase {
     address _crewSuccessor = _bob;
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockTransferHat(_CAPTAIN_HAT, _captain, _crewSuccessor);
-    _mockWearer(_crewSuccessor, _CREW_HAT, true);
-    _mockQmRevokeCrewFromMutiny(_crewSuccessor);
+    _mockQmApplySuccession(_captain, _crewSuccessor, false);
 
-    vm.expectCall(_quartermaster, abi.encodeWithSelector(IQuartermaster.revokeCrewFromMutiny.selector, _crewSuccessor));
+    vm.expectCall(
+      _quartermaster,
+      abi.encodeWithSelector(IQuartermaster.applySuccessionCrew.selector, _captain, _crewSuccessor, false)
+    );
 
     vm.prank(_captain);
     _mm.captainResign(_crewSuccessor, false);

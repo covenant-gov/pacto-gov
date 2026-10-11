@@ -40,25 +40,37 @@ interface IMutinyModule is IQuiescent, IHatGated {
   }
 
   /**
-   * @notice Persisted mutiny round state.
+   * @notice Persisted mutiny round state. Flags pack with `proposedNewCaptain`.
    * @param proposedNewCaptain Successor if the round passes.
+   * @param executed Whether the round has been finalized.
+   * @param seatFormerCaptain If true, execution mints a crew hat to `fromCaptain` after succession.
    * @param fromCaptain Captain at the time the round opened (snapshot-locked).
    * @param startedAt Timestamp the round opened.
    * @param deadline Unix timestamp after which `executeMutiny` reverts and `expireMutiny` is valid.
    * @param snapshot Size of the crew electorate at `startedAt`.
    * @param yeas Yea vote count.
-   * @param executed Whether the round has been finalized.
-   * @param seatFormerCaptain If true, execution mints a crew hat to `fromCaptain` after succession.
    */
   struct MutinyRound {
     address proposedNewCaptain;
+    bool executed;
+    bool seatFormerCaptain;
     address fromCaptain;
     uint64 startedAt;
     uint64 deadline;
     uint64 snapshot;
     uint64 yeas;
-    bool executed;
-    bool seatFormerCaptain;
+  }
+
+  /**
+   * @notice Packed mutiny counters and expiry (one slot).
+   * @param mutinyExpiry Seconds from round start until the round may be expired.
+   * @param activeMutinyId Live mutiny id, or zero.
+   * @param mutinyCount Last issued mutiny id.
+   */
+  struct GovConfig {
+    uint64 mutinyExpiry;
+    uint64 activeMutinyId;
+    uint64 mutinyCount;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -124,12 +136,6 @@ interface IMutinyModule is IQuiescent, IHatGated {
    * @param _voter Address that attempted a duplicate vote.
    */
   error MutinyModule_AlreadyVoted(address _voter);
-
-  /**
-   * @notice Voter was not in the snapshot electorate for this round.
-   * @param _voter Address that failed the snapshot check.
-   */
-  error MutinyModule_NotInSnapshot(address _voter);
 
   /**
    * @notice The 51% threshold has not yet been reached.

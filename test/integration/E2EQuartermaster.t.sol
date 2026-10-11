@@ -159,9 +159,10 @@ abstract contract E2EQuartermasterBase is IntegrationBase {
     _mutinyId = _squadMutiny.activeMutinyId();
   }
 
-  /// @dev Force MutinyModule `activeMutinyId` (slot 7) without a crew vote — for empty-roster freeze tests.
+  /// @dev Force MutinyModule `activeMutinyId` inside packed `_gov` (slot 8) without a crew vote — for empty-roster freeze tests.
   function _forceMutinyActiveId(MutinyModule _mutiny, uint256 _id) internal {
-    vm.store(address(_mutiny), bytes32(uint256(7)), bytes32(_id));
+    uint256 _word = _mutiny.mutinyExpiry() | (_id << 64) | (uint256(_mutiny.mutinyCount()) << 128);
+    vm.store(address(_mutiny), bytes32(uint256(8)), bytes32(_word));
   }
 
   function _isCrewWearer(uint256 _crewHatId, address _who) internal view returns (bool _wears) {

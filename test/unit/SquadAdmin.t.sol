@@ -251,11 +251,22 @@ contract UnitSquadAdminExecutorRoster is UnitSquadAdminBase {
 
   function test_DisableExecutor_AllowsWhenRoleWasNeverEnabled() external {
     _mockCaptain(_captain, true);
-    vm.expectEmit(true, true, false, false, address(_admin));
-    emit ISquadAdminBase.ExecutorDisabled(_alice, _ROLE_APP);
+    vm.recordLogs();
     vm.prank(_captain);
     _admin.disableExecutor(_alice, _ROLE_APP);
+    assertEq(vm.getRecordedLogs().length, 0);
     assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
+  }
+
+  function test_EnableExecutor_RepeatEnable_SkipsEvent() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_APP);
+    vm.recordLogs();
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_APP);
+    assertEq(vm.getRecordedLogs().length, 0);
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_APP));
   }
 
   function test_EnableThenDisable_IsolatesPerExecutorAndRole() external {
