@@ -199,12 +199,6 @@ interface IQuartermaster is IQuiescent, IHatGated {
                             ERRORS
   //////////////////////////////////////////////////////////////*/
   /**
-   * @notice No pending operation exists for the target.
-   * @param _target Address whose pending entry was expected but missing.
-   */
-  error Quartermaster_NotPending(address _target);
-
-  /**
    * @notice The scheduled delay has not yet elapsed for the target.
    * @param _target Address whose pending entry is still locked.
    * @param _executableAt Timestamp after which execution becomes valid.
@@ -276,8 +270,6 @@ interface IQuartermaster is IQuiescent, IHatGated {
   error Quartermaster_SelfOffboard();
   /// @notice No active crew-led offboard exists for the requested id.
   error Quartermaster_NoActiveOffboard();
-  /// @notice `block.timestamp + crewOffboardExpiry` exceeds `type(uint64).max`.
-  error Quartermaster_DeadlineOverflow();
   /// @notice The crew hat has reached its max supply cap.
   error Quartermaster_CrewFull();
   /// @notice A required address argument was zero.

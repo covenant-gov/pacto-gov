@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {PackedHashLib} from 'contracts/libraries/PackedHashLib.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 import {IRoleHatUpgrader} from 'interfaces/factory/IRoleHatUpgrader.sol';
@@ -82,7 +83,7 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
     }
     if (!IQuiescent(_oldClone).isQuiet()) revert RoleHatUpgrader_NotQuiet(_oldClone);
 
-    _newClone = _CLONES.createClone(_masterCopy, _initData, _namespacedSalt(_roleHatId, _salt));
+    _newClone = _CLONES.createClone(_masterCopy, _initData, PackedHashLib.hashUint256Bytes32(_roleHatId, _salt));
 
     try _HATS.transferHat(_roleHatId, _oldClone, _newClone) {}
     catch {
@@ -142,23 +143,5 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   /// @inheritdoc IRoleHatUpgrader
   function registry() external view returns (INavePirataRegistry _registry) {
     _registry = _REGISTRY;
-  }
-
-  /*///////////////////////////////////////////////////////////////
-                            INTERNAL HELPERS
-  //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Namespaced CREATE2 salt: `keccak256` over ABI-encoded `roleHatId` and `salt`.
-   * @param _roleHatId Role hat id being upgraded.
-   * @param _salt Caller-supplied entropy mixed into the digest.
-   * @return _out Salt argument for `createClone`.
-   * @dev Byte-identical to `keccak256(abi.encode(_roleHatId, _salt))` without allocating `abi.encode` memory.
-   */
-  function _namespacedSalt(uint256 _roleHatId, bytes32 _salt) private pure returns (bytes32 _out) {
-    assembly ('memory-safe') {
-      mstore(0x00, _roleHatId)
-      mstore(0x20, _salt)
-      _out := keccak256(0x00, 0x40)
-    }
   }
 }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {DeadlineLib} from 'contracts/libraries/DeadlineLib.sol';
+import {VoteThresholdLib} from 'contracts/libraries/VoteThresholdLib.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 import {IMutinyModule} from 'interfaces/core/IMutinyModule.sol';
@@ -154,7 +156,9 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     MutinyRound storage _r = _rounds[_mutinyId];
     if (_r.executed) revert MutinyModule_NoActiveMutiny();
     _requireNotExpired(_r, _mutinyId);
-    if (_r.yeas * 2 <= _r.snapshot) revert MutinyModule_ThresholdNotReached(_r.yeas, _r.snapshot);
+    if (!VoteThresholdLib.majoritySnapshot(_r.yeas, _r.snapshot)) {
+      revert MutinyModule_ThresholdNotReached(_r.yeas, _r.snapshot);
+    }
 
     address _from = _r.fromCaptain;
     address _to = _r.proposedNewCaptain;
@@ -248,7 +252,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
   function thresholdReached(uint256 _id) external view returns (bool _reached) {
     MutinyRound storage _r = _rounds[_id];
     if (_r.startedAt == 0) return false;
-    _reached = uint256(_r.yeas) * 2 > _r.snapshot;
+    _reached = VoteThresholdLib.majoritySnapshot(_r.yeas, _r.snapshot);
   }
 
   /// @inheritdoc IMutinyModule
@@ -295,8 +299,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
     if (IQuartermaster(_qm).activeCrewOffboardId() != 0) revert MutinyModule_CrewOffboardActive();
 
     GovConfig memory _cfg = _gov;
-    uint256 _deadline256 = block.timestamp + _cfg.mutinyExpiry;
-    if (_deadline256 > type(uint64).max) revert MutinyModule_DeadlineOverflow();
+    uint64 _deadline = DeadlineLib.fromDuration(_cfg.mutinyExpiry);
 
     _cfg.mutinyCount += 1;
     _cfg.activeMutinyId = _cfg.mutinyCount;
@@ -311,9 +314,7 @@ contract MutinyModule is IMutinyModule, IHatsEligibility, HatGated, RangeValidat
       seatFormerCaptain: _seatFormerCaptain,
       fromCaptain: captain,
       startedAt: uint64(block.timestamp),
-      // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
-      // forge-lint: disable-next-line(unsafe-typecast)
-      deadline: uint64(_deadline256),
+      deadline: _deadline,
       snapshot: _snapshot,
       yeas: 0
     });

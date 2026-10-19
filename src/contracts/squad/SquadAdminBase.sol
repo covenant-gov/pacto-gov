@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {BitFlagLib} from 'contracts/libraries/BitFlagLib.sol';
 import {ISquadAdminBase} from 'interfaces/squad/ISquadAdminBase.sol';
 
 abstract contract SquadAdminBase is ISquadAdminBase {
@@ -173,8 +174,8 @@ abstract contract SquadAdminBase is ISquadAdminBase {
    */
   function _setExecutorFlag(address _executor, uint8 _flag, bool _enable) internal returns (bool _changed) {
     uint8 _flags = _executorFlags[_executor];
-    uint8 _next = _enable ? uint8(_flags | _flag) : uint8(_flags & ~_flag);
-    if (_next == _flags) return false;
+    (uint8 _next, bool _didChange) = BitFlagLib.setFlag(_flags, _flag, _enable);
+    if (!_didChange) return false;
     _executorFlags[_executor] = _next;
     _changed = true;
   }

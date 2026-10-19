@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 import {Quartermaster} from 'contracts/core/Quartermaster.sol';
+import {PendingQueueLib} from 'contracts/libraries/PendingQueueLib.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 
@@ -314,7 +315,7 @@ contract UnitQuartermasterAddCancel is UnitQuartermasterBase {
   function test_CancelAddCrew_RevertsIfNotPending() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     vm.prank(_captain);
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _alice));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _alice));
     _qm.cancelAddCrew(_alice);
   }
 
@@ -352,7 +353,7 @@ contract UnitQuartermasterAddExecute is UnitQuartermasterBase {
   }
 
   function test_ExecuteAddCrew_RevertsIfNotPending() external {
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _alice));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _alice));
     _qm.executeAddCrew(_alice);
   }
 
@@ -456,7 +457,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
   function test_CancelRemoveCrew_RevertsIfNotPending() external {
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     vm.prank(_captain);
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _alice));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _alice));
     _qm.cancelRemoveCrew(_alice);
   }
 
@@ -487,7 +488,7 @@ contract UnitQuartermasterRemove is UnitQuartermasterBase {
   }
 
   function test_ExecuteRemoveCrew_RevertsIfNotPending() external {
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _alice));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _alice));
     _qm.executeRemoveCrew(_alice);
   }
 

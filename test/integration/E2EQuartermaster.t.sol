@@ -8,6 +8,7 @@ import {Quartermaster} from 'contracts/core/Quartermaster.sol';
 import {TreasuryAuthority} from 'contracts/core/TreasuryAuthority.sol';
 import {NavePirataFactory} from 'contracts/factory/NavePirataFactory.sol';
 import {NavePirataRegistry} from 'contracts/factory/NavePirataRegistry.sol';
+import {PendingQueueLib} from 'contracts/libraries/PendingQueueLib.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
 
@@ -363,7 +364,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
   function test_e2e_cancelAddCrew_reverts_whenNoPendingAdd() public withDeployedNavePirataSquad {
     address _candidate = _qmCandidate('e2eQmCancelAddNone');
 
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _candidate));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _candidate));
     vm.prank(_squadCaptain);
     _squadQuartermaster.cancelAddCrew(_candidate);
   }
@@ -402,7 +403,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
   function test_e2e_executeAddCrew_reverts_whenNoPendingAdd() public withDeployedNavePirataSquad {
     address _candidate = _qmCandidate('e2eQmExecAddNone');
 
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _candidate));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _candidate));
     _squadQuartermaster.executeAddCrew(_candidate);
   }
 
@@ -603,7 +604,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
   }
 
   function test_e2e_cancelRemoveCrew_reverts_whenNoPendingRemove() public withDeployedNavePirataSquad {
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _squadCrew[0]));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _squadCrew[0]));
     vm.prank(_squadCaptain);
     _squadQuartermaster.cancelRemoveCrew(_squadCrew[0]);
   }
@@ -641,7 +642,7 @@ contract E2EQuartermasterTest is E2EQuartermasterBase {
   }
 
   function test_e2e_executeRemoveCrew_reverts_whenNoPendingRemove() public withDeployedNavePirataSquad {
-    vm.expectRevert(abi.encodeWithSelector(IQuartermaster.Quartermaster_NotPending.selector, _squadCrew[0]));
+    vm.expectRevert(abi.encodeWithSelector(PendingQueueLib.PendingQueueLib_NotPending.selector, _squadCrew[0]));
     _squadQuartermaster.executeRemoveCrew(_squadCrew[0]);
   }
 

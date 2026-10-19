@@ -224,8 +224,6 @@ interface ITreasuryAuthority is IAssetRescuer, IQuiescent, IHatGated {
   error TreasuryAuthority_SafeExecutionFailed();
   /// @notice Calldata supplied to `execute` does not match the hash stored at `propose`.
   error TreasuryAuthority_DataHashMismatch();
-  /// @notice `block.timestamp + proposalExpiry` exceeds `type(uint64).max` (proposal `deadline` storage width).
-  error TreasuryAuthority_DeadlineOverflow();
 
   /*///////////////////////////////////////////////////////////////
                         CONSTRUCTOR / INITIALIZER

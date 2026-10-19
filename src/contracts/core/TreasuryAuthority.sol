@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {DeadlineLib} from 'contracts/libraries/DeadlineLib.sol';
+import {VoteThresholdLib} from 'contracts/libraries/VoteThresholdLib.sol';
 import {AssetRescuer} from 'contracts/utils/AssetRescuer.sol';
 import {HatGated} from 'contracts/utils/HatGated.sol';
 import {RangeValidator} from 'contracts/utils/RangeValidator.sol';
@@ -83,11 +85,7 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
 
     GovConfig memory _cfg = _gov;
     uint64 _snapshot = _HATS.hatSupply(crewHatId);
-    uint256 _deadline256 = block.timestamp + _cfg.proposalExpiry;
-    if (_deadline256 > type(uint64).max) revert TreasuryAuthority_DeadlineOverflow();
-    // casting to 'uint64' is safe because `_deadline256` is checked against `type(uint64).max` above.
-    // forge-lint: disable-next-line(unsafe-typecast)
-    uint64 _deadline = uint64(_deadline256);
+    uint64 _deadline = DeadlineLib.fromDuration(_cfg.proposalExpiry);
 
     uint64 _id = _cfg.nextProposalId;
     _proposalId = _id;
@@ -392,13 +390,10 @@ contract TreasuryAuthority is ITreasuryAuthority, Module, HatGated, RangeValidat
    */
   function _crewVotePassed(Proposal storage _p) internal view returns (bool _passed) {
     GovConfig memory _cfg = _gov;
-    uint256 _yeas = _p.yeas;
     if (_cfg.crewVoteMode == CrewVoteMode.MAJORITY_SNAPSHOT) {
-      _passed = _yeas * 2 > _p.snapshot;
+      _passed = VoteThresholdLib.majoritySnapshot(_p.yeas, _p.snapshot);
     } else {
-      uint256 _cast = _yeas + _p.nays;
-      if (_cast * 10_000 < uint256(_p.snapshot) * _cfg.quorumBps) _passed = false;
-      else _passed = _yeas > _p.nays;
+      _passed = VoteThresholdLib.quorumOfCast(_p.yeas, _p.nays, _p.snapshot, _cfg.quorumBps);
     }
   }
 

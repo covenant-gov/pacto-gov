@@ -195,8 +195,6 @@ interface IMutinyModule is IQuiescent, IHatGated {
   error MutinyModule_NoActiveMutiny();
   /// @notice A required address argument was zero.
   error MutinyModule_ZeroAddress();
-  /// @notice `block.timestamp + mutinyExpiry` exceeds `type(uint64).max` (round `deadline` storage width).
-  error MutinyModule_DeadlineOverflow();
   /// @notice A crew-led offboard vote is live on Quartermaster; mutiny cannot start until it ends.
   error MutinyModule_CrewOffboardActive();
 

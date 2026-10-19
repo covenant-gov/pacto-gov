@@ -1,5 +1,5 @@
 UnitGasHotPaths:test_Gas_MutinyCastVote() (gas: 30499)
-UnitGasHotPaths:test_Gas_MutinyExecute() (gas: 12858)
+UnitGasHotPaths:test_Gas_MutinyExecute() (gas: 12908)
 UnitGasHotPaths:test_Gas_QuartermasterRequestAddCrew() (gas: 96198)
 UnitGasHotPaths:test_Gas_RegistryRegisterDeployment() (gas: 326617)
 UnitGasHotPaths:test_Gas_SquadAdminEnableExecutor() (gas: 43326)
