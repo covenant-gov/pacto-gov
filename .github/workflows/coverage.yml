@@ -27,7 +27,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: total-coverage.txt
-          key: coverage-base-${{ github.event.pull_request.base.sha }}
+          # v2: Foundry LCOV needs ignore-errors on newer ubuntu lcov; prior cache could store a bad base %.
+          key: coverage-base-v2-${{ github.event.pull_request.base.sha }}
 
       - name: Run base branch coverage
         if: steps.cache-base.outputs.cache-hit != 'true'
@@ -37,10 +38,19 @@ jobs:
         if: steps.cache-base.outputs.cache-hit != 'true'
         uses: hrishikesh-kadam/setup-lcov@v1
 
+      - name: Configure LCOV for Foundry traces
+        if: steps.cache-base.outputs.cache-hit != 'true'
+        run: |
+          printf '%s\n' \
+            'check_data_consistency = 0' \
+            'ignore_errors = inconsistent,corrupt,deprecated' \
+            > "$HOME/.lcovrc"
+
       - name: Prepare cached base total coverage
         if: steps.cache-base.outputs.cache-hit != 'true'
         run: |
-          total_coverage=$(lcov --summary lcov.info 2>/dev/null | awk '/lines\.+:/ {print $2}' | tr -d '%')
+          total_coverage=$(lcov --summary lcov.info --ignore-errors inconsistent,corrupt,deprecated \
+            | awk '/lines\.+:/ {print $2}' | tr -d '%')
           echo "$total_coverage" > total-coverage.txt
 
       - name: Export base coverage output
@@ -86,6 +96,14 @@ jobs:
 
       - name: Setup LCOV (for current PR coverage summary)
         uses: hrishikesh-kadam/setup-lcov@v1
+
+      # report-lcov only passes ignore-errors to genhtml/merge; summarize/list still call bare lcov.
+      - name: Configure LCOV for Foundry traces
+        run: |
+          printf '%s\n' \
+            'check_data_consistency = 0' \
+            'ignore_errors = inconsistent,corrupt,deprecated' \
+            > "$HOME/.lcovrc"
 
       - name: Compute minimum coverage threshold
         id: compute-min
