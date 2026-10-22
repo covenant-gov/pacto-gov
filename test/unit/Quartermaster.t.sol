@@ -970,7 +970,32 @@ contract UnitQuartermasterCrewOffboard is UnitQuartermasterBase {
 
     assertEq(_id, 1);
     assertEq(_qm.activeCrewOffboardId(), 1);
+    assertEq(_qm.crewOffboardCount(), 1);
     assertFalse(_qm.isQuiet());
+
+    (
+      address _target,
+      address _proposer,
+      uint64 _storedDeadline,
+      uint64 _snapshot,
+      uint64 _yeas,
+      uint64 _nays,
+      bool _executed
+    ) = _qm.crewOffboard(_id);
+    assertEq(_target, _carol);
+    assertEq(_proposer, _alice);
+    assertEq(_storedDeadline, uint64(_deadline));
+    assertEq(_snapshot, 5);
+    assertEq(_yeas, 0);
+    assertEq(_nays, 0);
+    assertFalse(_executed);
+    assertFalse(_qm.hasCrewOffboardVote(_id, _alice));
+
+    vm.prank(_alice);
+    _qm.crewOffboardVote(_id, true);
+    assertTrue(_qm.hasCrewOffboardVote(_id, _alice));
+    (,,,, uint64 _yeasAfter,,) = _qm.crewOffboard(_id);
+    assertEq(_yeasAfter, 1);
 
     _mockWearer(_captain, _CAPTAIN_HAT, true);
     _mockWearer(_stranger, _CAPTAIN_HAT, false);

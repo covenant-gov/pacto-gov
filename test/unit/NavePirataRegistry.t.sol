@@ -199,3 +199,27 @@ contract UnitNavePirataRegistryRecordUpgrade is UnitNavePirataRegistryBase {
     assertEq(_all[2].roleHatId, 3 + 500);
   }
 }
+
+contract UnitNavePirataRegistryCrewAndCaptainHats is UnitNavePirataRegistryBase {
+  function setUp() public override {
+    super.setUp();
+    _wire();
+  }
+
+  function test_CrewAndCaptainHats_MatchesDeployment() external {
+    INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
+    vm.prank(_factory);
+    _registry.registerDeployment(1, _d);
+
+    (uint256 _captainHatId, uint256 _crewHatId) = _registry.crewAndCaptainHats(1);
+    INavePirataRegistry.Deployment memory _stored = _registry.deployment(1);
+    assertEq(_captainHatId, _stored.captainHatId);
+    assertEq(_crewHatId, _stored.crewHatId);
+  }
+
+  function test_CrewAndCaptainHats_UnknownTopHatReturnsZeros() external view {
+    (uint256 _captainHatId, uint256 _crewHatId) = _registry.crewAndCaptainHats(99);
+    assertEq(_captainHatId, 0);
+    assertEq(_crewHatId, 0);
+  }
+}

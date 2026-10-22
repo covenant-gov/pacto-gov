@@ -214,6 +214,42 @@ contract UnitGasHotPaths is Test {
     _registry.registerDeployment(1, _d);
   }
 
+  function test_Gas_RegistryCrewAndCaptainHats() external {
+    vm.pauseGasMetering();
+    _registerGasSquad(2);
+    vm.resumeGasMetering();
+
+    _registry.crewAndCaptainHats(2);
+  }
+
+  function test_Gas_RegistryDeployment() external {
+    vm.pauseGasMetering();
+    _registerGasSquad(3);
+    vm.resumeGasMetering();
+
+    _registry.deployment(3);
+  }
+
+  function _registerGasSquad(uint256 _topHatId) internal {
+    INavePirataRegistry.Deployment memory _d = INavePirataRegistry.Deployment({
+      safe: makeAddr('gasSafe'),
+      quartermaster: makeAddr('gasQm'),
+      mutinyModule: makeAddr('gasMm'),
+      treasuryAuthority: makeAddr('gasTa'),
+      squadAdminProxy: makeAddr('gasSa'),
+      captainHatId: 10,
+      crewHatId: 11,
+      squadAdminHatId: 12,
+      mutinyRoleHatId: 13,
+      quartermasterRoleHatId: 14,
+      treasuryAuthorityRoleHatId: 15,
+      deployedAt: uint64(block.timestamp),
+      deployer: makeAddr('gasDeployer')
+    });
+    vm.prank(_factory);
+    _registry.registerDeployment(_topHatId, _d);
+  }
+
   function _mockWearer(address _account, uint256 _hatId, bool _isWearer) internal {
     vm.mockCall(_HATS, abi.encodeWithSelector(IHats.isWearerOfHat.selector, _account, _hatId), abi.encode(_isWearer));
   }

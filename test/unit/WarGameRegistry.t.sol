@@ -218,4 +218,23 @@ contract UnitWarGameRegistryDeployment is UnitWarGameRegistryBase {
   function test_Deployment_UnknownIdReturnsZeroSafe() external view {
     assertEq(_registry.deployment(99).safe, address(0));
   }
+
+  function test_CrewAndCaptainHats_MatchesDeployment() external {
+    INavePirataRegistry.Deployment memory _d = _sampleDeployment(1);
+
+    vm.prank(_factory);
+    _registry.register(_SQUAD_ID, 1, _d);
+
+    (uint256 _captainHatId, uint256 _crewHatId) = _registry.crewAndCaptainHats(1);
+    INavePirataRegistry.Deployment memory _stored = _registry.deployment(1);
+    assertEq(_captainHatId, _stored.captainHatId);
+    assertEq(_crewHatId, _stored.crewHatId);
+    assertEq(INavePirataRegistry.crewAndCaptainHats.selector, IWarGameRegistry.crewAndCaptainHats.selector);
+  }
+
+  function test_CrewAndCaptainHats_UnknownTopHatReturnsZeros() external view {
+    (uint256 _captainHatId, uint256 _crewHatId) = _registry.crewAndCaptainHats(99);
+    assertEq(_captainHatId, 0);
+    assertEq(_crewHatId, 0);
+  }
 }

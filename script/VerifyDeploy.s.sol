@@ -47,6 +47,7 @@ contract VerifyDeploy is Script {
     address _registry = _json.readAddress('.navePirataRegistry');
     address _warGameRegistry = _json.readAddress('.warGameRegistry');
     address _upgrader = _json.readAddress('.roleHatUpgrader');
+    address _sponsorPolicyRegistry = _json.readAddress('.sponsorPolicyRegistry');
 
     bytes memory _encHats = abi.encode(_hats);
     bytes memory _encFactory = abi.encode(_hats, _safePf, _safeSingle, _clones, _registry, _warGameRegistry, _upgrader);
@@ -61,7 +62,7 @@ contract VerifyDeploy is Script {
     _verifyNoArgs(_json.readAddress('.roleHatClonesFactory'), _CLONES, _chain);
     _verifyNoArgs(_json.readAddress('.navePirataRegistry'), _REGISTRY, _chain);
     _verifyNoArgs(_warGameRegistry, _WAR_GAME_REGISTRY, _chain);
-    _verifyUpgrader(_json, _hats, _clones, _registry, _chain);
+    _verifyUpgrader(_json, _hats, _clones, _registry, _sponsorPolicyRegistry, _chain);
     _verify(_json.readAddress('.navePirataFactory'), _FACTORY, _chain, _encFactory);
   }
 
@@ -70,6 +71,7 @@ contract VerifyDeploy is Script {
     address hats,
     address clones,
     address registry,
+    address sponsorPolicyRegistry,
     string memory chain
   ) internal {
     address _deployer = _resolveDeployer(json);
@@ -78,7 +80,12 @@ contract VerifyDeploy is Script {
       _verifyGuessArgs(json.readAddress('.roleHatUpgrader'), _UPGRADER, chain);
       return;
     }
-    _verify(json.readAddress('.roleHatUpgrader'), _UPGRADER, chain, abi.encode(hats, clones, registry, _deployer));
+    _verify(
+      json.readAddress('.roleHatUpgrader'),
+      _UPGRADER,
+      chain,
+      abi.encode(hats, clones, registry, _deployer, sponsorPolicyRegistry)
+    );
   }
 
   function _resolveDeployer(string memory json) internal view returns (address _deployer) {

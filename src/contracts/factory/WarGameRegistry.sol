@@ -99,4 +99,11 @@ contract WarGameRegistry is IWarGameRegistry {
   function deployment(uint256 _topHatId) external view returns (INavePirataRegistry.Deployment memory _deployment) {
     _deployment = _records[_topHatId].deployment;
   }
+
+  /// @inheritdoc IWarGameRegistry
+  function crewAndCaptainHats(uint256 _topHatId) external view returns (uint256 _captainHatId, uint256 _crewHatId) {
+    INavePirataRegistry.Deployment storage _deployment = _records[_topHatId].deployment;
+    _captainHatId = _deployment.captainHatId;
+    _crewHatId = _deployment.crewHatId;
+  }
 }

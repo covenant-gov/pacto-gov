@@ -70,6 +70,13 @@ contract NavePirataRegistry is INavePirataRegistry {
   }
 
   /// @inheritdoc INavePirataRegistry
+  function crewAndCaptainHats(uint256 _topHatId) external view returns (uint256 _captainHatId, uint256 _crewHatId) {
+    Deployment storage _deployment = _deployments[_topHatId];
+    _captainHatId = _deployment.captainHatId;
+    _crewHatId = _deployment.crewHatId;
+  }
+
+  /// @inheritdoc INavePirataRegistry
   function deploymentCount() external view returns (uint256 _count) {
     _count = _topHats.length;
   }

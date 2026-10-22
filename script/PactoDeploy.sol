@@ -103,7 +103,11 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     _i.warGameRegistry = address(new WarGameRegistry());
     _i.upgrader = address(
       new RoleHatUpgrader(
-        IHats(_ext.hats), IRoleHatClonesFactory(_i.clonesFactory), INavePirataRegistry(_i.registry), _admin
+        IHats(_ext.hats),
+        IRoleHatClonesFactory(_i.clonesFactory),
+        INavePirataRegistry(_i.registry),
+        _admin,
+        _ext.sponsorPolicyRegistry
       )
     );
     _i.sponsorPolicyRegistry = _ext.sponsorPolicyRegistry;

@@ -301,6 +301,89 @@ contract UnitMutinyModuleStart is UnitMutinyModuleBase {
     assertEq(_proposed, _squadSafe);
     assertEq(_mm.safe(), _squadSafe);
   }
+
+  function test_StartMutinyToCrewMember_HappyPath() external {
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockWearer(_bob, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmNoActiveOffboard();
+
+    vm.expectEmit(true, true, true, true, address(_mm));
+    emit IMutinyModule.MutinyStarted(1, _alice, _bob, 5, true);
+
+    vm.prank(_alice);
+    _mm.startMutinyToCrewMember(_bob, true);
+
+    (address _proposed,,,,,,, bool _seatFormer) = _mm.mutiny(1);
+    assertEq(_proposed, _bob);
+    assertTrue(_seatFormer);
+  }
+
+  function test_StartMutinyToCrewMember_RevertsIfProposedNotCrew() external {
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockWearer(_newCaptainEoa, _CREW_HAT, false);
+    vm.prank(_alice);
+    vm.expectRevert(abi.encodeWithSelector(HatGated.HatGated_NotHatWearer.selector, _CREW_HAT, _newCaptainEoa));
+    _mm.startMutinyToCrewMember(_newCaptainEoa, false);
+  }
+
+  function test_StartMutinyToCommittee_HappyPath() external {
+    address _committee = makeAddr('committee');
+    vm.etch(_committee, hex'00');
+    vm.mockCall(_committee, abi.encodeWithSignature('getThreshold()'), abi.encode(uint256(2)));
+
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmNoActiveOffboard();
+
+    vm.prank(_alice);
+    _mm.startMutinyToCommittee(_committee, false);
+
+    (address _proposed,,,,,,,) = _mm.mutiny(1);
+    assertEq(_proposed, _committee);
+  }
+
+  function test_StartMutinyToCommittee_RevertsWhenGetThresholdFails() external {
+    address _notCommittee = makeAddr('notCommittee');
+    _mockWearer(_alice, _CREW_HAT, true);
+    vm.prank(_alice);
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotContract.selector, _notCommittee));
+    _mm.startMutinyToCommittee(_notCommittee, false);
+  }
+
+  function test_StartMutinyToArbitraryContract_HappyPath() external {
+    address _contract = makeAddr('arbContract');
+    vm.etch(_contract, hex'00');
+
+    _mockWearer(_captain, _CAPTAIN_HAT, true);
+    _mockWearer(_alice, _CREW_HAT, true);
+    _mockHatSupply(_CREW_HAT, 5);
+    _mockQmNoActiveOffboard();
+
+    vm.prank(_alice);
+    _mm.startMutinyToArbitraryContract(_contract, false);
+
+    (address _proposed,,,,,,,) = _mm.mutiny(1);
+    assertEq(_proposed, _contract);
+  }
+
+  function test_StartMutinyToArbitraryContract_RevertsOnEoa() external {
+    _mockWearer(_alice, _CREW_HAT, true);
+    vm.prank(_alice);
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotContract.selector, _newCaptainEoa));
+    _mm.startMutinyToArbitraryContract(_newCaptainEoa, false);
+  }
+
+  function test_StartMutinyToArbitraryEoa_RevertsOnContract() external {
+    address _contract = makeAddr('notEoa');
+    vm.etch(_contract, hex'00');
+    _mockWearer(_alice, _CREW_HAT, true);
+    vm.prank(_alice);
+    vm.expectRevert(abi.encodeWithSelector(IMutinyModule.MutinyModule_NotEOA.selector, _contract));
+    _mm.startMutinyToArbitraryEoa(_contract, false);
+  }
 }
 
 contract UnitMutinyModuleVote is UnitMutinyModuleBase {

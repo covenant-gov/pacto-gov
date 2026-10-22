@@ -150,4 +150,12 @@ interface IWarGameRegistry {
    * @return _deployment Nested production deployment of that stack.
    */
   function deployment(uint256 _topHatId) external view returns (INavePirataRegistry.Deployment memory _deployment);
+
+  /**
+   * @notice Captain and crew hat ids for a stack. Both zero means unregistered.
+   * @param _topHatId Tophat id.
+   * @return _captainHatId Captain hat id.
+   * @return _crewHatId Crew hat id.
+   */
+  function crewAndCaptainHats(uint256 _topHatId) external view returns (uint256 _captainHatId, uint256 _crewHatId);
 }

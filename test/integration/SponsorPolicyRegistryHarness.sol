@@ -47,6 +47,15 @@ contract SponsorPolicyRegistryHarness is ISponsorPolicyRegistry {
     }
   }
 
+  function deregisterModules(address[] calldata modules) external {
+    if (!_authorizedRegistrars[msg.sender]) {
+      revert SponsorPolicyRegistry_UnauthorizedRegistrar(msg.sender);
+    }
+    for (uint256 _i = 0; _i < modules.length; _i++) {
+      delete _moduleToTopHat[modules[_i]];
+    }
+  }
+
   function moduleToTopHat(address module) external view returns (uint256 topHatId) {
     topHatId = _moduleToTopHat[module];
   }
