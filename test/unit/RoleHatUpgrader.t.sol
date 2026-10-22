@@ -5,6 +5,7 @@ import {RoleHatUpgrader} from 'contracts/factory/RoleHatUpgrader.sol';
 import {Test} from 'forge-std/Test.sol';
 import {IHats} from 'hats-core/Interfaces/IHats.sol';
 import {IHatsIdUtilities} from 'hats-core/Interfaces/IHatsIdUtilities.sol';
+import {ISponsorPolicyRegistry} from 'interfaces/external/ISponsorPolicyRegistry.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 import {IRoleHatUpgrader} from 'interfaces/factory/IRoleHatUpgrader.sol';
@@ -36,14 +37,18 @@ abstract contract UnitRoleHatUpgraderBase is Test {
   address internal _newClone = makeAddr('newClone');
   address internal _masterCopy = makeAddr('masterCopy');
 
-  function setUp() public {
+  function setUp() public virtual {
     vm.etch(_HATS_ADDRESS, hex'00');
     vm.etch(_CLONES_ADDRESS, hex'00');
     vm.etch(_REGISTRY_ADDRESS, hex'00');
     vm.etch(_oldClone, hex'00');
 
     _upgrader = new RoleHatUpgrader(
-      IHats(_HATS_ADDRESS), IRoleHatClonesFactory(_CLONES_ADDRESS), INavePirataRegistry(_REGISTRY_ADDRESS), _admin
+      IHats(_HATS_ADDRESS),
+      IRoleHatClonesFactory(_CLONES_ADDRESS),
+      INavePirataRegistry(_REGISTRY_ADDRESS),
+      _admin,
+      address(0)
     );
   }
 
@@ -106,21 +111,29 @@ contract UnitRoleHatUpgraderConstruction is UnitRoleHatUpgraderBase {
   function test_Constructor_RevertsOnZeroHats() external {
     vm.expectRevert(IRoleHatUpgrader.RoleHatUpgrader_ZeroAddress.selector);
     new RoleHatUpgrader(
-      IHats(address(0)), IRoleHatClonesFactory(_CLONES_ADDRESS), INavePirataRegistry(_REGISTRY_ADDRESS), _admin
+      IHats(address(0)),
+      IRoleHatClonesFactory(_CLONES_ADDRESS),
+      INavePirataRegistry(_REGISTRY_ADDRESS),
+      _admin,
+      address(0)
     );
   }
 
   function test_Constructor_RevertsOnZeroClones() external {
     vm.expectRevert(IRoleHatUpgrader.RoleHatUpgrader_ZeroAddress.selector);
     new RoleHatUpgrader(
-      IHats(_HATS_ADDRESS), IRoleHatClonesFactory(address(0)), INavePirataRegistry(_REGISTRY_ADDRESS), _admin
+      IHats(_HATS_ADDRESS),
+      IRoleHatClonesFactory(address(0)),
+      INavePirataRegistry(_REGISTRY_ADDRESS),
+      _admin,
+      address(0)
     );
   }
 
   function test_Constructor_RevertsOnZeroRegistry() external {
     vm.expectRevert(IRoleHatUpgrader.RoleHatUpgrader_ZeroAddress.selector);
     new RoleHatUpgrader(
-      IHats(_HATS_ADDRESS), IRoleHatClonesFactory(_CLONES_ADDRESS), INavePirataRegistry(address(0)), _admin
+      IHats(_HATS_ADDRESS), IRoleHatClonesFactory(_CLONES_ADDRESS), INavePirataRegistry(address(0)), _admin, address(0)
     );
   }
 }
@@ -315,6 +328,100 @@ contract UnitRoleHatUpgraderCeremony is UnitRoleHatUpgraderBase {
     vm.expectRevert(IRoleHatUpgrader.RoleHatUpgrader_TransferFailed.selector);
     _upgrader.upgradeRole(
       IRoleHatUpgrader.RoleKind.MUTINY_MODULE, _ROLE_HAT_ID, _oldClone, _masterCopy, _initData, _rawSalt
+    );
+  }
+
+  function test_UpgradeRole_ZeroPolicy_StillUpgrades() external {
+    _setupHappyPath();
+
+    vm.prank(_caller);
+    address _result = _upgrader.upgradeRole(
+      IRoleHatUpgrader.RoleKind.MUTINY_MODULE, _ROLE_HAT_ID, _oldClone, _masterCopy, _initData, _rawSalt
+    );
+    assertEq(_result, _newClone);
+  }
+}
+
+contract UnitRoleHatUpgraderSponsorPolicy is UnitRoleHatUpgraderBase {
+  address internal constant _POLICY = address(uint160(uint256(keccak256('pacto.upgrader.POLICY'))));
+
+  bytes internal _initData = abi.encodeWithSignature('initialize(uint256)', 42);
+  bytes32 internal _rawSalt = keccak256('salt-v1');
+
+  RoleHatUpgrader internal _policyUpgrader;
+
+  function setUp() public override {
+    super.setUp();
+    vm.etch(_POLICY, hex'00');
+    _policyUpgrader = new RoleHatUpgrader(
+      IHats(_HATS_ADDRESS),
+      IRoleHatClonesFactory(_CLONES_ADDRESS),
+      INavePirataRegistry(_REGISTRY_ADDRESS),
+      _admin,
+      _POLICY
+    );
+  }
+
+  function test_UpgradeRole_NonZeroPolicy_ReindexesOldThenNew() external {
+    _setupPolicyHappyPath();
+
+    address[] memory _oldModules = new address[](1);
+    _oldModules[0] = _oldClone;
+    address[] memory _newModules = new address[](1);
+    _newModules[0] = _newClone;
+
+    vm.expectCall(_POLICY, abi.encodeCall(ISponsorPolicyRegistry.deregisterModules, (_oldModules)));
+    vm.expectCall(_POLICY, abi.encodeCall(ISponsorPolicyRegistry.registerModulesForTopHat, (_TOP_HAT_ID, _newModules)));
+
+    vm.prank(_caller);
+    address _result = _policyUpgrader.upgradeRole(
+      IRoleHatUpgrader.RoleKind.MUTINY_MODULE, _ROLE_HAT_ID, _oldClone, _masterCopy, _initData, _rawSalt
+    );
+    assertEq(_result, _newClone);
+  }
+
+  function test_UpgradeRole_RevertsWhenPolicyReverts() external {
+    _setupPolicyHappyPath();
+
+    address[] memory _oldModules = new address[](1);
+    _oldModules[0] = _oldClone;
+    bytes memory _revertData = abi.encodeWithSelector(
+      ISponsorPolicyRegistry.SponsorPolicyRegistry_UnauthorizedRegistrar.selector, address(_policyUpgrader)
+    );
+    vm.mockCallRevert(_POLICY, abi.encodeCall(ISponsorPolicyRegistry.deregisterModules, (_oldModules)), _revertData);
+
+    vm.prank(_caller);
+    vm.expectRevert(_revertData);
+    _policyUpgrader.upgradeRole(
+      IRoleHatUpgrader.RoleKind.MUTINY_MODULE, _ROLE_HAT_ID, _oldClone, _masterCopy, _initData, _rawSalt
+    );
+  }
+
+  function _setupPolicyHappyPath() internal {
+    _mockIsAdmin(_caller, _ROLE_HAT_ID, true);
+    _mockIsQuiet(_oldClone, true);
+    bytes32 _salt = _expectedSalt(_ROLE_HAT_ID, _rawSalt);
+    _mockCreateClone(_masterCopy, _initData, _salt, _newClone);
+    _mockTransferHat(_ROLE_HAT_ID, _oldClone, _newClone);
+    _mockGetAdminAtLevel(_ROLE_HAT_ID, 0, _TOP_HAT_ID);
+    _mockRecordUpgrade(
+      _TOP_HAT_ID,
+      INavePirataRegistry.UpgradeRecord({
+        roleHatId: _ROLE_HAT_ID,
+        oldClone: _oldClone,
+        newClone: _newClone,
+        masterCopy: _masterCopy,
+        upgradedAt: uint64(block.timestamp)
+      })
+    );
+
+    address[] memory _oldModules = new address[](1);
+    _oldModules[0] = _oldClone;
+    address[] memory _newModules = new address[](1);
+    _newModules[0] = _newClone;
+    vm.mockCall(_POLICY, abi.encodeCall(ISponsorPolicyRegistry.deregisterModules, (_oldModules)), abi.encode());
+    vm.mockCall(
+      _POLICY, abi.encodeCall(ISponsorPolicyRegistry.registerModulesForTopHat, (_TOP_HAT_ID, _newModules)), abi.encode()
     );
   }
 }

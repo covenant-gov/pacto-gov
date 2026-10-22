@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {PackedHashLib} from 'contracts/libraries/PackedHashLib.sol';
+import {ISponsorPolicyRegistry} from 'interfaces/external/ISponsorPolicyRegistry.sol';
 import {INavePirataRegistry} from 'interfaces/factory/INavePirataRegistry.sol';
 import {IRoleHatClonesFactory} from 'interfaces/factory/IRoleHatClonesFactory.sol';
 import {IRoleHatUpgrader} from 'interfaces/factory/IRoleHatUpgrader.sol';
@@ -13,7 +14,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
 /**
  * @title RoleHatUpgrader
  * @author Pacto
- * @notice Hats admin + `isQuiet` → new clone + `transferHat` + registry. Optional allow-list. See `IRoleHatUpgrader`
+ * @notice Hats admin + `isQuiet` → new clone + `transferHat` + registry. Optional sponsor reindex and allow-list. See `IRoleHatUpgrader`
  * @dev `salt` mixes with `roleHatId` for CREATE2. Squad-admin clones are out of scope here
  */
 contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
@@ -27,6 +28,8 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
   IRoleHatClonesFactory internal immutable _CLONES;
   /// @notice On-chain registry receiving upgrade audit records.
   INavePirataRegistry internal immutable _REGISTRY;
+  /// @notice Username sponsor policy; zero skips module reindex after a role upgrade.
+  ISponsorPolicyRegistry internal immutable _SPONSOR_POLICY_REGISTRY;
 
   /*///////////////////////////////////////////////////////////////
                             STORAGE
@@ -48,12 +51,14 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
    * @param _clones EIP-1167 clones factory.
    * @param _registry Nave Pirata registry.
    * @param _admin Address permitted to toggle enforcement and manage the allow-list.
+   * @param _sponsorPolicyRegistry Optional `SponsorPolicyRegistry` for module reindex; zero skips.
    */
   constructor(
     IHats _hats,
     IRoleHatClonesFactory _clones,
     INavePirataRegistry _registry,
-    address _admin
+    address _admin,
+    address _sponsorPolicyRegistry
   ) Ownable(_admin) {
     if (address(_hats) == address(0) || address(_clones) == address(0) || address(_registry) == address(0)) {
       revert RoleHatUpgrader_ZeroAddress();
@@ -61,6 +66,7 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
     _HATS = _hats;
     _CLONES = _clones;
     _REGISTRY = _registry;
+    _SPONSOR_POLICY_REGISTRY = ISponsorPolicyRegistry(_sponsorPolicyRegistry);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -101,6 +107,14 @@ contract RoleHatUpgrader is IRoleHatUpgrader, Ownable {
         upgradedAt: uint64(block.timestamp)
       })
     );
+    if (address(_SPONSOR_POLICY_REGISTRY) != address(0)) {
+      address[] memory _oldModules = new address[](1);
+      _oldModules[0] = _oldClone;
+      _SPONSOR_POLICY_REGISTRY.deregisterModules(_oldModules);
+      address[] memory _newModules = new address[](1);
+      _newModules[0] = _newClone;
+      _SPONSOR_POLICY_REGISTRY.registerModulesForTopHat(_topHatId, _newModules);
+    }
     emit RoleHatUpgraded(_roleHatId, _oldClone, _newClone, _masterCopy, _kind);
   }
 

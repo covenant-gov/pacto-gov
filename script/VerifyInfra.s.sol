@@ -49,7 +49,9 @@ contract VerifyInfra is Script {
     VerifyOps.verifyNoArgs(vm, _clones, _CLONES, _chain);
     VerifyOps.verifyNoArgs(vm, _registry, _REGISTRY, _chain);
     VerifyOps.verifyNoArgs(vm, _warGameRegistry, _WAR_GAME_REGISTRY, _chain);
-    VerifyOps.verifyWithArgs(vm, _upgrader, _UPGRADER, _chain, abi.encode(_hats, _clones, _registry, _deployer));
+    VerifyOps.verifyWithArgs(
+      vm, _upgrader, _UPGRADER, _chain, abi.encode(_hats, _clones, _registry, _deployer, _sponsorPolicyRegistry)
+    );
     VerifyOps.verifyWithArgs(
       vm,
       _factory,

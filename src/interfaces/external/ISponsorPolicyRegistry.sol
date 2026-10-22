@@ -33,6 +33,12 @@ interface ISponsorPolicyRegistry {
   function registerModulesForTopHat(uint256 topHatId, address[] calldata modules) external;
 
   /**
+   * @notice Removes gov module indexes.
+   * @param modules Gov module addresses to deregister.
+   */
+  function deregisterModules(address[] calldata modules) external;
+
+  /**
    * @notice Returns the topHat id indexed for a gov module.
    * @param module Gov module address.
    * @return topHatId Indexed topHat id, or zero when unregistered.

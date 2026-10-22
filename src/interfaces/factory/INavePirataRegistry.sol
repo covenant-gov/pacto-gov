@@ -152,6 +152,14 @@ interface INavePirataRegistry {
   function deployment(uint256 _topHatId) external view returns (Deployment memory _deployment);
 
   /**
+   * @notice Captain and crew hat ids for a squad. Both zero means unregistered.
+   * @param _topHatId Squad tophat id.
+   * @return _captainHatId Captain hat id.
+   * @return _crewHatId Crew hat id.
+   */
+  function crewAndCaptainHats(uint256 _topHatId) external view returns (uint256 _captainHatId, uint256 _crewHatId);
+
+  /**
    * @notice Count of registered squads.
    * @return _count The count.
    */
