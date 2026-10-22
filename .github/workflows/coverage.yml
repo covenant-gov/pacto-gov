@@ -101,9 +101,10 @@ jobs:
       - name: Create a comment on the PR with the current branch coverage
         id: new-coverage
         if: hashFiles('lcov.info') != '' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: zgosalvez/github-actions-report-lcov@v4
+        uses: zgosalvez/github-actions-report-lcov@v5
         with:
           coverage-files: lcov.info
           github-token: ${{ github.token }}
           update-comment: true
           minimum-coverage: ${{ steps.compute-min.outputs.minimum }}
+          genhtml-ignore-errors: inconsistent,corrupt
