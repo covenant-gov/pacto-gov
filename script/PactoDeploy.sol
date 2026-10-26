@@ -40,6 +40,7 @@ import {IHats} from 'hats-core/Interfaces/IHats.sol';
  * @author Pacto
  * @notice Shared deployment routine: master copies, infra, registry wiring.
  * @dev `forge script` entrypoints inherit this; integration tests inherit `IntegrationBase` for the same deploy path.
+ *      Override Sepolia (or any chain) `sponsorPolicyRegistry` with `SPONSOR_POLICY_REGISTRY`.
  */
 abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
   /// @notice No `ExternalAddresses` entry for `block.chainid` (extend `_initExternalByChain` after adding `Constants`).
@@ -78,9 +79,11 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     return _squadParamsProduction();
   }
 
+  /// @dev `SPONSOR_POLICY_REGISTRY` overrides the compile-time pin (Sepolia) or `address(0)` on other chains.
   function _externalAddressesForCurrentChain() internal view returns (DeployTypes.ExternalAddresses memory _ext) {
     _ext = _externalByChain[block.chainid];
     if (_ext.hats == address(0)) revert UnsupportedChain(block.chainid);
+    _ext.sponsorPolicyRegistry = vm.envOr('SPONSOR_POLICY_REGISTRY', _ext.sponsorPolicyRegistry);
   }
 
   function _deployMasterCopies(IHats _hats) internal returns (DeployTypes.MasterCopyAddresses memory _m) {
