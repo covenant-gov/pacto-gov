@@ -72,24 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.x
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      # Same pin as base-coverage; floating `stable` reports different LCOV hits than the pinned toolchain.
+      - name: install-tools
+        uses: ./.github/workflows/install-tools
 
       - name: Run current branch coverage
         run: pnpm coverage
