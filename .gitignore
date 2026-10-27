@@ -3,6 +3,7 @@ pnpm-debug.log
 node_modules
 .DS_STORE
 .vscode
+*.tgz
 
 # Foundry files
 cache
@@ -17,6 +18,9 @@ lcov.info
 
 # Keep the latest deployment only
 broadcast/*/*/*
+
+# Dry-run script artifacts (see DeploymentArtifacts)
+simulations/
 
 # Out dir
 out

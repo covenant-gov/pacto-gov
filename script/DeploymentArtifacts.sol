@@ -9,21 +9,34 @@ import {VmSafe} from 'forge-std/Vm.sol';
 /**
  * @title DeploymentArtifacts
  * @author Pacto
- * @notice Writes human-readable JSON under `deployments/<chainId>/` on `--broadcast` / `--resume` only.
- * @dev Dry-run (`simulate-deploy:*`) and `forge test` do not write. Paths are relative to the repo root.
+ * @notice Writes human-readable JSON under `deployments/<chainId>/` on broadcast/resume, or
+ *         `simulations/<chainId>/` on dry-run.
+ * @dev `forge test` does not write. Paths are relative to the repo root.
  */
 abstract contract DeploymentArtifacts is Script {
-  function _shouldWriteDeploymentJson() internal view returns (bool) {
-    return vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) || vm.isContext(VmSafe.ForgeContext.ScriptResume);
+  /// @dev Empty string means skip (e.g. forge test).
+  function _artifactRoot() internal view returns (string memory) {
+    if (vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) || vm.isContext(VmSafe.ForgeContext.ScriptResume)) {
+      return 'deployments';
+    }
+    if (vm.isContext(VmSafe.ForgeContext.ScriptDryRun)) {
+      return 'simulations';
+    }
+    return '';
   }
 
-  function _deploymentJsonPath(string memory filename) internal view returns (string memory) {
-    return string.concat('deployments/', vm.toString(block.chainid), '/', filename);
+  function _shouldWriteDeploymentJson() internal view returns (bool) {
+    return bytes(_artifactRoot()).length != 0;
+  }
+
+  function _deploymentJsonPath(string memory root, string memory filename) internal view returns (string memory) {
+    return string.concat(root, '/', vm.toString(block.chainid), '/', filename);
   }
 
   function _writeDeploymentJson(string memory json, string memory filename) internal {
-    vm.createDir(string.concat('deployments/', vm.toString(block.chainid)), true);
-    vm.writeJson(json, _deploymentJsonPath(filename));
+    string memory root = _artifactRoot();
+    vm.createDir(string.concat(root, '/', vm.toString(block.chainid)), true);
+    vm.writeJson(json, _deploymentJsonPath(root, filename));
   }
 
   function _writeExternalAddressesJson(DeployTypes.ExternalAddresses memory ext) internal {

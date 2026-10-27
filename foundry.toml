@@ -15,7 +15,10 @@ libs = ['node_modules']
 optimizer_runs = 10_000
 via_ir = true
 ignored_warnings_from = ["node_modules/@openzeppelin/contracts/proxy/utils/Initializable.sol"]
-fs_permissions = [{ access = 'read-write', path = './deployments' }]
+fs_permissions = [
+  { access = 'read-write', path = './deployments' },
+  { access = 'read-write', path = './simulations' },
+]
 
 [profile.verify]
 ffi = true
