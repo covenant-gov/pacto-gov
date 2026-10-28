@@ -18,10 +18,11 @@ contract DeployInfra is PactoDeploy {
   function run() external {
     DeployTypes.ExternalAddresses memory _ext = _externalAddressesForCurrentChain();
     vm.startBroadcast();
-    _deployInfra(_ext, _broadcastDeployer());
+    address deployer = _broadcastDeployer();
+    _deployInfra(_ext, deployer);
     vm.stopBroadcast();
     _writeExternalAddressesJson(_ext);
-    _writeInfraJson(_infra, _broadcastDeployer());
+    _writeInfraJson(_infra, deployer);
     console.log('RoleHatClonesFactory:', _infra.clonesFactory);
     console.log('NavePirataRegistry:', _infra.registry);
     console.log('WarGameRegistry:', _infra.warGameRegistry);

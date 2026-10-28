@@ -100,6 +100,8 @@ abstract contract DeploymentArtifacts is Script {
     vm.serializeAddress(k, 'navePirataFactory', i.navePirataFactory);
     string memory json = vm.serializeAddress(k, 'deployer', deployer);
     _writeDeploymentJson(json, 'full-system.json');
+    // Overlapping infra keys must not drift from full-system.json after a full Deploy.
+    _writeInfraJson(i, deployer);
   }
 
   function _writeSquadDeploymentJson(

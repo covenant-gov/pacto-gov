@@ -140,7 +140,8 @@ abstract contract PactoDeploy is DeploymentArtifacts, ScriptGovernanceParams {
     _deployInfra(_ext, _admin);
   }
 
-  /// @dev After `vm.startBroadcast()`, `msg.sender` in `run()` is still the script default; use the broadcaster address.
+  /// @dev `--account` / keystore broadcaster from `vm.readCallers()` while `startBroadcast` is active.
+  ///      After `stopBroadcast`, the same call returns the script default sender — cache before stopping.
   function _broadcastDeployer() internal returns (address _deployer) {
     (, _deployer,) = vm.readCallers();
   }
