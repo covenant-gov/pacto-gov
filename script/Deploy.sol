@@ -14,9 +14,10 @@ contract Deploy is PactoDeploy {
   function run() external {
     DeployTypes.ExternalAddresses memory _ext = _externalAddressesForCurrentChain();
     vm.startBroadcast();
-    _deployFullSystem(_ext, _broadcastDeployer());
+    address deployer = _broadcastDeployer();
+    _deployFullSystem(_ext, deployer);
     vm.stopBroadcast();
     _logDeployment();
-    _writeFullSystemJson(_ext, _masters, _infra, _broadcastDeployer());
+    _writeFullSystemJson(_ext, _masters, _infra, deployer);
   }
 }
