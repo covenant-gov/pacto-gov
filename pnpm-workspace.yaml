@@ -1,6 +1,14 @@
 packages:
   - '.'
 
+# Build-script approval (pnpm 10+). Packages not listed are denied when
+# strictDepBuilds is true. Keep fsevents false (optional macOS watcher).
 allowBuilds:
   esbuild: true
   fsevents: false
+
+# Delay brand-new registry publishes during resolution/updates. Frozen CI
+# installs already pin via the lockfile; this mainly hardens local/add paths.
+minimumReleaseAge: 1440
+
+strictDepBuilds: true

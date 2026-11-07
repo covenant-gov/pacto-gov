@@ -3,19 +3,23 @@ name: Natspec Check
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [dev]
+
+permissions:
+  contents: read
 
 jobs:
   natspec:
     name: Run Lintspec
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: install-tools
-        uses: ./.github/workflows/install-tools
+        uses: ./.github/actions/install-tools
 
       - name: Install and run Lintspec
-        uses: beeb/lintspec@v0.6.0
+        uses: beeb/lintspec@b177eac0f1eec0b5ff7de58b87cb8d69b13d04c6 # v0.6.0
