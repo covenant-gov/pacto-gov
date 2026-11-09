@@ -1,0 +1,7 @@
+# Workflow and ownership review surfaces. Handles below were verified for
+# write-or-higher access on this repository via the GitHub collaborators
+# permission API. YAML alone does not enforce reviews — enable branch
+# protection / rulesets if CODEOWNERS review is required.
+.github/workflows/ @logicminds @daopunk
+.github/actions/ @logicminds @daopunk
+.github/CODEOWNERS @logicminds @daopunk

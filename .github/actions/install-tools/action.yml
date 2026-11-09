@@ -1,0 +1,30 @@
+name: Install tools common to all our actions
+description: Installs pinned Foundry, pnpm, Node.js, and project dependencies for CI jobs.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Foundry
+      # Pins the Action; Foundry binaries still come from foundryup inside this Action.
+      uses: foundry-rs/foundry-toolchain@dba66c27052e63476d886f22216e119ba7e615bf # v1.9.2
+      with:
+        # Pin so `forge fmt --check` matches developer installs (floating `stable` changes formatter output).
+        version: v1.4.1
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+      with:
+        version: 10
+        run_install: false
+
+    - name: Use Node.js
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      with:
+        node-version: 24.x
+        cache: 'pnpm'
+
+    # Skip lifecycle scripts (husky prepare) during CI install. RPC / publish
+    # secrets must not be present in the job env at this step.
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile --ignore-scripts

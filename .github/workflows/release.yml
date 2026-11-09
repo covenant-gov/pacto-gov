@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+# Publishing stays disabled. Least privilege if someone removes `if: false`.
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Release
@@ -16,22 +20,24 @@ jobs:
         export_type: ['interfaces', 'all']
 
     env:
-    # 2) Fill the project name to be used in NPM
+      # 2) Fill the project name to be used in NPM
       NPM_PACKAGE_NAME: 'my-cool-project'
       EXPORT_NAME: ${{ matrix.export_type == 'interfaces' && '-interfaces' || '' }}
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: install-tools
-        uses: ./.github/workflows/install-tools
+        uses: ./.github/actions/install-tools
 
       - name: Build project and generate out directory
         run: pnpm build
 
       - name: Export Solidity - Export Type ${{ matrix.export_type }}
-        uses: defi-wonderland/solidity-exporter-action@v2.1.0
+        uses: defi-wonderland/solidity-exporter-action@3df3ab476e32e604659900c2f48dcdfb55b1f37b # v2.1.0
         with:
           package_name: ${{ env.NPM_PACKAGE_NAME }}
           out: 'out'
@@ -40,6 +46,7 @@ jobs:
           libraries: "solidity/libraries"
           export_type: '${{ matrix.export_type }}'
 
+      # NPM_TOKEN is only referenced on this publish step (job remains disabled).
       - name: Publish to NPM - Export Type ${{ matrix.export_type }}
         run: cd export/${{ env.NPM_PACKAGE_NAME }}${{ env.EXPORT_NAME }} && npm publish --access public --tag latest
         env:
