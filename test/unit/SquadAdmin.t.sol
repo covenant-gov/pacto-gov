@@ -435,6 +435,77 @@ contract UnitSquadAdminRoleCatalog is UnitSquadAdminBase {
     vm.expectRevert();
     _admin.roleAt(2);
   }
+
+  function test_CreateRole_RevertsOnZero() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_ZeroAddress.selector);
+    _admin.createRole(bytes32(0));
+  }
+
+  function test_CreateRole_RevertsOnFullAndPauseSentinels() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_RoleAlreadyExists.selector);
+    _admin.createRole(_ROLE_FULL);
+
+    vm.prank(_captain);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_RoleAlreadyExists.selector);
+    _admin.createRole(_ROLE_PAUSE);
+  }
+
+  function test_CreateRole_RevertsOnDuplicate() external {
+    _mockCaptain(_captain, true);
+    vm.prank(_captain);
+    vm.expectRevert(ISquadAdminBase.SquadAdminBase_RoleAlreadyExists.selector);
+    _admin.createRole(_ROLE_APP);
+  }
+}
+
+/// @notice Opaque packed privilege ids from docs/SquadAdmin.md (client convention; contract treats as bytes32).
+contract UnitSquadAdminPackedRoleIds is UnitSquadAdminBase {
+  // Invite|Create|Broadcast + name "Mate" — docs vector.
+  bytes32 internal constant _ROLE_PACKED_MATE =
+    bytes32(hex'4d61746500000000000000000000000000000000000000000000000000010007');
+
+  function test_PackedRole_CreateEnableHasExecutorRole() external {
+    _mockCaptain(_captain, true);
+
+    vm.prank(_captain);
+    _admin.createRole(_ROLE_PACKED_MATE);
+    vm.prank(_captain);
+    _admin.enableExecutor(_alice, _ROLE_PACKED_MATE);
+
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_PACKED_MATE));
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_APP));
+    assertEq(_admin.roleAt(_admin.roleCount() - 1), _ROLE_PACKED_MATE);
+  }
+
+  function test_PackedRole_FullGrantsPackedId_PauseOverrides() external {
+    _mockCaptain(_captain, true);
+
+    vm.prank(_captain);
+    _admin.createRole(_ROLE_PACKED_MATE);
+
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_PACKED_MATE));
+
+    vm.prank(_captain);
+    _admin.enableFullPermission(_alice, true);
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_PACKED_MATE));
+
+    vm.prank(_captain);
+    _admin.pauseExecutor(_alice, true);
+    assertFalse(_admin.hasExecutorRole(_alice, _ROLE_PACKED_MATE));
+
+    vm.prank(_captain);
+    _admin.pauseExecutor(_alice, false);
+    assertTrue(_admin.hasExecutorRole(_alice, _ROLE_PACKED_MATE));
+  }
+
+  function test_PackedRole_DoesNotCollideWithSentinels() external pure {
+    assertTrue(_ROLE_PACKED_MATE != _ROLE_FULL);
+    assertTrue(_ROLE_PACKED_MATE != _ROLE_PAUSE);
+  }
 }
 
 contract UnitSquadAdminExt is Test {
